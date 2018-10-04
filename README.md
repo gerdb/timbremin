@@ -23,7 +23,8 @@ So you need only 3 additional oscillators and some potentiometers and switches.
 ### Layout
 The oscillators can be built up on a breadboard:
 
-![tinnitus](pics/timbremin_osc_pcb_thd.png "timbremin oscillator built on a breadboard")
+![timbremin](pics/timbremin_osc_pcb_thd.png "timbremin oscillator built on a breadboard")
+![timbremin](pics/oscillators.jpg "timbremin oscillators built on a breadboard")
 
 
 ### Bill of material
@@ -35,7 +36,6 @@ The oscillators can be built up on a breadboard:
 | C4            | 220pF        | ceramic capacitor NP0 2.54mm        |
 | C5            | 1µF          | ceramic capacitor X7R or X5R 5.08mm |
 | R1            | 100k         | resistor 1% size 0207               |
-| R1            | 100k         | resistor 1% size 0207               |
 | R2            | 10R          | resistor 1% size 0207               |
 | R3            | 1k           | resistor 1% size 0207               |
 | L1            | 2.5, 3, 4mH  | air coil, see below                 |
@@ -44,7 +44,8 @@ The oscillators can be built up on a breadboard:
 
 L1 should be an air-coil with 2.5mH, 3mH and 4mH.
 Eg. x windings of 0.15mm wire on a core with 50mm diameter.
-![tinnitus](pics/aircoil.png "tinnitus air coild")
+Picture below shows all 3 coils with different number of windings.
+![timbremin air coils](pics/coils.jpg "timbremin air coils")
 
 Use http://hamwaves.com/antennas/inductance.html for other diameters.
 
