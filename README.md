@@ -2,7 +2,7 @@
 
 ### An easy to build Theremin for only 50$
 
-* Only an STM32 evaluation board, 2 oscillators and some knobs and switches needed.
+* Only an STM32 evaluation board, 3 oscillators and some knobs and switches needed.
 * Excellent audio quality: 16/24bit audio DAC with headphone amplifier
 * Can load waveforms with Theremin sound directly from an USB stick
 * Very fast autotune: 1sec
@@ -70,10 +70,7 @@ Connect an extra 100nF capacitor under each potentiometer from the potentiometer
 
 ## Auto-tune
 The blue button on the STM32 discovery board starts the Auto-Tune procedure.
-
-![auto tune button](pics/auto_tune.png "auto tune")
-
-You can also use an additional button and connect it to:
+Connect an external button to:
 
 | Name       | PIN Name | Connector | Description                   |
 | ---------- | -------- | --------- | ----------------------------- |
@@ -126,16 +123,16 @@ You find the binary file in the "Binary" folder. Download the [tinnitus project 
 Program the STM32 board with the [STM32CUBEPROG](http://www.st.com/content/st_com/en/products/development-tools/software-development-tools/stm32-software-development-tools/stm32-programmers/stm32cubeprog.html) tool.
 
 ## Case and front panel
-As case a wooden wine box could be used.
+A wooden wine box or a bamboo box for the kitchen (both about 10$) can be used as a case for the timbremin.
 
-![Wooden wine box](pics/wine_box.jpg "Wooden wine box")
+![Wooden wine box](pics/winebox.jpg "Wooden wine box")
 
-The cheapest way for a professional looking front panel would be to use the service of a sign manufacturer. For example:
+The cheapest way for a professional looking front panel is to use the service of a sign manufacturer. For example:
 https://www.digitaldruck-fabrik.de/werbeschilder/hart-pvc-polystyrolplatte.aspx
 
-Price of a 380x110mm front panel is about 4€ or 5$
+Price of a 380x110mm front panel: 5$
 
-You can use the template under hardware/Frontpanel, but you have to adapt the size of the front panel file to your wine box. Use eg. https://inkscape.org
+You can use the template under hardware/Frontpanel, but you have to adapt the size of the front panel file to your case. Use eg. https://inkscape.org
 
 ![Front panel](pics/frontpanel.png "Front panel")
 
