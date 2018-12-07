@@ -32,10 +32,10 @@
 /* Constants ------------------------------------------------------------ */
 
 #define POT_VOLUME_OUT	0
-#define POT_PITCH_SCALE	8
-#define POT_PITCH_SHIFT	16
-#define POT_VOL_SCALE	24
-#define POT_WAVEFORM	32
+#define POT_PITCH_SCALE	1
+#define POT_PITCH_SHIFT	2
+#define POT_VOL_SCALE	3
+#define POT_WAVEFORM	4
 
 /* Types ---------------------------------------------------------------- */
 typedef struct

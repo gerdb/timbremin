@@ -28,16 +28,8 @@
 extern ADC_HandleTypeDef hadc1;
 
 uint16_t usADCResult[ADC_CHANNELS];
-uint32_t ulPORT_MUX_MASK[8];
-int	iPotMux = 0;
 int iPotTask = 0;
-const uint32_t POT_MULTIPLEXERS = 4;
-
-// Index 0..7  : AD Channel 0 - MUX 0..7
-// Index 8..15 : AD Channel 1 - MUX 0..7
-//  ...
-// Index 64..71: AD Channel 8 - MUX 0..7
-POTS_PotTypeDef strPots[ADC_CHANNELS * 8];
+POTS_PotTypeDef strPots[ADC_CHANNELS];
 
 /**
  * @brief initialize the module
@@ -71,40 +63,8 @@ void POTS_Init(void)
     __HAL_UNLOCK(hadc1.DMA_Handle);
 	hadc1.DMA_Handle->State = HAL_DMA_STATE_READY;
 
-	//Fill the multiplexer mask for faster access
-	for (int i=0; i<8; i++)
-	{
-		ulPORT_MUX_MASK[i] = 0;
-		if (i & 0x01)
-		{
-			ulPORT_MUX_MASK[i] |= POT_MUX_A_Pin;
-		}
-		else
-		{
-			ulPORT_MUX_MASK[i] |= (uint32_t)POT_MUX_A_Pin << 16U;;
-		}
-
-		if (i & 0x02)
-		{
-			ulPORT_MUX_MASK[i] |= POT_MUX_B_Pin;
-		}
-		else
-		{
-			ulPORT_MUX_MASK[i] |= (uint32_t)POT_MUX_B_Pin << 16U;;
-		}
-		if (i & 0x04)
-		{
-			ulPORT_MUX_MASK[i] |= POT_MUX_C_Pin;
-		}
-		else
-		{
-			ulPORT_MUX_MASK[i] |= (uint32_t)POT_MUX_C_Pin << 16U;;
-		}
-
-	}
-
 	// Initialize the pots structure
-	for (int i=0; i< (ADC_CHANNELS * 8); i++)
+	for (int i=0; i< (ADC_CHANNELS); i++)
 	{
 		strPots[i].usRawVal = 0;
 		strPots[i].usStabilized = 0;
@@ -117,7 +77,6 @@ void POTS_Init(void)
 
 	// Start with -1, so in the next task, the first value will be 0
 	iPotTask = -1;
-	iPotMux = -1;
 }
 
 
@@ -126,74 +85,51 @@ void POTS_Init(void)
  */
 void POTS_1msTask(void)
 {
-	int iPot;
-
 	// Generate a task counter
 	iPotTask ++;
-
+	//GPIOC->BSRR = ulPORT_MUX_MASK[iPotMux];
 
 	switch (iPotTask)
 	{
 	case 0:
-		// Select next mux channel
-		iPotMux++;
-		if (iPotMux >=8)
-		{
-			iPotMux = 0;
-		}
-		// Set 3 output ports
-		GPIOC->BSRR = ulPORT_MUX_MASK[iPotMux];
-		break;
-
-	case 2:
 		// Start ADC conversion for 9 AD channels
 		hadc1.Instance->CR2 |= (uint32_t) ADC_CR2_SWSTART;
 		break;
 
-	case 3:
+	case 1:
 
 		for (int i=0;i<ADC_CHANNELS ; i++)
 		{
-			// Index 0..7  : AD Channel 0 - MUX 0..7
-			// Index 8..15 : AD Channel 1 - MUX 0..7
-			//  ...
-			// Index 64..71: AD Channel 8 - MUX 0..7
-			if (i < (ADC_CHANNELS-POT_MULTIPLEXERS)) {
-				iPot = i*8;
-			} else {
-				iPot = i*8 + iPotMux;
-			}
-
 			// Use the ADC value
-			strPots[iPot].usRawVal = usADCResult[i];
+			strPots[i].usRawVal = usADCResult[i];
 
 			// Change in pot value detected?
-			if (abs((int)(strPots[iPot].usRawVal) - (int)(strPots[iPot].usStabilized)) > POT_STAB_THERESHOLD )
+			if (abs((int)(strPots[i].usRawVal) - (int)(strPots[i].usStabilized)) > POT_STAB_THERESHOLD )
 			{
-				strPots[iPot].iStabilizeCnt = POT_STAB_TIME;
+				strPots[i].iStabilizeCnt = POT_STAB_TIME;
 			}
 
 			// Update the stabilized value a certain time after change detection
-			if (strPots[iPot].iStabilizeCnt != 0)
+			if (strPots[i].iStabilizeCnt != 0)
 			{
-				strPots[iPot].usStabilized = strPots[iPot].usRawVal;
+				strPots[i].usStabilized = strPots[i].usRawVal;
 			}
 
 			// Scale the pot value
-			strPots[iPot].iScaledValue = (strPots[iPot].usStabilized * strPots[iPot].iMaxValue) / 4096;
+			strPots[i].iScaledValue = (strPots[i].usStabilized * strPots[i].iMaxValue) / 4096;
 			// Has the scaled value changed?
-			if ((strPots[iPot].iScaledValue != strPots[iPot].iScaledValueOld) && strPots[iPot].iStabilizeCnt != 0)
+			if ((strPots[i].iScaledValue != strPots[i].iScaledValueOld) && strPots[i].iStabilizeCnt != 0)
 			{
-				strPots[iPot].bChanged = 1;
+				strPots[i].bChanged = 1;
 			}
 
 			// Update the stabilized value a certain time after change detection
-			if (strPots[iPot].iStabilizeCnt != 0)
+			if (strPots[i].iStabilizeCnt != 0)
 			{
-				strPots[iPot].iStabilizeCnt --;
+				strPots[i].iStabilizeCnt --;
 			}
 
-			strPots[iPot].iScaledValueOld = strPots[iPot].iScaledValue;
+			strPots[i].iScaledValueOld = strPots[i].iScaledValue;
 
 
 		}

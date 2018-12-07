@@ -29,6 +29,7 @@
 #include "config.h"
 #include "usb_stick.h"
 #include <math.h>
+#include <stdlib.h>
 
 uint16_t usCC[8];
 int16_t ssWaveTable[4096];
@@ -58,18 +59,36 @@ float fPitch;			// pitch value
 float fPitchScale = 1.0f;
 float fPitchShift = 1.0f;
 
+// Volume
 float fVol = 0.0;			// volume value
-uint16_t usVolCC;			// value of capture compare register
-uint16_t usVolLastCC;		// last value (last task)
-uint16_t usVolPeriod;		// period of oscillator
-int32_t slVolOffset;		// offset value (result of auto-tune)
-int32_t slVolPeriodeFilt;	// low pass filtered period
+uint16_t usVolTim1CC;			// value of capture compare register
+uint16_t usVolTim2CC;			// value of capture compare register
+uint16_t usVolTim1LastCC;		// last value (last task)
+uint16_t usVolTim2LastCC;		// last value (last task)
+uint16_t usVolTim1Period;		// period of oscillator
+uint16_t usVolTim2Period;		// period of oscillator
+int32_t slVolTim1Offset;		// offset value (result of auto-tune)
+int32_t slVolTim2Offset;		// offset value (result of auto-tune)
+int32_t slVolTim1PeriodeFilt;	// low pass filtered period
+int32_t slVolTim2PeriodeFilt;	// low pass filtered period
 int32_t slVol;				// volume value
 int32_t slVolFiltL;			// volume value, filtered (internal filter value)
 int32_t slVolFilt;			// volume value, filtered
 
 float fVolScale = 1.0f;
 float fVolShift = 0.0f;
+
+
+int32_t slPitchOld;
+int32_t slPitchDiffSum;
+int32_t slPitchDiffCnt = 0;
+int32_t slVolTim1Old;
+int32_t slVolTim1DiffSum;
+int32_t slVolTim1DiffCnt = 0;
+int32_t slVolTim2Old;
+int32_t slVolTim2DiffSum;
+int32_t slVolTim2DiffCnt = 0;
+
 
 //int32_t slVol2;				// volume value
 
@@ -120,7 +139,8 @@ void THEREMIN_Init(void)
 
 	// Read auto-tune values from virtual EEPRom
 	slPitchOffset = CONFIG_Read_SLong(EEPROM_ADDR_PITCH_AUTOTUNE_H);
-	slVolOffset = CONFIG_Read_SLong(EEPROM_ADDR_VOL_AUTOTUNE_H);
+	slVolTim1Offset = CONFIG_Read_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H);
+	slVolTim2Offset = CONFIG_Read_SLong(EEPROM_ADDR_VOLTIM2_AUTOTUNE_H);
 
 	// Get the VolumeShift value from the flash configuration
 	fVolShift = ((float) (CONFIG.VolumeShift)) * 0.1f + 11.5f;
@@ -579,19 +599,26 @@ inline void THEREMIN_96kHzDACTask(void)
 	// cycles: 29
 	// Get the input capture timestamps
 	usPitchCC = htim1.Instance->CCR1;
-	usVolCC = htim1.Instance->CCR2;
+	usVolTim1CC = htim1.Instance->CCR2;
+	usVolTim2CC = htim1.Instance->CCR3;
 
 	// cycles: 26
 	// Calculate the period by the capture compare value and
 	// the last capture compare value
 	usPitchPeriod = usPitchCC - usPitchLastCC;
-	usVolPeriod = usVolCC - usVolLastCC;
+	usVolTim1Period = usVolTim1CC - usVolTim1LastCC;
+	usVolTim2Period = usVolTim2CC - usVolTim2LastCC;
 
 	// cycles: 9
+	/*
 	if (usPitchPeriod < 2000)
 		usPitchPeriod *= 2;
-	if (usVolPeriod < 2000)
-		usVolPeriod *= 2;
+
+	if (usVolTim1Period < 2000)
+		usVolTim1Period *= 2;
+	if (usVolTim2Period < 2000)
+		usVolTim2Period *= 2;*/
+
 
 //	for (int i=0;i<7;i++)
 //	{
@@ -612,21 +639,45 @@ inline void THEREMIN_96kHzDACTask(void)
 
 	// cycles: 21
 	// Low pass filter volume values
-	if (usVolPeriod != 0)
+	if (usVolTim1Period != 0)
 	{
 		//                                   11bit                10bit  10bit
-		slVolPeriodeFilt += ((int16_t) (usVolPeriod - 2048) * 1024 * 1024
-				- slVolPeriodeFilt) / 1024;
+		slVolTim1PeriodeFilt += ((int16_t) (usVolTim1Period - 2048) * 1024 * 1024
+				- slVolTim1PeriodeFilt) / 1024;
+	}
+	if (usVolTim2Period != 0)
+	{
+		//                                   11bit                10bit  10bit
+		slVolTim2PeriodeFilt += ((int16_t) (usVolTim2Period - 2048) * 1024 * 1024
+				- slVolTim2PeriodeFilt) / 1024;
 	}
 
 	// cycles: 34
 	fPitch = (float) ((slPitchPeriodeFilt - slPitchOffset) * 8);
-	slVol = ((slVolPeriodeFilt - slVolOffset) / 4096);
+	slVol = ((slVolTim1PeriodeFilt - slVolTim1Offset) / 4096);
 
 	// cycles: 9
 	// Store values for next task
 	usPitchLastCC = usPitchCC;
-	usVolLastCC = usVolCC;
+	usVolTim1LastCC = usVolTim1CC;
+	usVolTim2LastCC = usVolTim2CC;
+
+	if (usPitchPeriod != 0) {
+		slPitchDiffSum += abs(usPitchPeriod - slPitchOld);
+		slPitchDiffCnt ++;
+		slPitchOld = usPitchPeriod;
+	}
+	if (usVolTim1Period != 0) {
+		slVolTim1DiffSum += abs(usVolTim1Period - slVolTim1Old);
+		slVolTim1DiffCnt ++;
+		slVolTim1Old = usVolTim1Period;
+	}
+	if (usVolTim2Period != 0) {
+		slVolTim2DiffSum += abs(usVolTim2Period - slVolTim2Old);
+		slVolTim2DiffCnt ++;
+		slVolTim2Old = usVolTim2Period;
+	}
+
 }
 
 /**
@@ -664,8 +715,10 @@ void THEREMIN_1msTask(void)
 			slPitchOffset = 0;
 			slPitchPeriodeFilt = 0x7FFFFFFF;
 			slMinPitchPeriode = 0x7FFFFFFF;
-			slVolOffset = 0;
-			slVolPeriodeFilt = 0x7FFFFFFF;
+			slVolTim1Offset = 0;
+			slVolTim2Offset = 0;
+			slVolTim1PeriodeFilt = 0x7FFFFFFF;
+			slVolTim2PeriodeFilt = 0x7FFFFFFF;
 			slMinVolPeriode = 0x7FFFFFFF;
 
 			// Mute the output
@@ -680,9 +733,9 @@ void THEREMIN_1msTask(void)
 			slMinPitchPeriode = slPitchPeriodeFilt;
 		}
 		// Find lowest volume period
-		if (slVolPeriodeFilt < slMinVolPeriode)
+		if (slVolTim1PeriodeFilt < slMinVolPeriode)
 		{
-			slMinVolPeriode = slVolPeriodeFilt;
+			slMinVolPeriode = slVolTim1PeriodeFilt;
 		}
 		siAutotune--;
 
@@ -712,12 +765,13 @@ void THEREMIN_1msTask(void)
 			HAL_GPIO_WritePin(PITCH_LED_11_GPIO_Port, PITCH_LED_11_Pin, GPIO_PIN_RESET);
 			// Use minimum values for offset of pitch and volume
 			slPitchOffset = slMinPitchPeriode;
-			slVolOffset = slMinVolPeriode;	// + 16384 * 128;
+			slVolTim1Offset = slMinVolPeriode;	// + 16384 * 128;
 #ifdef DEBUG
-		printf("%d %d\n", usPitchPeriod, usVolPeriod);
+		printf("%d %d\n", usPitchPeriod, usVolTim1Period);
 #endif
 			CONFIG_Write_SLong(EEPROM_ADDR_PITCH_AUTOTUNE_H, slPitchOffset);
-			CONFIG_Write_SLong(EEPROM_ADDR_VOL_AUTOTUNE_H, slVolOffset);
+			CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H, slVolTim1Offset);
+			CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM2_AUTOTUNE_H, slVolTim2Offset);
 		}
 	}
 
@@ -792,9 +846,36 @@ void THEREMIN_1msTask(void)
 void THEREMIN_1sTask(void)
 {
 #ifdef DEBUG
+	int p1=0,p2=0,p3=0;
+
 	if (siAutotune == 0)
 	{
-		//printf("%d\n", (uint32_t)slPitchPeriodeFilt);
+//		printf("%d %d\n", (int)slVolTim1PeriodeFilt, (int)slVolTim2PeriodeFilt);
+
+		if (slPitchDiffCnt != 0)
+		{
+			p1 = slPitchDiffSum *10 / slPitchDiffCnt;
+		}
+		if (slVolTim1DiffCnt != 0)
+		{
+			p2 = slVolTim1DiffSum *10 / slVolTim1DiffCnt;
+		}
+		if (slVolTim2DiffCnt != 0)
+		{
+			p3 = slVolTim2DiffSum *10 / slVolTim2DiffCnt;
+		}
+		slPitchDiffSum = 0;
+		slPitchDiffCnt = 0;
+		slVolTim1DiffSum = 0;
+		slVolTim1DiffCnt = 0;
+		slVolTim2DiffSum = 0;
+		slVolTim2DiffCnt = 0;
+
+		printf("%d (%d) %d (%d) %d (%d)\n", (int)usPitchPeriod, (int)p1,
+				(int)usVolTim1Period, (int)p2,
+				(int)usVolTim2Period, (int)p3);
+
+
 		//printf("Stopwatch %d\n", ulStopwatch);
 	}
 #endif

@@ -32,8 +32,10 @@
 // Virtual EEProm addresses. 32bit values need 2 addresses
 #define EEPROM_ADDR_PITCH_AUTOTUNE_H	0
 #define EEPROM_ADDR_PITCH_AUTOTUNE_L	1
-#define EEPROM_ADDR_VOL_AUTOTUNE_H		2
-#define EEPROM_ADDR_VOL_AUTOTUNE_L		3
+#define EEPROM_ADDR_VOLTIM1_AUTOTUNE_H	2
+#define EEPROM_ADDR_VOLTIM1_AUTOTUNE_L	3
+#define EEPROM_ADDR_VOLTIM2_AUTOTUNE_H	4
+#define EEPROM_ADDR_VOLTIM2_AUTOTUNE_L	5
 // !! Update also NB_OF_VAR in eeprom.h !!
 
 
