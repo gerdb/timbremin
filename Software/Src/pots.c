@@ -87,7 +87,7 @@ void POTS_1msTask(void)
 {
 	// Generate a task counter
 	iPotTask ++;
-	//GPIOC->BSRR = ulPORT_MUX_MASK[iPotMux];
+
 
 	switch (iPotTask)
 	{

@@ -46,6 +46,13 @@ typedef enum
 	USBSTICK = 7
 }e_waveform;
 
+// The different volume antennas
+typedef enum
+{
+	VOLSEL_NONE = 0,
+	VOLSEL_1 = 1,
+	VOLSEL_2 = 2
+}e_vol_sel;
 
 #define TESTPORT_ON()  GPIOD->BSRR = 0x00002000
 #define TESTPORT_OFF() GPIOD->BSRR = 0x20000000
@@ -60,11 +67,12 @@ void THEREMIN_Init(void);
 void THEREMIN_96kHzDACTask(void);
 void THEREMIN_1msTask(void);
 void THEREMIN_1sTask(void);
-void THEREMIN_Calc_VolumeTable(void);
+void THEREMIN_Calc_Volume1Table(void);
+void THEREMIN_Calc_Volume2Table(void);
 void THEREMIN_Calc_PitchTable(void);
 void THEREMIN_Calc_WavTable(void);
 void THEREMIN_Calc_LFOTable(void);
-void THEREMIN_PitchDisplay(void);
-void THEREMIN_AutotuneDisplay(void);
+
+
 
 #endif /* THEREMIN_H_ */

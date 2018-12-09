@@ -25,6 +25,7 @@
 #include "stm32f4xx_hal.h"
 #include "audio_out.h"
 #include "theremin.h"
+#include "display.h"
 #include "pots.h"
 #include "config.h"
 #include "usb_stick.h"
@@ -35,7 +36,8 @@ uint16_t usCC[8];
 int16_t ssWaveTable[4096];
 
 // Linearization tables for pitch an volume
-uint32_t ulVolLinTable[1024];
+uint32_t ulVol1LinTable[1024];
+uint32_t ulVol2LinTable[1024];
 uint32_t ulPitchLinTable[2048];
 float fLFOTable[1024];
 
@@ -67,13 +69,18 @@ uint16_t usVolTim1LastCC;		// last value (last task)
 uint16_t usVolTim2LastCC;		// last value (last task)
 uint16_t usVolTim1Period;		// period of oscillator
 uint16_t usVolTim2Period;		// period of oscillator
+uint16_t usVolTim1Period_lastvalid = 0;		// period of oscillator
+uint16_t usVolTim2Period_lastvalid = 0;		// period of oscillator
 int32_t slVolTim1Offset;		// offset value (result of auto-tune)
 int32_t slVolTim2Offset;		// offset value (result of auto-tune)
 int32_t slVolTim1PeriodeFilt;	// low pass filtered period
 int32_t slVolTim2PeriodeFilt;	// low pass filtered period
-int32_t slVol;				// volume value
-int32_t slVolFiltL;			// volume value, filtered (internal filter value)
-int32_t slVolFilt;			// volume value, filtered
+int32_t slVol1;				// volume value
+int32_t slVol1FiltL;		// volume value, filtered (internal filter value)
+int32_t slVol1Filt;			// volume value, filtered
+int32_t slVol2;				// volume value
+int32_t slVol2FiltL;		// volume value, filtered (internal filter value)
+int32_t slVol2Filt;			// volume value, filtered
 
 float fVolScale = 1.0f;
 float fVolShift = 0.0f;
@@ -92,12 +99,11 @@ int32_t slVolTim2DiffCnt = 0;
 
 //int32_t slVol2;				// volume value
 
-int32_t test;
 
 uint32_t ulWaveTableIndex = 0;
 uint32_t ulLFOTableIndex = 0;
 
-float fAudioFrequency = 0.0f;
+
 float fWavStepFilt = 0.0f;
 
 // Auto-tune
@@ -105,7 +111,8 @@ int siAutotune = 0;			// Auto-tune down counter
 uint32_t ulLedCircleSpeed;	// LED indicator speed
 uint32_t ulLedCirclePos;	// LED indicator position
 int32_t slMinPitchPeriode;	// minimum pitch value during auto-tune
-int32_t slMinVolPeriode = 0;	// minimum volume value during auto-tune
+int32_t slMinVol1Periode = 0;	// minimum volume value during auto-tune
+int32_t slMinVol2Periode = 0;	// minimum volume value during auto-tune
 
 uint16_t usDACValue;		// wave table output for audio DAC
 int iWavMask = 0x0FFF;
@@ -113,6 +120,12 @@ int iWavLength = 4096;
 int bUseNonLinTab = 0;
 e_waveform eWaveform = SINE;
 
+int vol_state_cnt = 0;
+e_vol_sel vol_sel = VOLSEL_NONE;
+int vol_active = 0;
+uint16_t test[96];
+
+int task = 0;
 
 extern TIM_HandleTypeDef htim1;	// Handle of timer for input capture
 
@@ -149,10 +162,14 @@ void THEREMIN_Init(void)
 	strPots[POT_WAVEFORM].iMaxValue = 8;
 
 	// Calculate the LUT for volume and pitch
-	THEREMIN_Calc_VolumeTable();
+	THEREMIN_Calc_Volume1Table();
+	THEREMIN_Calc_Volume2Table();
 	THEREMIN_Calc_PitchTable();
 	THEREMIN_Calc_WavTable();
 	THEREMIN_Calc_LFOTable();
+
+	HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_RESET);
 
 }
 
@@ -181,7 +198,7 @@ void THEREMIN_Calc_PitchTable(void)
 	for (int32_t i = 0; i < 2048; i++)
 	{
 		// Calculate back the x values of the table
-		u.ui = (i << 17) + 1065353216;
+		u.ui = (i << 17) + 0x3F800000;
 		// And now calculate the precise log2 value instead of only the approximation
 		// used for x values in THEREMIN_96kHzDACTask(void) when using the table.
 		//	u.f = fPitch * 0.0000001f * fPitchShift;
@@ -209,7 +226,7 @@ void THEREMIN_Calc_PitchTable(void)
  * @brief Recalculates the volume LUT
  *
  */
-void THEREMIN_Calc_VolumeTable(void)
+void THEREMIN_Calc_Volume1Table(void)
 {
 	floatint_ut u;
 	uint32_t val;
@@ -218,10 +235,10 @@ void THEREMIN_Calc_VolumeTable(void)
 	for (int32_t i = 0; i < 1024; i++)
 	{
 		// Calculate back the x values of the table
-		u.ui = (i << 17) + 1065353216;
+		u.ui = (i << 17) + 0x3F800000;
 		// And now calculate the precise log2 value instead of only the approximation
 		// used for x values in THEREMIN_96kHzDACTask(void) when using the table.
-		f = (fVolShift - log2f(u.f)) * 300.0f * fVolScale;
+		f = (16.0f /*fVolShift*/ - log2f(u.f)) * 64.0f ;/* * fVolScale*/;
 
 		// Limit the float value before we square it;
 		if (f > 1024.0f)
@@ -230,7 +247,7 @@ void THEREMIN_Calc_VolumeTable(void)
 			f = 0.0f;
 
 		// Square the volume value
-		val = (uint32_t) ((f * f) * 0.000976562f); /* =1/1024 */
+		val = (uint32_t)f;//((f * f) * 0.000976562f); /* =1/1024 */
 		;
 		// Limit it to maximum
 		if (val > 1023)
@@ -239,10 +256,46 @@ void THEREMIN_Calc_VolumeTable(void)
 		}
 
 		// Fill the volume table
-		ulVolLinTable[i] = val;
+		ulVol1LinTable[i] = val;
 	}
 }
+/**
+ * @brief Recalculates the volume LUT
+ *
+ */
+void THEREMIN_Calc_Volume2Table(void)
+{
+	floatint_ut u;
+	uint32_t val;
+	float f;
 
+	for (int32_t i = 0; i < 1024; i++)
+	{
+		// Calculate back the x values of the table
+		u.ui = (i << 17) + 0x3F800000;
+		// And now calculate the precise log2 value instead of only the approximation
+		// used for x values in THEREMIN_96kHzDACTask(void) when using the table.
+		f = (16.0f /*fVolShift*/ - log2f(u.f)) * 1.1f * 64.0f ;/* * fVolScale*/;
+
+		// Limit the float value before we square it;
+		if (f > 1024.0f)
+			f = 1024.0f;
+		if (f < 0.0f)
+			f = 0.0f;
+
+		// Square the volume value
+		val = (uint32_t)f;//((f * f) * 0.000976562f); /* =1/1024 */
+		;
+		// Limit it to maximum
+		if (val > 1023)
+		{
+			val = 1023;
+		}
+
+		// Fill the volume table
+		ulVol2LinTable[i] = val;
+	}
+}
 
 /**
  * @brief Sets the length ov the wave LUT
@@ -517,10 +570,10 @@ inline void THEREMIN_96kHzDACTask(void)
 		{
 			// cycles: 59..62
 			// fast pow approximation by LUT with interpolation
-			// float bias: 127, so 127 << 23bit mantissa is: 1065353216
+			// float bias: 127, so 127 << 23bit mantissa is: 0x3F800000
 			// We use (5 bit of) the exponent and 6 bit of the mantissa
 			u.f = fPitch;
-			tabix = ((u.ui - 1065353216) >> 17);
+			tabix = ((u.ui - 0x3F800000) >> 17);
 			tabsub = (u.ui & 0x0001FFFF) >> 2;
 			p1f = (float)ulPitchLinTable[tabix];
 			p2f = (float)ulPitchLinTable[tabix + 1];
@@ -530,32 +583,35 @@ inline void THEREMIN_96kHzDACTask(void)
 			ulWaveTableIndex += (uint32_t)(fWavStepFilt  /*  * fLFO*/ );
 		}
 
+		// Wait 166us until starting using the volume values
+		vol_state_cnt++;
+		if (vol_state_cnt == 16)
+		{
+			vol_active = 1;
+		}
+		// Do it for 1ms
+		else if (vol_state_cnt == 96)
+		{
+			vol_state_cnt = 0;
+			vol_active = 0;
+			// Toggle between both antennas
+			if (vol_sel == VOLSEL_1)
+			{
+				vol_sel = VOLSEL_2;
+				HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_SET);
+			}
+			else
+			{
+				vol_sel = VOLSEL_1;
+				HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_RESET);
+			}
+		}
 
 		//test = ulWavStep;
 
-		// cycles: 39 .. 43
-		// scale of the volume raw value by LUT with interpolation
-		// float bias: 127, so 127 << 23bit mantissa is: 1065353216
-		// We use (4 bit of) the exponent and 6 bit of the mantissa
-		if (slVol < 1)
-		{
-			slVol = 1;
-		}
-		if (slVol > 32767)
-		{
-			slVol = 32767;
-		}
-		u.f = (float) (slVol);
-		tabix = ((u.ui - 1065353216) >> 17);
-		tabsub = u.ui & 0x0001FFFF;
-		p1 = ulVolLinTable[tabix];
-		p2 = ulVolLinTable[tabix + 1];
-		slVol = p1 + (((p2 - p1) * tabsub) >> 17);
 
-		// cycles
-		// Low pass filter the output to avoid aliasing noise.
-		slVolFiltL += slVol - slVolFilt;
-		slVolFilt = slVolFiltL / 1024;
 
 		//slVolFilt *= fLFO;
 
@@ -565,7 +621,7 @@ inline void THEREMIN_96kHzDACTask(void)
 		tabsub = (ulWaveTableIndex >> 12) & 0x000000FF;
 		p1 = ssWaveTable[tabix & iWavMask];
 		p2 = ssWaveTable[(tabix + 1) & iWavMask];
-		iWavOut = ((p1 + (((p2 - p1) * tabsub) / 256)) * slVolFilt / 1024);
+		iWavOut = ((p1 + (((p2 - p1) * tabsub) / 256)) * slVol1Filt / 1024);
 
 		if (bUseNonLinTab)
 		{
@@ -599,15 +655,129 @@ inline void THEREMIN_96kHzDACTask(void)
 	// cycles: 29
 	// Get the input capture timestamps
 	usPitchCC = htim1.Instance->CCR1;
-	usVolTim1CC = htim1.Instance->CCR2;
-	usVolTim2CC = htim1.Instance->CCR3;
+
 
 	// cycles: 26
 	// Calculate the period by the capture compare value and
 	// the last capture compare value
 	usPitchPeriod = usPitchCC - usPitchLastCC;
-	usVolTim1Period = usVolTim1CC - usVolTim1LastCC;
-	usVolTim2Period = usVolTim2CC - usVolTim2LastCC;
+	if (vol_sel == VOLSEL_1)
+	{
+
+		// cycles: 39 .. 43
+		// scale of the volume raw value by LUT with interpolation
+		// float bias: 127, so 127 << 23bit mantissa is: 0x3F800000
+		// We use for the 10bit table 4 bit of the exponent and 6 bit of the mantissa
+		// So we have to shift the float value 17 bits to have a mantissa with 6 bit
+		// (23bit - 17bit = 6 bit)
+		// See also https://www.h-schmidt.net/FloatConverter/IEEE754.html
+		if (slVol1 < 1)
+		{
+			slVol1 = 1;
+		}
+		if (slVol1 > 32767)
+		{
+			slVol1 = 32767;
+		}
+		// Fill the union with the float value
+		u.f = (float) (slVol1);
+		// Shift it 17 bits to right to get a 10bit value (4bit exponent, 6bit mantissa)
+		tabix = ((u.ui - 0x3F800000) >> 17);
+		// The rest of the value ( the 17 bits we have shifted out)
+		tabsub = u.ui & 0x0001FFFF;
+		p1 = ulVol1LinTable[tabix];
+		p2 = ulVol1LinTable[tabix + 1];
+		slVol1 = p1 + (((p2 - p1) * tabsub) >> 17);
+
+		// cycles
+		// Low pass filter the output to avoid aliasing noise.
+		slVol1FiltL += slVol1 - slVol1Filt;
+		slVol1Filt = slVol1FiltL / 1024;
+
+
+
+		usVolTim1CC = htim1.Instance->CCR2;
+		if (vol_active)
+		{
+			usVolTim1Period = usVolTim1CC - usVolTim1LastCC;
+		}
+		else
+		{
+			usVolTim1Period = 0;
+		}
+
+		test[vol_state_cnt] = usVolTim1Period;
+
+		usVolTim1LastCC = usVolTim1CC;
+
+		usVolTim2Period = 0;
+
+		if (usVolTim1Period != 0)
+		{
+			//                                   11bit                10bit  10bit
+			slVolTim1PeriodeFilt += ((int16_t) (usVolTim1Period - 2048) * 1024 * 1024
+					- slVolTim1PeriodeFilt) / 1024;
+			usVolTim1Period_lastvalid = usVolTim1Period;
+		}
+	}
+	else
+	{
+		// cycles: 39 .. 43
+		// scale of the volume raw value by LUT with interpolation
+		// float bias: 127, so 127 << 23bit mantissa is: 0x3F800000
+		// We use for the 10bit table 4 bit of the exponent and 6 bit of the mantissa
+		// So we have to shift the float value 17 bits to have a mantissa with 6 bit
+		// (23bit - 17bit = 6 bit)
+		// See also https://www.h-schmidt.net/FloatConverter/IEEE754.html
+		if (slVol2 < 1)
+		{
+			slVol2 = 1;
+		}
+		if (slVol2 > 32767)
+		{
+			slVol2 = 32767;
+		}
+		// Fill the union with the float value
+		u.f = (float) (slVol2);
+		// Shift it 17 bits to right to get a 10bit value (4bit exponent, 6bit mantissa)
+		tabix = ((u.ui - 0x3F800000) >> 17);
+		// The rest of the value ( the 17 bits we have shifted out)
+		tabsub = u.ui & 0x0001FFFF;
+		p1 = ulVol2LinTable[tabix];
+		p2 = ulVol2LinTable[tabix + 1];
+		slVol2 = p1 + (((p2 - p1) * tabsub) >> 17);
+
+		// cycles
+		// Low pass filter the output to avoid aliasing noise.
+		slVol2FiltL += slVol2 - slVol2Filt;
+		slVol2Filt = slVol2FiltL / 1024;
+
+		usVolTim2CC = htim1.Instance->CCR3;
+		if (vol_active)
+		{
+			usVolTim2Period = usVolTim2CC - usVolTim2LastCC;
+		}
+		else
+		{
+			usVolTim2Period = 0;
+		}
+		usVolTim2LastCC = usVolTim2CC;
+
+
+
+		if (usVolTim2Period != 0 )
+		{
+			//                                   11bit                10bit  10bit
+			slVolTim2PeriodeFilt += ((int16_t) (usVolTim2Period - 2048) * 1024 * 1024
+					- slVolTim2PeriodeFilt) / 1024;
+			usVolTim2Period_lastvalid = usVolTim2Period;
+
+		}
+
+		usVolTim1Period = 0;
+	}
+
+
 
 	// cycles: 9
 	/*
@@ -637,30 +807,16 @@ inline void THEREMIN_96kHzDACTask(void)
 				- slPitchPeriodeFilt) / 1024;
 	}
 
-	// cycles: 21
-	// Low pass filter volume values
-	if (usVolTim1Period != 0)
-	{
-		//                                   11bit                10bit  10bit
-		slVolTim1PeriodeFilt += ((int16_t) (usVolTim1Period - 2048) * 1024 * 1024
-				- slVolTim1PeriodeFilt) / 1024;
-	}
-	if (usVolTim2Period != 0)
-	{
-		//                                   11bit                10bit  10bit
-		slVolTim2PeriodeFilt += ((int16_t) (usVolTim2Period - 2048) * 1024 * 1024
-				- slVolTim2PeriodeFilt) / 1024;
-	}
 
 	// cycles: 34
 	fPitch = (float) ((slPitchPeriodeFilt - slPitchOffset) * 8);
-	slVol = ((slVolTim1PeriodeFilt - slVolTim1Offset) / 4096);
+	slVol1 = ((slVolTim1PeriodeFilt - slVolTim1Offset) / 4096);
+	slVol2 = ((slVolTim2PeriodeFilt - slVolTim2Offset) / 4096);
 
 	// cycles: 9
 	// Store values for next task
 	usPitchLastCC = usPitchCC;
-	usVolTim1LastCC = usVolTim1CC;
-	usVolTim2LastCC = usVolTim2CC;
+
 
 	if (usPitchPeriod != 0) {
 		slPitchDiffSum += abs(usPitchPeriod - slPitchOld);
@@ -692,19 +848,7 @@ void THEREMIN_1msTask(void)
 		// Start autotune by pressing BUTTON_KEY
 		if (BSP_PB_GetState(BUTTON_KEY) == GPIO_PIN_SET)
 		{
-
-			HAL_GPIO_WritePin(PITCH_LED_0_GPIO_Port, PITCH_LED_0_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_1_GPIO_Port, PITCH_LED_1_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_2_GPIO_Port, PITCH_LED_2_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_3_GPIO_Port, PITCH_LED_3_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_4_GPIO_Port, PITCH_LED_4_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_5_GPIO_Port, PITCH_LED_5_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_6_GPIO_Port, PITCH_LED_6_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_7_GPIO_Port, PITCH_LED_7_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_8_GPIO_Port, PITCH_LED_8_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_9_GPIO_Port, PITCH_LED_9_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_10_GPIO_Port, PITCH_LED_10_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_11_GPIO_Port, PITCH_LED_11_Pin, GPIO_PIN_RESET);
+			DISPLAY_Dark();
 
 			// 1.0sec auto-tune
 			siAutotune = 1000;
@@ -719,7 +863,8 @@ void THEREMIN_1msTask(void)
 			slVolTim2Offset = 0;
 			slVolTim1PeriodeFilt = 0x7FFFFFFF;
 			slVolTim2PeriodeFilt = 0x7FFFFFFF;
-			slMinVolPeriode = 0x7FFFFFFF;
+			slMinVol1Periode = 0x7FFFFFFF;
+			slMinVol2Periode = 0x7FFFFFFF;
 
 			// Mute the output
 			bMute = 1;
@@ -733,9 +878,13 @@ void THEREMIN_1msTask(void)
 			slMinPitchPeriode = slPitchPeriodeFilt;
 		}
 		// Find lowest volume period
-		if (slVolTim1PeriodeFilt < slMinVolPeriode)
+		if (slVolTim1PeriodeFilt < slMinVol1Periode)
 		{
-			slMinVolPeriode = slVolTim1PeriodeFilt;
+			slMinVol1Periode = slVolTim1PeriodeFilt;
+		}
+		if (slVolTim2PeriodeFilt < slMinVol2Periode)
+		{
+			slMinVol2Periode = slVolTim2PeriodeFilt;
 		}
 		siAutotune--;
 
@@ -751,21 +900,11 @@ void THEREMIN_1msTask(void)
 			// activate output
 			bMute = 0;
 
-			HAL_GPIO_WritePin(PITCH_LED_0_GPIO_Port, PITCH_LED_0_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_1_GPIO_Port, PITCH_LED_1_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_2_GPIO_Port, PITCH_LED_2_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_3_GPIO_Port, PITCH_LED_3_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_4_GPIO_Port, PITCH_LED_4_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_5_GPIO_Port, PITCH_LED_5_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_6_GPIO_Port, PITCH_LED_6_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_7_GPIO_Port, PITCH_LED_7_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_8_GPIO_Port, PITCH_LED_8_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_9_GPIO_Port, PITCH_LED_9_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_10_GPIO_Port, PITCH_LED_10_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(PITCH_LED_11_GPIO_Port, PITCH_LED_11_Pin, GPIO_PIN_RESET);
+			DISPLAY_Dark();
 			// Use minimum values for offset of pitch and volume
 			slPitchOffset = slMinPitchPeriode;
-			slVolTim1Offset = slMinVolPeriode;	// + 16384 * 128;
+			slVolTim1Offset = slMinVol1Periode;	// + 16384 * 128;
+			slVolTim2Offset = slMinVol2Periode;	// + 16384 * 128;
 #ifdef DEBUG
 		printf("%d %d\n", usPitchPeriod, usVolTim1Period);
 #endif
@@ -815,7 +954,8 @@ void THEREMIN_1msTask(void)
 		fVolScale = powf(2,
 				((float) (POTS_GetScaledValue(POT_VOL_SCALE) - 2048))
 						* 0.000976562f /* 1/1024 */);
-		THEREMIN_Calc_VolumeTable();
+		THEREMIN_Calc_Volume1Table();
+		THEREMIN_Calc_Volume2Table();
 	}
 
 	// waveform pot
@@ -827,11 +967,12 @@ void THEREMIN_1msTask(void)
 
 	if (siAutotune == 0)
 	{
-		THEREMIN_PitchDisplay();
+		// fWavStepFilt * 96kHz * (1 >> 20 / 1024(WaveTable length))
+		DISPLAY_PitchDisplay(fWavStepFilt * 0.0000894069671631);
 	}
 	else
 	{
-		THEREMIN_AutotuneDisplay();
+		DISPLAY_AutotuneDisplay();
 	}
 
 
@@ -871,9 +1012,14 @@ void THEREMIN_1sTask(void)
 		slVolTim2DiffSum = 0;
 		slVolTim2DiffCnt = 0;
 
-		printf("%d (%d) %d (%d) %d (%d)\n", (int)usPitchPeriod, (int)p1,
-				(int)usVolTim1Period, (int)p2,
-				(int)usVolTim2Period, (int)p3);
+//		printf("%d (%d) %d (%d) %d (%d)\n", (int)usPitchPeriod, (int)p1,
+//				(int)usVolTim1Period, (int)p2,
+//				(int)usVolTim2Period, (int)p3);
+		printf("%d %d %d %d\n",
+				(int)usVolTim1Period_lastvalid,// (int)p2,
+				(int)usVolTim2Period_lastvalid,// (int)p2,
+				(int)((slVol1Filt+slVol2Filt)/2),
+				(int)slVol1Filt-slVol2Filt);// (int)p3);
 
 
 		//printf("Stopwatch %d\n", ulStopwatch);
@@ -881,291 +1027,6 @@ void THEREMIN_1sTask(void)
 #endif
 }
 
-void THEREMIN_AutotuneDisplay(void)
-{
-	static int timer1 =0;
-	static int zaehler = 0;
-	timer1 = timer1 + 1;
-	if (timer1 == 40)
-	{
-		timer1 = 0;
-		// alle 20ms
-
-		zaehler = zaehler+1;
-		if (zaehler == 10)
-		{
-			zaehler = 0;
-		}
-	}
 
 
-	if (zaehler == 0)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_0_GPIO_Port, PITCH_LED_0_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_11_GPIO_Port, PITCH_LED_11_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_1_GPIO_Port, PITCH_LED_1_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(PITCH_LED_10_GPIO_Port, PITCH_LED_10_Pin, GPIO_PIN_RESET);
-	}
 
-	if (zaehler == 1)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_1_GPIO_Port, PITCH_LED_1_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_10_GPIO_Port, PITCH_LED_10_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_0_GPIO_Port, PITCH_LED_0_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(PITCH_LED_11_GPIO_Port, PITCH_LED_11_Pin, GPIO_PIN_RESET);
-	}
-
-	if (zaehler == 2)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_2_GPIO_Port, PITCH_LED_2_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_9_GPIO_Port, PITCH_LED_9_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_1_GPIO_Port, PITCH_LED_1_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(PITCH_LED_10_GPIO_Port, PITCH_LED_10_Pin, GPIO_PIN_RESET);
-	}
-
-	if (zaehler == 3)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_3_GPIO_Port, PITCH_LED_3_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_8_GPIO_Port, PITCH_LED_8_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_2_GPIO_Port, PITCH_LED_2_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(PITCH_LED_9_GPIO_Port, PITCH_LED_9_Pin, GPIO_PIN_RESET);
-	}
-
-	if (zaehler == 4)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_4_GPIO_Port, PITCH_LED_4_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_7_GPIO_Port, PITCH_LED_7_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_3_GPIO_Port, PITCH_LED_3_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(PITCH_LED_8_GPIO_Port, PITCH_LED_8_Pin, GPIO_PIN_RESET);
-	}
-
-	if (zaehler == 5)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_5_GPIO_Port, PITCH_LED_5_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_6_GPIO_Port, PITCH_LED_6_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_4_GPIO_Port, PITCH_LED_4_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(PITCH_LED_7_GPIO_Port, PITCH_LED_7_Pin, GPIO_PIN_RESET);
-	}
-
-	if (zaehler == 6)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_4_GPIO_Port, PITCH_LED_4_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_7_GPIO_Port, PITCH_LED_7_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_5_GPIO_Port, PITCH_LED_5_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(PITCH_LED_6_GPIO_Port, PITCH_LED_6_Pin, GPIO_PIN_RESET);
-	}
-
-	if (zaehler == 7)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_3_GPIO_Port, PITCH_LED_3_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_8_GPIO_Port, PITCH_LED_8_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_4_GPIO_Port, PITCH_LED_4_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(PITCH_LED_7_GPIO_Port, PITCH_LED_7_Pin, GPIO_PIN_RESET);
-	}
-
-	if (zaehler == 8)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_2_GPIO_Port, PITCH_LED_2_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_9_GPIO_Port, PITCH_LED_9_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_3_GPIO_Port, PITCH_LED_3_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(PITCH_LED_8_GPIO_Port, PITCH_LED_8_Pin, GPIO_PIN_RESET);
-	}
-
-	if (zaehler == 9)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_1_GPIO_Port, PITCH_LED_1_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_10_GPIO_Port, PITCH_LED_10_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(PITCH_LED_2_GPIO_Port, PITCH_LED_2_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(PITCH_LED_9_GPIO_Port, PITCH_LED_9_Pin, GPIO_PIN_RESET);
-	}
-
-}
-
-/**
- * @brief Displays the pitch with 12 LEDs
- *
- */
-void THEREMIN_PitchDisplay(void)
-{
-	// fWavStepFilt * 96kHz * (1 >> 20 / 1024(WaveTable length))
-	fAudioFrequency = fWavStepFilt * 0.0000894069671631;
-
-
-	// Shift it one octave if frequency is lower than c1
-	// So we can display notes down to c or 130Hz
-	if (fAudioFrequency <= 254.284f)
-	{
-		// double the frequency
-		fAudioFrequency = fAudioFrequency *2.0f;
-	}
-
-	// Shift it one octave up, if frequency is lower than c1
-	// So we can display notes down to C or 65Hz
-	if (fAudioFrequency <= 254.284f)
-	{
-		// double the frequency
-		fAudioFrequency = fAudioFrequency *2.0f;
-	}
-
-	// Shift it one octave up, if frequency is lower than c1
-	// So we can display notes down to C1 or 32Hz
-	if (fAudioFrequency <= 254.284f)
-	{
-		// double the frequency
-		fAudioFrequency = fAudioFrequency *2.0f;
-	}
-
-	// Shift it one octave up, if frequency is lower than c1
-	// So we can display notes down to C2 or 16Hz
-	if (fAudioFrequency <= 254.284f)
-	{
-		// double the frequency
-		fAudioFrequency = fAudioFrequency *2.0f;
-	}
-
-	// Shift it one octave down, if frequency is higher than h1
-	// So we can display notes up to h2 or 987Hz
-	if (fAudioFrequency > 508.567f)
-	{
-		// halve the frequency
-		fAudioFrequency = fAudioFrequency *0.5f;
-	}
-
-	// Shift it one octave down, if frequency is higher than h1
-	// So we can display notes up to h3 or 1975Hz
-	if (fAudioFrequency > 508.567f)
-	{
-		// halve the frequency
-		fAudioFrequency = fAudioFrequency *0.5f;
-	}
-
-	// Shift it one octave down, if frequency is higher than h1
-	// So we can display notes up to h4 or 3951Hz
-	if (fAudioFrequency > 508.567f)
-	{
-		// halve the frequency
-		fAudioFrequency = fAudioFrequency *0.5f;
-	}
-
-
-	// Note: c
-	if ( fAudioFrequency > 254.284f && fAudioFrequency <= 269.4045f)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_0_GPIO_Port, PITCH_LED_0_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(PITCH_LED_0_GPIO_Port, PITCH_LED_0_Pin, GPIO_PIN_RESET);
-	}
-
-	// Note: cis
-	if ( fAudioFrequency > 269.4045f && fAudioFrequency <= 285.424f)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_1_GPIO_Port, PITCH_LED_1_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(PITCH_LED_1_GPIO_Port, PITCH_LED_1_Pin, GPIO_PIN_RESET);
-	}
-
-
-	// Note: d
-	if ( fAudioFrequency > 285.424f && fAudioFrequency <= 302.396f)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_2_GPIO_Port, PITCH_LED_2_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(PITCH_LED_2_GPIO_Port, PITCH_LED_2_Pin, GPIO_PIN_RESET);
-	}
-
-	// Note: dis
-	if ( fAudioFrequency > 302.396f && fAudioFrequency <= 320.3775f)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_3_GPIO_Port, PITCH_LED_3_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(PITCH_LED_3_GPIO_Port, PITCH_LED_3_Pin, GPIO_PIN_RESET);
-	}
-
-	// Note: e
-	if ( fAudioFrequency > 320.3775f && fAudioFrequency <= 339.428f)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_4_GPIO_Port, PITCH_LED_4_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(PITCH_LED_4_GPIO_Port, PITCH_LED_4_Pin, GPIO_PIN_RESET);
-	}
-
-	// Note: f
-	if ( fAudioFrequency > 339.428f && fAudioFrequency <= 359.611f)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_5_GPIO_Port, PITCH_LED_5_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(PITCH_LED_5_GPIO_Port, PITCH_LED_5_Pin, GPIO_PIN_RESET);
-	}
-
-	// Note: fis
-	if ( fAudioFrequency > 359.611f && fAudioFrequency <= 380.9945f)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_6_GPIO_Port, PITCH_LED_6_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(PITCH_LED_6_GPIO_Port, PITCH_LED_6_Pin, GPIO_PIN_RESET);
-	}
-
-	// Note: g
-	if ( fAudioFrequency > 380.9945f && fAudioFrequency <= 403.65f)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_7_GPIO_Port, PITCH_LED_7_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(PITCH_LED_7_GPIO_Port, PITCH_LED_7_Pin, GPIO_PIN_RESET);
-	}
-
-	// Note: gis
-	if ( fAudioFrequency > 403.65f && fAudioFrequency <= 427.6525f)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_8_GPIO_Port, PITCH_LED_8_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(PITCH_LED_8_GPIO_Port, PITCH_LED_8_Pin, GPIO_PIN_RESET);
-	}
-
-	// Note: a
-	if ( fAudioFrequency > 427.6525f && fAudioFrequency <= 453.082f)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_9_GPIO_Port, PITCH_LED_9_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(PITCH_LED_9_GPIO_Port, PITCH_LED_9_Pin, GPIO_PIN_RESET);
-	}
-
-	// Note: ais
-	if ( fAudioFrequency > 453.082f && fAudioFrequency <= 480.0235f)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_10_GPIO_Port, PITCH_LED_10_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(PITCH_LED_10_GPIO_Port, PITCH_LED_10_Pin, GPIO_PIN_RESET);
-	}
-
-	// Note: h
-	if ( fAudioFrequency > 480.0235f && fAudioFrequency <= 508.567f)
-	{
-		HAL_GPIO_WritePin(PITCH_LED_11_GPIO_Port, PITCH_LED_11_Pin, GPIO_PIN_SET);
-	}
-	else
-	{
-		HAL_GPIO_WritePin(PITCH_LED_11_GPIO_Port, PITCH_LED_11_Pin, GPIO_PIN_RESET);
-	}
-}
