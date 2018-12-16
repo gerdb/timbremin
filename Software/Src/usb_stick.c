@@ -116,6 +116,7 @@ void USB_STICK_ReadCFile(char* filename)
 				ssWaveTable[i] = ssWaveTable[i - cnt];
 			}
 		}
+        f_close(&USBHFile);
 	}
 }
 
@@ -167,7 +168,7 @@ void USB_STICK_ReadWAVFile(char* filename)
 		{
 			ssWaveTable[i] = ssWaveTable[i - 1024];
 		}
-
+        f_close(&USBHFile);
 	}
 }
 
@@ -183,6 +184,56 @@ void USB_STICK_ReadFiles(void)
 		bWavLoaded = 1;
 	}
 }
+
+/**
+ * @brief Reads the WAV file
+ *
+ * @param filename: Filename to read
+ */
+int USB_STICK_EmptyFileExists(char* filename)
+{
+	FILINFO fno;
+	if (bMounted)
+	{
+	    /* try to open file to read */
+	    if (f_stat( filename, &fno) == FR_OK){
+
+	        return (fno.fsize < 10);
+	    }
+	}
+	return 0;
+}
+
+
+/**
+ * @brief Reads the WAV file
+ */
+void USB_STICK_WriteVolCalFile(char* filename, VOLUME_VolCalibrationType aCalibrationEntries[])
+{
+	if (!bMounted)
+		return;
+
+
+	if (bMounted)
+	{
+		// Open the Wave file to be played
+		if (f_open(&USBHFile, filename, FA_WRITE) == FR_OK)
+		{
+			f_printf(&USBHFile, "H");
+			f_printf(&USBHFile,"Result volume antenna calibration:\n");
+			f_printf(&USBHFile,"VOL1;VOL2;cm\n");
+			for (int i=0; i<= 20; i++)
+			{
+				f_printf(&USBHFile,"%d;%d;%d\n",
+						aCalibrationEntries[i].vol1,
+						aCalibrationEntries[i].vol2,
+						aCalibrationEntries[i].cm);
+			}
+	        f_close(&USBHFile);
+		}
+	}
+}
+
 
 /**
  * @brief Callback function: An USB stick was connected

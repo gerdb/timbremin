@@ -23,7 +23,7 @@
 
 #include "../Drivers/BSP/STM32F4-Discovery/stm32f4_discovery.h"
 #include "stm32f4xx_hal.h"
-#include "theremin.h"
+#include "audio_out.h"
 #include "beep.h"
 #include "beepwave.h"
 

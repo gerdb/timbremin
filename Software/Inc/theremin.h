@@ -58,10 +58,12 @@ typedef enum
 #define TESTPORT_OFF() GPIOD->BSRR = 0x20000000
 
 /* Global variables  ------------------------------------------------------- */
-extern uint16_t usDACValueR;
-extern uint16_t usDACValueL;
 extern int16_t ssWaveTable[4 * 1024];
 extern e_waveform eWaveform;
+extern int32_t slVol1Raw;
+extern int32_t slVol2Raw;
+
+
 
 /* Function prototypes ----------------------------------------------------- */
 void THEREMIN_Init(void);

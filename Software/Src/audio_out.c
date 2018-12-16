@@ -30,15 +30,18 @@
 #include "pots.h"
 #include <math.h>
 
-__IO uint32_t I2S_DR;
 
-static AUDIO_DrvTypeDef           *pAudioDrv;
-
-/* Initial Volume level (from 0 (Mute) to 100 (Max)) */
-static uint8_t Volume = 60;
-
-extern I2S_HandleTypeDef hi2s3;
+/* global variables  ------------------------------------------------------- */
 int bMute = 0;
+uint16_t usDACValueR;		// wave table output for audio DAC RIGHT (ear phone)
+uint16_t usDACValueL;		// wave table output for audio DAC LEFT (speaker)
+
+/* local variables  ------------------------------------------------------- */
+__IO uint32_t I2S_DR;
+static AUDIO_DrvTypeDef           *pAudioDrv;
+extern I2S_HandleTypeDef hi2s3;
+
+static uint8_t Volume = 60;	// Initial Volume level (from 0 (Mute) to 100 (Max))
 
 void AUDIO_OUT_Init(void)
 {
@@ -46,7 +49,7 @@ void AUDIO_OUT_Init(void)
 
 	  if(ret == AUDIO_OK)
 	  {
-	    /* Retieve audio codec identifier */
+	    /* Retrieve audio codec identifier */
 	    if(((cs43l22_drv.ReadID(AUDIO_I2C_ADDRESS)) & CS43L22_ID_MASK) == CS43L22_ID)
 	    {
 	      /* Initialize the audio driver structure */
@@ -121,23 +124,18 @@ void AUDIO_OUT_I2S_IRQHandler(void)
 {
 	static int toggle = 0;
 
-	if (bMute)
+	if (toggle)
 	{
-		hi2s3.Instance->DR = 0;
+		// Fill the audio DAC with the LEFT value = speaker
+		hi2s3.Instance->DR = usDACValueL;
 	}
 	else
 	{
-		if (toggle)
-		{
-			// Fill the audio DAC with the LEFT value = speaker
-			hi2s3.Instance->DR = usDACValueL;
-		}
-		else
-		{
-			// Fill the audio DAC with the RIGHT value = ear phone
-			hi2s3.Instance->DR = usDACValueR;
-		}
+		// Fill the audio DAC with the RIGHT value = ear phone
+		hi2s3.Instance->DR = usDACValueR;
 	}
+
+
 	toggle = 1- toggle;
 	// Get the new value for the next task
 	THEREMIN_96kHzDACTask();

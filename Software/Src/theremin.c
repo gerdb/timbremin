@@ -30,6 +30,7 @@
 #include "config.h"
 #include "usb_stick.h"
 #include "beep.h"
+#include "volume.h"
 #include <math.h>
 #include <stdlib.h>
 
@@ -76,12 +77,14 @@ int32_t slVolTim1Offset;		// offset value (result of auto-tune)
 int32_t slVolTim2Offset;		// offset value (result of auto-tune)
 int32_t slVolTim1PeriodeFilt;	// low pass filtered period
 int32_t slVolTim2PeriodeFilt;	// low pass filtered period
-int32_t slVol1;				// volume value
-int32_t slVol1FiltL;		// volume value, filtered (internal filter value)
-int32_t slVol1Filt;			// volume value, filtered
-int32_t slVol2;				// volume value
-int32_t slVol2FiltL;		// volume value, filtered (internal filter value)
-int32_t slVol2Filt;			// volume value, filtered
+int32_t slVol1Raw;				// volume value
+int32_t slVol1;					// volume value
+int32_t slVol1FiltL;			// volume value, filtered (internal filter value)
+int32_t slVol1Filt;				// volume value, filtered
+int32_t slVol2Raw;				// volume value
+int32_t slVol2;					// volume value
+int32_t slVol2FiltL;			// volume value, filtered (internal filter value)
+int32_t slVol2Filt;				// volume value, filtered
 
 float fVolScale = 1.0f;
 float fVolShift = 0.0f;
@@ -115,8 +118,6 @@ int32_t slMinPitchPeriode;	// minimum pitch value during auto-tune
 int32_t slMinVol1Periode = 0;	// minimum volume value during auto-tune
 int32_t slMinVol2Periode = 0;	// minimum volume value during auto-tune
 
-uint16_t usDACValueR;		// wave table output for audio DAC RIGHT (ear phone)
-uint16_t usDACValueL;		// wave table output for audio DAC LEFT (speaker)
 int iWavMask = 0x0FFF;
 int iWavLength = 4096;
 int bUseNonLinTab = 0;
@@ -129,6 +130,8 @@ int vol_active = 0;
 int32_t test1;
 int32_t test2;
 int task = 0;
+
+
 
 extern TIM_HandleTypeDef htim1;	// Handle of timer for input capture
 
@@ -173,6 +176,14 @@ void THEREMIN_Init(void)
 
 	HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_RESET);
+
+
+	// Beep for "switched on"
+	BEEP_Play(0.0f,50,500);
+	BEEP_Play(NOTE_C6,100,50);
+	BEEP_Play(NOTE_G6,100,50);
+	BEEP_Play(NOTE_A6,100,50);
+	BEEP_Play(NOTE_F6,300,500);
 
 }
 
@@ -301,7 +312,7 @@ void THEREMIN_Calc_WavTable(void)
 	float b1=0.0f;
 	float b2=0.0f;
 
-	// Mute as long as new waveform is beeing calculated
+	// Mute as long as new waveform is being calculated
 	bMute = 1;
 	THEREMIN_SetWavelength(4096);
 	bUseNonLinTab = 0;
@@ -517,7 +528,7 @@ void THEREMIN_Calc_WavTable(void)
 		}
 	}
 
-	// Mute as long as new waveform is beeing calculated
+	// Mute as long as new waveform is being calculated
 	bMute = 0;
 
 }
@@ -623,7 +634,11 @@ inline void THEREMIN_96kHzDACTask(void)
 		}
 
 		// Limit the output to 16bit
-    	if (result > 32767.0)
+		if (bMute)
+		{
+			usDACValueR = 0;
+		}
+		else if (result > 32767.0)
     	{
     		usDACValueR = 32767;
     	}
@@ -660,17 +675,17 @@ inline void THEREMIN_96kHzDACTask(void)
 		// So we have to shift the float value 17 bits to have a mantissa with 6 bit
 		// (23bit - 17bit = 6 bit)
 		// See also https://www.h-schmidt.net/FloatConverter/IEEE754.html
-		if (slVol1 < 1)
+		if (slVol1Raw < 1)
 		{
-			slVol1 = 1;
+			slVol1Raw = 1;
 		}
-		if (slVol1 > 32767)
+		if (slVol1Raw > 32767)
 		{
-			slVol1 = 32767;
+			slVol1Raw = 32767;
 		}
-		test1 = slVol1;
+		test1 = slVol1Raw;
 		// Fill the union with the float value
-		u.f = (float) (slVol1);
+		u.f = (float) (slVol1Raw);
 		// Shift it 17 bits to right to get a 10bit value (4bit exponent, 6bit mantissa)
 		tabix = ((u.ui - 0x3F800000) >> 17);
 		// The rest of the value ( the 17 bits we have shifted out)
@@ -719,16 +734,16 @@ inline void THEREMIN_96kHzDACTask(void)
 		// So we have to shift the float value 17 bits to have a mantissa with 6 bit
 		// (23bit - 17bit = 6 bit)
 		// See also https://www.h-schmidt.net/FloatConverter/IEEE754.html
-		if (slVol2 < 1)
+		if (slVol2Raw < 1)
 		{
-			slVol2 = 1;
+			slVol2Raw = 1;
 		}
-		if (slVol2 > 32767)
+		if (slVol2Raw > 32767)
 		{
-			slVol2 = 32767;
+			slVol2Raw = 32767;
 		}
 		// Fill the union with the float value
-		u.f = (float) (slVol2);
+		u.f = (float) (slVol2Raw);
 		// Shift it 17 bits to right to get a 10bit value (4bit exponent, 6bit mantissa)
 		tabix = ((u.ui - 0x3F800000) >> 17);
 		// The rest of the value ( the 17 bits we have shifted out)
@@ -800,8 +815,8 @@ inline void THEREMIN_96kHzDACTask(void)
 
 	// cycles: 34
 	fPitch = (float) ((slPitchPeriodeFilt - slPitchOffset) * 8);
-	slVol1 = ((slVolTim1PeriodeFilt - slVolTim1Offset) / 4096);
-	slVol2 = ((slVolTim2PeriodeFilt - slVolTim2Offset) / 4096);
+	slVol1Raw = ((slVolTim1PeriodeFilt - slVolTim1Offset) / 4096);
+	slVol2Raw = ((slVolTim2PeriodeFilt - slVolTim2Offset) / 4096);
 
 	// cycles: 9
 	// Store values for next task
@@ -838,6 +853,10 @@ void THEREMIN_1msTask(void)
 		// Start autotune by pressing BUTTON_KEY
 		if (BSP_PB_GetState(BUTTON_KEY) == GPIO_PIN_SET)
 		{
+
+			// Mute the output
+			bMute = 1;
+
 			// Beep for "Auto tune start"
 			BEEP_Play(NOTE_A6,50,50);
 			BEEP_Play(NOTE_B6,50,50);
@@ -864,8 +883,7 @@ void THEREMIN_1msTask(void)
 	}
 	else if (bBeepActive == 0)
 	{
-		// Mute the output
-		bMute = 1;
+
 
 		// Find lowest pitch period
 		if (slPitchPeriodeFilt < slMinPitchPeriode)
@@ -892,10 +910,9 @@ void THEREMIN_1msTask(void)
 		// Auto-tune is finished
 		if (siAutotune == 0)
 		{
-			// activate output
-			bMute = 0;
 
-			// Beep for "Autotune ends"
+
+			// Beep for "Auto tune ends"
 			BEEP_Play(NOTE_A5,100,100);
 
 			DISPLAY_Dark();
@@ -909,7 +926,22 @@ void THEREMIN_1msTask(void)
 		//	CONFIG_Write_SLong(EEPROM_ADDR_PITCH_AUTOTUNE_H, slPitchOffset);
 		//	CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H, slVolTim1Offset);
 		//	CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM2_AUTOTUNE_H, slVolTim2Offset);
+
+			if (USB_STICK_EmptyFileExists("CALVOL.CSV"))
+			{
+				VOLUME_CalibrationStart();
+			}
+			else
+			{
+				// activate output
+				bMute = 0;
+			}
 		}
+	}
+
+	if (iVolCal_active)
+	{
+		VOLUME_CalibrationTask();
 	}
 
 	// pitch scale pot

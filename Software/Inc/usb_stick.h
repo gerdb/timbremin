@@ -24,6 +24,8 @@
 #ifndef USB_STICK_H_
 #define USB_STICK_H_
 
+#include "volume.h"
+
 /* Types ---------------------------------------------------------------- */
 typedef struct
 {
@@ -54,5 +56,7 @@ void USB_STICK_Disconnected(void);
 void USB_STICK_ReadCFile(char* filename);
 void USB_STICK_ReadWAVFile(char* filename);
 void USB_STICK_ReadFiles(void);
+int USB_STICK_EmptyFileExists(char* filename);
+void USB_STICK_WriteVolCalFile(char* filename, VOLUME_VolCalibrationType aCalibrationEntries[]);
 
 #endif /* USB_STICK_H_ */

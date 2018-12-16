@@ -1,8 +1,8 @@
 /**
  *  Project     timbremin
- *  @file		audio_out.h
+ *  @file		volume.h
  *  @author		Gerd Bartelt - www.sebulli.com
- *  @brief		Header file for audio_out.c
+ *  @brief		Header file for volume.c
  *
  *  @copyright	GPL3
  *
@@ -21,26 +21,23 @@
  *
  */
 
-#ifndef AUDIO_OUT_H_
-#define AUDIO_OUT_H_
+#ifndef VOLUME_H_
+#define VOLUME_H_
 
+/* Types  ------------------------------------------------------- */
+typedef struct
+{
+	int32_t vol1;
+	int32_t vol2;
+	int cm;
+}VOLUME_VolCalibrationType;
 
-/* Audio status definition ------------------------------------------------- */
-#define AUDIO_OK                        0
-#define AUDIO_ERROR                     1
-#define AUDIO_TIMEOUT                   2
-
-
-/* Global variables -------------------------------------------------------- */
-extern int bMute;
-extern uint16_t usDACValueR;
-extern uint16_t usDACValueL;
-
+/* Global variables  ------------------------------------------------------- */
+extern int iVolCal_active;  // Flag if calibration is active
 /* Function prototypes ----------------------------------------------------- */
-void AUDIO_OUT_Init();
-void AUDIO_OUT_I2S_IRQHandler(void);
-void AUDIO_OUT_1msTask(void);
+void VOLUME_Init(void);
+void VOLUME_CalibrationStart(void);
+void VOLUME_CalibrationTask(void);
 
 
-
-#endif /* AUDIO_OUT_H_ */
+#endif /* VOLUME_H_ */

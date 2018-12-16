@@ -59,6 +59,7 @@
 #include "pots.h"
 #include "config.h"
 #include "beep.h"
+#include "volume.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -150,6 +151,7 @@ int main(void)
   CONFIG_Init();
   POTS_Init();
   BEEP_Init();
+  VOLUME_Init();
   THEREMIN_Init();
   AUDIO_OUT_Init();
 
