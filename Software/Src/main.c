@@ -58,6 +58,7 @@
 #include "theremin.h"
 #include "pots.h"
 #include "config.h"
+#include "beep.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -148,6 +149,7 @@ int main(void)
 #endif
   CONFIG_Init();
   POTS_Init();
+  BEEP_Init();
   THEREMIN_Init();
   AUDIO_OUT_Init();
 

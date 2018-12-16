@@ -29,6 +29,7 @@
 #include "pots.h"
 #include "config.h"
 #include "usb_stick.h"
+#include "beep.h"
 #include <math.h>
 #include <stdlib.h>
 
@@ -99,7 +100,7 @@ int32_t slVolTim2DiffCnt = 0;
 
 //int32_t slVol2;				// volume value
 
-
+int task48 = 0;
 uint32_t ulWaveTableIndex = 0;
 uint32_t ulLFOTableIndex = 0;
 
@@ -114,7 +115,8 @@ int32_t slMinPitchPeriode;	// minimum pitch value during auto-tune
 int32_t slMinVol1Periode = 0;	// minimum volume value during auto-tune
 int32_t slMinVol2Periode = 0;	// minimum volume value during auto-tune
 
-uint16_t usDACValue;		// wave table output for audio DAC
+uint16_t usDACValueR;		// wave table output for audio DAC RIGHT (ear phone)
+uint16_t usDACValueL;		// wave table output for audio DAC LEFT (speaker)
 int iWavMask = 0x0FFF;
 int iWavLength = 4096;
 int bUseNonLinTab = 0;
@@ -123,8 +125,9 @@ e_waveform eWaveform = SINE;
 int vol_state_cnt = 0;
 e_vol_sel vol_sel = VOLSEL_NONE;
 int vol_active = 0;
-uint16_t test[96];
 
+int32_t test1;
+int32_t test2;
 int task = 0;
 
 extern TIM_HandleTypeDef htim1;	// Handle of timer for input capture
@@ -162,8 +165,8 @@ void THEREMIN_Init(void)
 	strPots[POT_WAVEFORM].iMaxValue = 8;
 
 	// Calculate the LUT for volume and pitch
-	THEREMIN_Calc_Volume1Table();
-	THEREMIN_Calc_Volume2Table();
+	THEREMIN_Calc_VolumeTable(VOLSEL_1);
+	THEREMIN_Calc_VolumeTable(VOLSEL_2);
 	THEREMIN_Calc_PitchTable();
 	THEREMIN_Calc_WavTable();
 	THEREMIN_Calc_LFOTable();
@@ -226,7 +229,7 @@ void THEREMIN_Calc_PitchTable(void)
  * @brief Recalculates the volume LUT
  *
  */
-void THEREMIN_Calc_Volume1Table(void)
+void THEREMIN_Calc_VolumeTable(e_vol_sel vol_sel)
 {
 	floatint_ut u;
 	uint32_t val;
@@ -240,6 +243,12 @@ void THEREMIN_Calc_Volume1Table(void)
 		// used for x values in THEREMIN_96kHzDACTask(void) when using the table.
 		f = (16.0f /*fVolShift*/ - log2f(u.f)) * 64.0f ;/* * fVolScale*/;
 
+		//Scale it to 20cm and then to 1024 units
+		f = pow(f,2.7450703915f) * 0.0000007370395f * 1024.0f/20.0f;
+		if (vol_sel == VOLSEL_2)
+		{
+			f*= 1.1;
+		}
 		// Limit the float value before we square it;
 		if (f > 1024.0f)
 			f = 1024.0f;
@@ -256,46 +265,17 @@ void THEREMIN_Calc_Volume1Table(void)
 		}
 
 		// Fill the volume table
-		ulVol1LinTable[i] = val;
-	}
-}
-/**
- * @brief Recalculates the volume LUT
- *
- */
-void THEREMIN_Calc_Volume2Table(void)
-{
-	floatint_ut u;
-	uint32_t val;
-	float f;
-
-	for (int32_t i = 0; i < 1024; i++)
-	{
-		// Calculate back the x values of the table
-		u.ui = (i << 17) + 0x3F800000;
-		// And now calculate the precise log2 value instead of only the approximation
-		// used for x values in THEREMIN_96kHzDACTask(void) when using the table.
-		f = (16.0f /*fVolShift*/ - log2f(u.f)) * 1.1f * 64.0f ;/* * fVolScale*/;
-
-		// Limit the float value before we square it;
-		if (f > 1024.0f)
-			f = 1024.0f;
-		if (f < 0.0f)
-			f = 0.0f;
-
-		// Square the volume value
-		val = (uint32_t)f;//((f * f) * 0.000976562f); /* =1/1024 */
-		;
-		// Limit it to maximum
-		if (val > 1023)
+		if (vol_sel == VOLSEL_1)
 		{
-			val = 1023;
+			ulVol1LinTable[i] = val;
 		}
-
-		// Fill the volume table
-		ulVol2LinTable[i] = val;
+		else if (vol_sel == VOLSEL_2)
+		{
+			ulVol2LinTable[i] = val;
+		}
 	}
 }
+
 
 /**
  * @brief Sets the length ov the wave LUT
@@ -552,7 +532,7 @@ inline void THEREMIN_96kHzDACTask(void)
 	int32_t p1, p2, tabix, tabsub;
 	float p1f, p2f;
 	floatint_ut u;
-	int task48 = 0;
+
 	float result = 0.0f;
 	int iWavOut;
 	//float fLFO;
@@ -562,6 +542,12 @@ inline void THEREMIN_96kHzDACTask(void)
 
 	if (task48)
 	{
+
+		if (bBeepActive)
+		{
+			BEEP_Task();
+			return;
+		}
 		ulLFOTableIndex +=1;
 
 		//fLFO = fLFOTable[ulLFOTableIndex & 0x03FF];
@@ -639,16 +625,19 @@ inline void THEREMIN_96kHzDACTask(void)
 		// Limit the output to 16bit
     	if (result > 32767.0)
     	{
-    		usDACValue = 32767;
+    		usDACValueR = 32767;
     	}
     	else if (result < -32768.0)
     	{
-    		usDACValue = -32768;
+    		usDACValueR = -32768;
     	}
     	else
     	{
-    		usDACValue = (int16_t)result;
+    		usDACValueR = (int16_t)result;
     	}
+
+    	// Output also to the speaker
+    	usDACValueL = usDACValueR;
 	}
 
 
@@ -679,6 +668,7 @@ inline void THEREMIN_96kHzDACTask(void)
 		{
 			slVol1 = 32767;
 		}
+		test1 = slVol1;
 		// Fill the union with the float value
 		u.f = (float) (slVol1);
 		// Shift it 17 bits to right to get a 10bit value (4bit exponent, 6bit mantissa)
@@ -688,7 +678,7 @@ inline void THEREMIN_96kHzDACTask(void)
 		p1 = ulVol1LinTable[tabix];
 		p2 = ulVol1LinTable[tabix + 1];
 		slVol1 = p1 + (((p2 - p1) * tabsub) >> 17);
-
+		test2 = slVol1;
 		// cycles
 		// Low pass filter the output to avoid aliasing noise.
 		slVol1FiltL += slVol1 - slVol1Filt;
@@ -706,7 +696,7 @@ inline void THEREMIN_96kHzDACTask(void)
 			usVolTim1Period = 0;
 		}
 
-		test[vol_state_cnt] = usVolTim1Period;
+		//test[vol_state_cnt] = usVolTim1Period;
 
 		usVolTim1LastCC = usVolTim1CC;
 
@@ -848,6 +838,11 @@ void THEREMIN_1msTask(void)
 		// Start autotune by pressing BUTTON_KEY
 		if (BSP_PB_GetState(BUTTON_KEY) == GPIO_PIN_SET)
 		{
+			// Beep for "Auto tune start"
+			BEEP_Play(NOTE_A6,50,50);
+			BEEP_Play(NOTE_B6,50,50);
+			BEEP_Play(NOTE_C7,100,50);
+
 			DISPLAY_Dark();
 
 			// 1.0sec auto-tune
@@ -865,13 +860,13 @@ void THEREMIN_1msTask(void)
 			slVolTim2PeriodeFilt = 0x7FFFFFFF;
 			slMinVol1Periode = 0x7FFFFFFF;
 			slMinVol2Periode = 0x7FFFFFFF;
-
-			// Mute the output
-			bMute = 1;
 		}
 	}
-	else
+	else if (bBeepActive == 0)
 	{
+		// Mute the output
+		bMute = 1;
+
 		// Find lowest pitch period
 		if (slPitchPeriodeFilt < slMinPitchPeriode)
 		{
@@ -900,17 +895,20 @@ void THEREMIN_1msTask(void)
 			// activate output
 			bMute = 0;
 
+			// Beep for "Autotune ends"
+			BEEP_Play(NOTE_A5,100,100);
+
 			DISPLAY_Dark();
 			// Use minimum values for offset of pitch and volume
 			slPitchOffset = slMinPitchPeriode;
 			slVolTim1Offset = slMinVol1Periode;	// + 16384 * 128;
 			slVolTim2Offset = slMinVol2Periode;	// + 16384 * 128;
-#ifdef DEBUG
+#ifdef XDEBUG
 		printf("%d %d\n", usPitchPeriod, usVolTim1Period);
 #endif
-			CONFIG_Write_SLong(EEPROM_ADDR_PITCH_AUTOTUNE_H, slPitchOffset);
-			CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H, slVolTim1Offset);
-			CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM2_AUTOTUNE_H, slVolTim2Offset);
+		//	CONFIG_Write_SLong(EEPROM_ADDR_PITCH_AUTOTUNE_H, slPitchOffset);
+		//	CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H, slVolTim1Offset);
+		//	CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM2_AUTOTUNE_H, slVolTim2Offset);
 		}
 	}
 
@@ -954,8 +952,8 @@ void THEREMIN_1msTask(void)
 		fVolScale = powf(2,
 				((float) (POTS_GetScaledValue(POT_VOL_SCALE) - 2048))
 						* 0.000976562f /* 1/1024 */);
-		THEREMIN_Calc_Volume1Table();
-		THEREMIN_Calc_Volume2Table();
+		THEREMIN_Calc_VolumeTable(VOLSEL_1);
+		THEREMIN_Calc_VolumeTable(VOLSEL_2);
 	}
 
 	// waveform pot
@@ -986,7 +984,7 @@ void THEREMIN_1msTask(void)
  */
 void THEREMIN_1sTask(void)
 {
-#ifdef DEBUG
+#ifdef XDEBUG
 	int p1=0,p2=0,p3=0;
 
 	if (siAutotune == 0)
@@ -1015,11 +1013,12 @@ void THEREMIN_1sTask(void)
 //		printf("%d (%d) %d (%d) %d (%d)\n", (int)usPitchPeriod, (int)p1,
 //				(int)usVolTim1Period, (int)p2,
 //				(int)usVolTim2Period, (int)p3);
-		printf("%d %d %d %d\n",
+		printf("%d %d %d %d %d %d\n",
 				(int)usVolTim1Period_lastvalid,// (int)p2,
 				(int)usVolTim2Period_lastvalid,// (int)p2,
 				(int)((slVol1Filt+slVol2Filt)/2),
-				(int)slVol1Filt-slVol2Filt);// (int)p3);
+				(int)slVol1Filt-slVol2Filt,
+				 (int) test1, (int) test2);// (int)p3);
 
 
 		//printf("Stopwatch %d\n", ulStopwatch);

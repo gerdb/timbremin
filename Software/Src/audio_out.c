@@ -119,16 +119,26 @@ void AUDIO_OUT_1msTask(void)
  */
 void AUDIO_OUT_I2S_IRQHandler(void)
 {
+	static int toggle = 0;
+
 	if (bMute)
 	{
 		hi2s3.Instance->DR = 0;
 	}
 	else
 	{
-		// Fill the audio DAC
-		hi2s3.Instance->DR = usDACValue;
+		if (toggle)
+		{
+			// Fill the audio DAC with the LEFT value = speaker
+			hi2s3.Instance->DR = usDACValueL;
+		}
+		else
+		{
+			// Fill the audio DAC with the RIGHT value = ear phone
+			hi2s3.Instance->DR = usDACValueR;
+		}
 	}
-
+	toggle = 1- toggle;
 	// Get the new value for the next task
 	THEREMIN_96kHzDACTask();
 }
