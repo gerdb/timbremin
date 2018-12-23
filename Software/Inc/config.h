@@ -115,6 +115,14 @@ typedef struct
 /* global variables ----------------------------------------------------- */
 volatile extern const CONFIG_TypeDef __attribute__((section (".myConfigSection"))) CONFIG;
 
+// Configuration parameters for fast access
+extern int CONFIG_VOL1_NUMERATOR;
+extern int CONFIG_VOL1_OFFSET_A;
+extern int CONFIG_VOL1_OFFSET_B;
+extern int CONFIG_VOL2_NUMERATOR;
+extern int CONFIG_VOL2_OFFSET_A;
+extern int CONFIG_VOL2_OFFSET_B;
+
 /* Function prototypes ----------------------------------------------------- */
 void CONFIG_Init(void);
 void CONFIG_Write_SLong(int addr, int32_t value);

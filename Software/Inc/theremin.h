@@ -60,20 +60,36 @@ typedef enum
 /* Global variables  ------------------------------------------------------- */
 extern int16_t ssWaveTable[4 * 1024];
 extern e_waveform eWaveform;
-extern int32_t slVol1Raw;
-extern int32_t slVol2Raw;
+extern int32_t slVol1;
+extern int32_t slVol2;
 
 
 
 /* Function prototypes ----------------------------------------------------- */
 void THEREMIN_Init(void);
-void THEREMIN_96kHzDACTask(void);
+void THEREMIN_96kHzDACTask_A(void);
+void THEREMIN_96kHzDACTask_B(void);
+void THEREMIN_96kHzDACTask_Common(void);
+
+void THEREMIN_Task_Select_VOL1(void);
+void THEREMIN_Task_Select_VOL2(void);
+void THEREMIN_Task_Activate_VOL1(void);
+void THEREMIN_Task_Activate_VOL2(void);
+void THEREMIN_Task_Capture_VOL1(void);
+void THEREMIN_Task_Capture_VOL2(void);
+void THEREMIN_Task_Calculate_VOL1(void);
+void THEREMIN_Task_Calculate_VOL2(void);
+void THEREMIN_Task_Volume_Timbre(void);
+void THEREMIN_Task_Volume_Nonlin(void);
+
+
+
 void THEREMIN_1msTask(void);
 void THEREMIN_1sTask(void);
 void THEREMIN_Calc_VolumeTable(e_vol_sel vol_sel);
 void THEREMIN_Calc_PitchTable(void);
 void THEREMIN_Calc_WavTable(void);
-void THEREMIN_Calc_LFOTable(void);
+
 
 
 

@@ -41,7 +41,6 @@ int16_t ssWaveTable[4096];
 uint32_t ulVol1LinTable[1024];
 uint32_t ulVol2LinTable[1024];
 uint32_t ulPitchLinTable[2048];
-float fLFOTable[1024];
 
 float fNonLinTable[1024+1];
 
@@ -71,41 +70,39 @@ uint16_t usVolTim1LastCC;		// last value (last task)
 uint16_t usVolTim2LastCC;		// last value (last task)
 uint16_t usVolTim1Period;		// period of oscillator
 uint16_t usVolTim2Period;		// period of oscillator
-uint16_t usVolTim1Period_lastvalid = 0;		// period of oscillator
-uint16_t usVolTim2Period_lastvalid = 0;		// period of oscillator
 int32_t slVolTim1Offset;		// offset value (result of auto-tune)
 int32_t slVolTim2Offset;		// offset value (result of auto-tune)
+int slVolTim1PeriodeFilt_cnt;	// low pass filtered period
+int slVolTim2PeriodeFilt_cnt;	// low pass filtered period
+int32_t slVolTimPeriodeFiltDiff;	// low pass filtered period
 int32_t slVolTim1PeriodeFilt;	// low pass filtered period
 int32_t slVolTim2PeriodeFilt;	// low pass filtered period
+int32_t slVolTim1MeanPeriode;	// low pass filtered period
+int32_t slVolTim2MeanPeriode;	// low pass filtered period
 int32_t slVol1Raw;				// volume value
 int32_t slVol1;					// volume value
-int32_t slVol1FiltL;			// volume value, filtered (internal filter value)
-int32_t slVol1Filt;				// volume value, filtered
-int32_t slVol2Raw;				// volume value
 int32_t slVol2;					// volume value
-int32_t slVol2FiltL;			// volume value, filtered (internal filter value)
-int32_t slVol2Filt;				// volume value, filtered
+int32_t slVolFiltL;				// volume value, filtered (internal filter value)
+int32_t slVolFilt;				// volume value, filtered
+
+
+int32_t slVolumeRaw;
+int32_t slVolume;
+int32_t slTimbre;
+
 
 float fVolScale = 1.0f;
 float fVolShift = 0.0f;
 
 
 int32_t slPitchOld;
-int32_t slPitchDiffSum;
-int32_t slPitchDiffCnt = 0;
 int32_t slVolTim1Old;
-int32_t slVolTim1DiffSum;
-int32_t slVolTim1DiffCnt = 0;
 int32_t slVolTim2Old;
-int32_t slVolTim2DiffSum;
-int32_t slVolTim2DiffCnt = 0;
 
 
 //int32_t slVol2;				// volume value
 
-int task48 = 0;
 uint32_t ulWaveTableIndex = 0;
-uint32_t ulLFOTableIndex = 0;
 
 
 float fWavStepFilt = 0.0f;
@@ -123,15 +120,16 @@ int iWavLength = 4096;
 int bUseNonLinTab = 0;
 e_waveform eWaveform = SINE;
 
-int vol_state_cnt = 0;
 e_vol_sel vol_sel = VOLSEL_NONE;
-int vol_active = 0;
 
 int32_t test1;
 int32_t test2;
 int task = 0;
 
 
+
+int taskTableCnt = 0;
+void (*taskTable[96]) () = {0};
 
 extern TIM_HandleTypeDef htim1;	// Handle of timer for input capture
 
@@ -150,6 +148,27 @@ uint32_t ulStopwatch = 0;
  */
 void THEREMIN_Init(void)
 {
+	int i;
+
+	// Fill the task table
+	taskTable[0] = THEREMIN_Task_Select_VOL1;
+	taskTable[2] = THEREMIN_Task_Volume_Timbre;
+	taskTable[4] = THEREMIN_Task_Volume_Nonlin;
+	taskTable[16] = THEREMIN_Task_Activate_VOL1;
+	for (i = 18; i< 46; i+=2)
+	{
+		taskTable[i] = THEREMIN_Task_Capture_VOL1;
+	}
+	taskTable[46] = THEREMIN_Task_Calculate_VOL1;
+
+	taskTable[48] = THEREMIN_Task_Select_VOL2;
+	taskTable[64] = THEREMIN_Task_Activate_VOL2;
+	for (i = 66; i< 94; i+=2)
+	{
+		taskTable[i] = THEREMIN_Task_Capture_VOL2;
+	}
+	taskTable[94] = THEREMIN_Task_Calculate_VOL2;
+
 #ifdef DEBUG
 	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 	DWT->CYCCNT = 0;
@@ -172,7 +191,6 @@ void THEREMIN_Init(void)
 	THEREMIN_Calc_VolumeTable(VOLSEL_2);
 	THEREMIN_Calc_PitchTable();
 	THEREMIN_Calc_WavTable();
-	THEREMIN_Calc_LFOTable();
 
 	HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_RESET);
@@ -187,17 +205,6 @@ void THEREMIN_Init(void)
 
 }
 
-/**
- * @brief Create a sin table for general purpose like LFO
- *
- */
-void THEREMIN_Calc_LFOTable(void)
-{
-	for (int i = 0; i < 1024; i++)
-	{
-		fLFOTable[i] = 0.95f + 0.05f * sin((i * 2 * M_PI) / 1024.0f);
-	}
-}
 
 /**
  * @brief Recalculates the pitch LUT
@@ -533,278 +540,127 @@ void THEREMIN_Calc_WavTable(void)
 
 }
 
+
 /**
  * @brief 96kHz DAC task called in interrupt
  *
  * At 168MHz the absolute maximum cycle count would be 168MHz/96kHz = 1750
  */
-inline void THEREMIN_96kHzDACTask(void)
+inline void THEREMIN_96kHzDACTask_A(void)
 {
 	int32_t p1, p2, tabix, tabsub;
 	float p1f, p2f;
 	floatint_ut u;
+	int iWavOut;
 
 	float result = 0.0f;
-	int iWavOut;
-	//float fLFO;
 
 
-	task48 = 1-task48;
-
-	if (task48)
+	if (bBeepActive)
 	{
-
-		if (bBeepActive)
-		{
-			BEEP_Task();
-			return;
-		}
-		ulLFOTableIndex +=1;
-
-		//fLFO = fLFOTable[ulLFOTableIndex & 0x03FF];
-
-		if (fPitch >= 1.0f)
-		{
-			// cycles: 59..62
-			// fast pow approximation by LUT with interpolation
-			// float bias: 127, so 127 << 23bit mantissa is: 0x3F800000
-			// We use (5 bit of) the exponent and 6 bit of the mantissa
-			u.f = fPitch;
-			tabix = ((u.ui - 0x3F800000) >> 17);
-			tabsub = (u.ui & 0x0001FFFF) >> 2;
-			p1f = (float)ulPitchLinTable[tabix];
-			p2f = (float)ulPitchLinTable[tabix + 1];
-			fWavStepFilt = (p1f + (((p2f - p1f) * tabsub) * 0.000030518f /*1/32768*/));
-			//fWavStepFilt += ((p1f + (((p2f - p1f) * tabsub) * 0.000007629394531f))- fWavStepFilt) * 0.0001f;
-			//fWavStepFilt = 81460152.0f;
-			ulWaveTableIndex += (uint32_t)(fWavStepFilt  /*  * fLFO*/ );
-		}
-
-		// Wait 166us until starting using the volume values
-		vol_state_cnt++;
-		if (vol_state_cnt == 16)
-		{
-			vol_active = 1;
-		}
-		// Do it for 1ms
-		else if (vol_state_cnt == 96)
-		{
-			vol_state_cnt = 0;
-			vol_active = 0;
-			// Toggle between both antennas
-			if (vol_sel == VOLSEL_1)
-			{
-				vol_sel = VOLSEL_2;
-				HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_SET);
-			}
-			else
-			{
-				vol_sel = VOLSEL_1;
-				HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_SET);
-				HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_RESET);
-			}
-		}
-
-		//test = ulWavStep;
-
-
-
-		//slVolFilt *= fLFO;
-
-		// cycles: 29..38
-		// WAV output to audio DAC
-		tabix = ulWaveTableIndex >> 20; // use only the 12MSB of the 32bit counter
-		tabsub = (ulWaveTableIndex >> 12) & 0x000000FF;
-		p1 = ssWaveTable[tabix & iWavMask];
-		p2 = ssWaveTable[(tabix + 1) & iWavMask];
-		iWavOut = ((p1 + (((p2 - p1) * tabsub) / 256)) * slVol1Filt / 1024);
-
-		if (bUseNonLinTab)
-		{
-			tabix = (iWavOut+32768) / 64;
-			tabsub = iWavOut & 0x003F;
-			p1f = fNonLinTable[tabix];
-			p2f = fNonLinTable[tabix + 1];
-			result = (p1f + (((p2f - p1f) * tabsub) * 0.015625f));
-		}
-		else
-		{
-			result = (float)iWavOut;
-		}
-
-		// Limit the output to 16bit
-		if (bMute)
-		{
-			usDACValueR = 0;
-		}
-		else if (result > 32767.0)
-    	{
-    		usDACValueR = 32767;
-    	}
-    	else if (result < -32768.0)
-    	{
-    		usDACValueR = -32768;
-    	}
-    	else
-    	{
-    		usDACValueR = (int16_t)result;
-    	}
-
-    	// Output also to the speaker
-    	usDACValueL = usDACValueR;
+		BEEP_Task();
+		return;
 	}
 
 
-	// cycles: 29
-	// Get the input capture timestamps
+	// Get the input capture value and calculate the period time
 	usPitchCC = htim1.Instance->CCR1;
-
-
-	// cycles: 26
-	// Calculate the period by the capture compare value and
-	// the last capture compare value
 	usPitchPeriod = usPitchCC - usPitchLastCC;
-	if (vol_sel == VOLSEL_1)
+	usPitchLastCC = usPitchCC;
+
+
+	if (fPitch >= 1.0f)
 	{
-
-		// cycles: 39 .. 43
-		// scale of the volume raw value by LUT with interpolation
+		// cycles: 59..62
+		// fast pow approximation by LUT with interpolation
 		// float bias: 127, so 127 << 23bit mantissa is: 0x3F800000
-		// We use for the 10bit table 4 bit of the exponent and 6 bit of the mantissa
-		// So we have to shift the float value 17 bits to have a mantissa with 6 bit
-		// (23bit - 17bit = 6 bit)
-		// See also https://www.h-schmidt.net/FloatConverter/IEEE754.html
-		if (slVol1Raw < 1)
-		{
-			slVol1Raw = 1;
-		}
-		if (slVol1Raw > 32767)
-		{
-			slVol1Raw = 32767;
-		}
-		test1 = slVol1Raw;
-		// Fill the union with the float value
-		u.f = (float) (slVol1Raw);
-		// Shift it 17 bits to right to get a 10bit value (4bit exponent, 6bit mantissa)
+		// We use (5 bit of) the exponent and 6 bit of the mantissa
+		u.f = fPitch;
 		tabix = ((u.ui - 0x3F800000) >> 17);
-		// The rest of the value ( the 17 bits we have shifted out)
-		tabsub = u.ui & 0x0001FFFF;
-		p1 = ulVol1LinTable[tabix];
-		p2 = ulVol1LinTable[tabix + 1];
-		slVol1 = p1 + (((p2 - p1) * tabsub) >> 17);
-		test2 = slVol1;
-		// cycles
-		// Low pass filter the output to avoid aliasing noise.
-		slVol1FiltL += slVol1 - slVol1Filt;
-		slVol1Filt = slVol1FiltL / 1024;
+		tabsub = (u.ui & 0x0001FFFF) >> 2;
+		p1f = (float)ulPitchLinTable[tabix];
+		p2f = (float)ulPitchLinTable[tabix + 1];
+		fWavStepFilt = (p1f + (((p2f - p1f) * tabsub) * 0.000030518f /*1/32768*/));
+		//fWavStepFilt += ((p1f + (((p2f - p1f) * tabsub) * 0.000007629394531f))- fWavStepFilt) * 0.0001f;
+		//fWavStepFilt = 81460152.0f;
+		ulWaveTableIndex += (uint32_t)(fWavStepFilt  );
+	}
 
 
 
-		usVolTim1CC = htim1.Instance->CCR2;
-		if (vol_active)
-		{
-			usVolTim1Period = usVolTim1CC - usVolTim1LastCC;
-		}
-		else
-		{
-			usVolTim1Period = 0;
-		}
-
-		//test[vol_state_cnt] = usVolTim1Period;
-
-		usVolTim1LastCC = usVolTim1CC;
-
-		usVolTim2Period = 0;
-
-		if (usVolTim1Period != 0)
-		{
-			//                                   11bit                10bit  10bit
-			slVolTim1PeriodeFilt += ((int16_t) (usVolTim1Period - 2048) * 1024 * 1024
-					- slVolTim1PeriodeFilt) / 1024;
-			usVolTim1Period_lastvalid = usVolTim1Period;
-		}
+	// cycles: 29..38
+	// WAV output to audio DAC
+	tabix = ulWaveTableIndex >> 20; // use only the 12MSB of the 32bit counter
+	tabsub = (ulWaveTableIndex >> 12) & 0x000000FF;
+	p1 = ssWaveTable[tabix & iWavMask];
+	p2 = ssWaveTable[(tabix + 1) & iWavMask];
+	iWavOut = ((p1 + (((p2 - p1) * tabsub) / 256)) * slVolFilt / 1024);
+	/*
+	if (bUseNonLinTab)
+	{
+		tabix = (iWavOut+32768) / 64;
+		tabsub = iWavOut & 0x003F;
+		p1f = fNonLinTable[tabix];
+		p2f = fNonLinTable[tabix + 1];
+		result = (p1f + (((p2f - p1f) * tabsub) * 0.015625f));
 	}
 	else
 	{
-		// cycles: 39 .. 43
-		// scale of the volume raw value by LUT with interpolation
-		// float bias: 127, so 127 << 23bit mantissa is: 0x3F800000
-		// We use for the 10bit table 4 bit of the exponent and 6 bit of the mantissa
-		// So we have to shift the float value 17 bits to have a mantissa with 6 bit
-		// (23bit - 17bit = 6 bit)
-		// See also https://www.h-schmidt.net/FloatConverter/IEEE754.html
-		if (slVol2Raw < 1)
-		{
-			slVol2Raw = 1;
-		}
-		if (slVol2Raw > 32767)
-		{
-			slVol2Raw = 32767;
-		}
-		// Fill the union with the float value
-		u.f = (float) (slVol2Raw);
-		// Shift it 17 bits to right to get a 10bit value (4bit exponent, 6bit mantissa)
-		tabix = ((u.ui - 0x3F800000) >> 17);
-		// The rest of the value ( the 17 bits we have shifted out)
-		tabsub = u.ui & 0x0001FFFF;
-		p1 = ulVol2LinTable[tabix];
-		p2 = ulVol2LinTable[tabix + 1];
-		slVol2 = p1 + (((p2 - p1) * tabsub) >> 17);
+		result = (float)iWavOut;
+	}
+	*/
+	result = (float)iWavOut;
 
-		// cycles
-		// Low pass filter the output to avoid aliasing noise.
-		slVol2FiltL += slVol2 - slVol2Filt;
-		slVol2Filt = slVol2FiltL / 1024;
-
-		usVolTim2CC = htim1.Instance->CCR3;
-		if (vol_active)
-		{
-			usVolTim2Period = usVolTim2CC - usVolTim2LastCC;
-		}
-		else
-		{
-			usVolTim2Period = 0;
-		}
-		usVolTim2LastCC = usVolTim2CC;
+	// cycles
+	// Low pass filter the output to avoid aliasing noise.
+	slVolFiltL += slVolume - slVolFilt;
+	slVolFilt = slVolFiltL / 1024;
 
 
-
-		if (usVolTim2Period != 0 )
-		{
-			//                                   11bit                10bit  10bit
-			slVolTim2PeriodeFilt += ((int16_t) (usVolTim2Period - 2048) * 1024 * 1024
-					- slVolTim2PeriodeFilt) / 1024;
-			usVolTim2Period_lastvalid = usVolTim2Period;
-
-		}
-
-		usVolTim1Period = 0;
+	// Limit the output to 16bit
+	if (bMute)
+	{
+		usDACValueR = 0;
+	}
+	else if (result > 32767.0)
+	{
+		usDACValueR = 32767;
+	}
+	else if (result < -32768.0)
+	{
+		usDACValueR = -32768;
+	}
+	else
+	{
+		usDACValueR = (int16_t)result;
 	}
 
+	// Output also to the speaker
+	usDACValueL = usDACValueR;
+}
+
+/**
+ * @brief 96kHz DAC task called in interrupt
+ *
+ * At 168MHz the absolute maximum cycle count would be 168MHz/96kHz = 1750
+ */
+inline void THEREMIN_96kHzDACTask_B(void)
+{
 
 
-	// cycles: 9
-	/*
-	if (usPitchPeriod < 2000)
-		usPitchPeriod *= 2;
+}
 
-	if (usVolTim1Period < 2000)
-		usVolTim1Period *= 2;
-	if (usVolTim2Period < 2000)
-		usVolTim2Period *= 2;*/
-
-
-//	for (int i=0;i<7;i++)
-//	{
-//		usCC[i] = usCC[i+1];
-//	}
-//	usCC[7] = usPitchPeriod;
-
+/**
+ * @brief 96kHz DAC task called in interrupt
+ *
+ * At 168MHz the absolute maximum cycle count would be 168MHz/96kHz = 1750
+ */
+inline void THEREMIN_96kHzDACTask_Common(void)
+{
 	// cycles: 29
 	// Low pass filter period values
 	// factor *1024 is necessary, because of the /1024 integer division
-	// factor *1024 is necessary, because we want to oversample the input signal
+	// factor *1024 is necessary, because we want to over sample the input signal
 	if (usPitchPeriod != 0)
 	{
 		//                                   11bit                10bit  10bit
@@ -815,32 +671,231 @@ inline void THEREMIN_96kHzDACTask(void)
 
 	// cycles: 34
 	fPitch = (float) ((slPitchPeriodeFilt - slPitchOffset) * 8);
-	slVol1Raw = ((slVolTim1PeriodeFilt - slVolTim1Offset) / 4096);
-	slVol2Raw = ((slVolTim2PeriodeFilt - slVolTim2Offset) / 4096);
-
-	// cycles: 9
-	// Store values for next task
-	usPitchLastCC = usPitchCC;
 
 
-	if (usPitchPeriod != 0) {
-		slPitchDiffSum += abs(usPitchPeriod - slPitchOld);
-		slPitchDiffCnt ++;
-		slPitchOld = usPitchPeriod;
+
+	// Call next Task of task table
+	taskTableCnt++;
+	if (taskTableCnt>=96)
+	{
+		taskTableCnt = 0;
 	}
-	if (usVolTim1Period != 0) {
-		slVolTim1DiffSum += abs(usVolTim1Period - slVolTim1Old);
-		slVolTim1DiffCnt ++;
-		slVolTim1Old = usVolTim1Period;
+	if (taskTable[taskTableCnt] != 0)
+	{
+		taskTable[taskTableCnt]();
 	}
-	if (usVolTim2Period != 0) {
-		slVolTim2DiffSum += abs(usVolTim2Period - slVolTim2Old);
-		slVolTim2DiffCnt ++;
-		slVolTim2Old = usVolTim2Period;
-	}
-
 }
 
+
+/**
+ * Different tasks called from the task table every 96kHz
+ * The work is divided into 96 parts, so the computation time stays
+ * below 1/96kHz
+ */
+
+/**
+ * Switch on volume oscillator 1
+ */
+void THEREMIN_Task_Select_VOL1(void)
+{
+	// Select oscillator of VOL1
+	vol_sel = VOLSEL_1;
+	HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_RESET);
+}
+
+/**
+ * Switch on volume oscillator 2
+ */
+void THEREMIN_Task_Select_VOL2(void)
+{
+	// Select oscillator of VOL2
+	vol_sel = VOLSEL_2;
+	HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_SET);
+}
+
+/**
+ * Oscillator is stable. Use now the frequency signal
+ */
+void THEREMIN_Task_Activate_VOL1(void)
+{
+	usVolTim1LastCC = htim1.Instance->CCR2; // Read capture compare to be prepared
+	slVolTim1PeriodeFilt_cnt = 0;	// Reset mean filter counter
+}
+
+/**
+ * Oscillator is stable. Use now the frequency signal
+ */
+void THEREMIN_Task_Activate_VOL2(void)
+{
+	usVolTim2LastCC = htim1.Instance->CCR3; // Read capture compare to be prepared
+	slVolTim2PeriodeFilt_cnt = 0;	// Reset mean filter counter
+}
+
+/**
+ * Capture and filter the VOL1 value
+ */
+void THEREMIN_Task_Capture_VOL1(void)
+{
+	// Get the input capture value and calculate the period time
+	usVolTim1CC = htim1.Instance->CCR2;
+	usVolTim1Period = usVolTim1CC - usVolTim1LastCC;
+	usVolTim1LastCC = usVolTim1CC;
+
+
+	// Low pass filter it with a mean filter
+	if (usVolTim1Period != 0)
+	{
+		// Accumulate the period values
+		slVolTimPeriodeFiltDiff = 256 * usVolTim1Period - slVolTim1Offset;
+
+		// Count the amount of periods
+		slVolTim1PeriodeFilt_cnt ++;
+		// Was it a double period?
+		if (usVolTim1Period > 4000)
+		{
+			slVolTim1PeriodeFilt_cnt ++;
+			slVolTimPeriodeFiltDiff -= slVolTim1Offset;
+		}
+
+		// Use only positive values
+		if (slVolTimPeriodeFiltDiff > 0)
+		{
+			slVolTim1PeriodeFilt += slVolTimPeriodeFiltDiff;
+		}
+	}
+}
+
+
+/**
+ * Capture and filter the VOL2 value
+ */
+void THEREMIN_Task_Capture_VOL2(void)
+{
+	// Get the input capture value and calculate the period time
+	usVolTim2CC = htim1.Instance->CCR3;
+	usVolTim2Period = usVolTim2CC - usVolTim2LastCC;
+	usVolTim2LastCC = usVolTim2CC;
+
+
+	// Low pass filter it with a mean filter
+	if (usVolTim2Period != 0)
+	{
+		// Accumulate the period values
+		slVolTimPeriodeFiltDiff = 256 * usVolTim2Period - slVolTim2Offset;
+
+		// Count the amount of periods
+		slVolTim2PeriodeFilt_cnt ++;
+		// Was it a double period?
+		if (usVolTim2Period > 4000)
+		{
+			slVolTim2PeriodeFilt_cnt ++;
+			slVolTimPeriodeFiltDiff -= slVolTim2Offset;
+		}
+
+		// Use only positive values
+		if (slVolTimPeriodeFiltDiff > 0)
+		{
+			slVolTim2PeriodeFilt += slVolTimPeriodeFiltDiff;
+		}
+	}
+}
+
+/**
+ * Calculate the mean value of VOL1
+ */
+void THEREMIN_Task_Calculate_VOL1(void)
+{
+	if (slVolTim1PeriodeFilt != 0)
+	{
+		slVolTim1MeanPeriode = slVolTim1PeriodeFilt / slVolTim1PeriodeFilt_cnt;
+		slVol1 = ((CONFIG_VOL1_NUMERATOR * slVolTim1PeriodeFilt_cnt) /
+				(slVolTim1PeriodeFilt + slVolTim1PeriodeFilt_cnt * CONFIG_VOL1_OFFSET_A))
+				- CONFIG_VOL1_OFFSET_B;
+
+		// Prepare for next filter interval
+		slVolTim1PeriodeFilt_cnt = 0;
+		slVolTim1PeriodeFilt = 0;
+	}
+
+	// Limit it
+	if (slVol1 < 0)
+	{
+		slVol1 = 0;
+	}
+	if (slVol1 > 1024)
+	{
+		slVol1 = 1024;
+	}
+}
+
+/**
+ * Calculate the mean value of VOL2
+ */
+void THEREMIN_Task_Calculate_VOL2(void)
+{
+	if (slVolTim2PeriodeFilt != 0)
+	{
+		slVolTim2MeanPeriode = slVolTim2PeriodeFilt / slVolTim2PeriodeFilt_cnt;
+		slVol2 = ((CONFIG_VOL2_NUMERATOR * slVolTim2PeriodeFilt_cnt) /
+				(slVolTim2PeriodeFilt + slVolTim2PeriodeFilt_cnt * CONFIG_VOL2_OFFSET_A))
+				- CONFIG_VOL2_OFFSET_B;
+
+		// Prepare for next filter interval
+		slVolTim2PeriodeFilt_cnt = 0;
+		slVolTim2PeriodeFilt = 0;
+	}
+
+	// Limit it
+	if (slVol2 < 0)
+	{
+		slVol2 = 0;
+	}
+	if (slVol2 > 1024)
+	{
+		slVol2 = 1024;
+	}
+}
+
+/**
+ * Calculate the mean volume and timbre value from VOL1 and VOL2
+ */
+void THEREMIN_Task_Volume_Timbre(void)
+{
+	// Volume is the mean value of VOL1 and VOL2
+	slVolumeRaw = (slVol1 + slVol2) / 2;
+	// Timbre is the difference between VOL1 and VOL2 in the range of 0..128
+	slTimbre = (slVol1 - slVol2) + 128;
+
+	// Limit the volume value
+	if (slVolumeRaw < 0)
+	{
+		slVolumeRaw = 0;
+	}
+	if (slVolumeRaw > 1023)
+	{
+		slVolumeRaw = 1023;
+	}
+
+	// Limit the timbre value
+	if (slTimbre < 0)
+	{
+		slTimbre = 0;
+	}
+	if (slTimbre > 256)
+	{
+		slTimbre = 256;
+	}
+}
+
+/**
+ * Apply nonlinearity to the volume
+ */
+void THEREMIN_Task_Volume_Nonlin(void)
+{
+	slVolume = slVolumeRaw;
+}
 /**
  * @brief 1ms task
  *
@@ -850,7 +905,7 @@ void THEREMIN_1msTask(void)
 	int bReqCalcPitchTable = 0;
 	if (siAutotune == 0)
 	{
-		// Start autotune by pressing BUTTON_KEY
+		// Start auto-tune by pressing BUTTON_KEY
 		if (BSP_PB_GetState(BUTTON_KEY) == GPIO_PIN_SET)
 		{
 
@@ -875,8 +930,6 @@ void THEREMIN_1msTask(void)
 			slMinPitchPeriode = 0x7FFFFFFF;
 			slVolTim1Offset = 0;
 			slVolTim2Offset = 0;
-			slVolTim1PeriodeFilt = 0x7FFFFFFF;
-			slVolTim2PeriodeFilt = 0x7FFFFFFF;
 			slMinVol1Periode = 0x7FFFFFFF;
 			slMinVol2Periode = 0x7FFFFFFF;
 		}
@@ -891,13 +944,13 @@ void THEREMIN_1msTask(void)
 			slMinPitchPeriode = slPitchPeriodeFilt;
 		}
 		// Find lowest volume period
-		if (slVolTim1PeriodeFilt < slMinVol1Periode)
+		if (slVolTim1MeanPeriode < slMinVol1Periode)
 		{
-			slMinVol1Periode = slVolTim1PeriodeFilt;
+			slMinVol1Periode = slVolTim1MeanPeriode;
 		}
-		if (slVolTim2PeriodeFilt < slMinVol2Periode)
+		if (slVolTim2MeanPeriode < slMinVol2Periode)
 		{
-			slMinVol2Periode = slVolTim2PeriodeFilt;
+			slMinVol2Periode = slVolTim2MeanPeriode;
 		}
 		siAutotune--;
 
@@ -1016,41 +1069,20 @@ void THEREMIN_1msTask(void)
  */
 void THEREMIN_1sTask(void)
 {
-#ifdef XDEBUG
-	int p1=0,p2=0,p3=0;
+#ifdef DEBUG
 
 	if (siAutotune == 0)
 	{
-//		printf("%d %d\n", (int)slVolTim1PeriodeFilt, (int)slVolTim2PeriodeFilt);
-
-		if (slPitchDiffCnt != 0)
-		{
-			p1 = slPitchDiffSum *10 / slPitchDiffCnt;
-		}
-		if (slVolTim1DiffCnt != 0)
-		{
-			p2 = slVolTim1DiffSum *10 / slVolTim1DiffCnt;
-		}
-		if (slVolTim2DiffCnt != 0)
-		{
-			p3 = slVolTim2DiffSum *10 / slVolTim2DiffCnt;
-		}
-		slPitchDiffSum = 0;
-		slPitchDiffCnt = 0;
-		slVolTim1DiffSum = 0;
-		slVolTim1DiffCnt = 0;
-		slVolTim2DiffSum = 0;
-		slVolTim2DiffCnt = 0;
-
-//		printf("%d (%d) %d (%d) %d (%d)\n", (int)usPitchPeriod, (int)p1,
-//				(int)usVolTim1Period, (int)p2,
-//				(int)usVolTim2Period, (int)p3);
-		printf("%d %d %d %d %d %d\n",
-				(int)usVolTim1Period_lastvalid,// (int)p2,
-				(int)usVolTim2Period_lastvalid,// (int)p2,
-				(int)((slVol1Filt+slVol2Filt)/2),
-				(int)slVol1Filt-slVol2Filt,
-				 (int) test1, (int) test2);// (int)p3);
+		printf("%d %d %d %d %d %d %d %d\n",
+				(int)usVolTim1Period,
+				(int)usVolTim2Period,
+				(int)slVolTim1MeanPeriode,
+				(int)slVolTim2MeanPeriode,
+				(int)slVolFilt,
+				(int)slTimbre,
+				(int) slVol1,
+				(int) slVol2
+				);
 
 
 		//printf("Stopwatch %d\n", ulStopwatch);

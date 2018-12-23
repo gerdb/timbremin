@@ -79,8 +79,8 @@ void VOLUME_CalibrationTask(void)
 		if (iVolVal_cm >= 0)
 		{
 			aCalibrationEntries[iVolVal_cm].cm = iVolVal_cm;
-			aCalibrationEntries[iVolVal_cm].vol1 = slVol1Raw;
-			aCalibrationEntries[iVolVal_cm].vol2 = slVol2Raw;
+			aCalibrationEntries[iVolVal_cm].vol1 = slVol1;
+			aCalibrationEntries[iVolVal_cm].vol2 = slVol2;
 		}
 		iVolVal_cm--;
 

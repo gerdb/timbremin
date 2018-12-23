@@ -24,6 +24,17 @@
 #include "config.h"
 #include "eeprom.h"
 
+
+
+/* global variables  ------------------------------------------------------- */
+int CONFIG_VOL1_NUMERATOR = 757*1024;
+int CONFIG_VOL1_OFFSET_A =  500;
+int CONFIG_VOL1_OFFSET_B =  23;
+int CONFIG_VOL2_NUMERATOR = 1139*1024;
+int CONFIG_VOL2_OFFSET_A =  720;
+int CONFIG_VOL2_OFFSET_B =  29;
+
+/* local variables  ------------------------------------------------------- */
 volatile const CONFIG_TypeDef __attribute__((section (".myConfigSection"))) CONFIG =
 { (VERSION_MAJOR << 16 | VERSION_MINOR << 8 | VERSION_BUILD), // Version
 		0,	// VolumeShift
