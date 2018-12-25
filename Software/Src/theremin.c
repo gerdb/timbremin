@@ -114,6 +114,7 @@ uint32_t ulLedCirclePos;	// LED indicator position
 int32_t slMinPitchPeriode;	// minimum pitch value during auto-tune
 int32_t slMinVol1Periode = 0;	// minimum volume value during auto-tune
 int32_t slMinVol2Periode = 0;	// minimum volume value during auto-tune
+int iTuned = 0;
 
 int iWavMask = 0x0FFF;
 int iWavLength = 4096;
@@ -878,6 +879,12 @@ void THEREMIN_Task_Volume_Timbre(void)
 		slVolumeRaw = 1023;
 	}
 
+	// switch sound off, if not tuned.
+	if (!iTuned)
+	{
+		slVolumeRaw = 0;
+	}
+
 	// Limit the timbre value
 	if (slTimbre < 0)
 	{
@@ -980,6 +987,8 @@ void THEREMIN_1msTask(void)
 		//	CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H, slVolTim1Offset);
 		//	CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM2_AUTOTUNE_H, slVolTim2Offset);
 
+
+
 			if (USB_STICK_EmptyFileExists("CALVOL.CSV"))
 			{
 				VOLUME_CalibrationStart();
@@ -989,6 +998,8 @@ void THEREMIN_1msTask(void)
 				// activate output
 				bMute = 0;
 			}
+
+			iTuned = 1;
 		}
 	}
 
@@ -1073,6 +1084,8 @@ void THEREMIN_1sTask(void)
 
 	if (siAutotune == 0)
 	{
+		/*
+		// Debug values for volume
 		printf("%d %d %d %d %d %d %d %d\n",
 				(int)usVolTim1Period,
 				(int)usVolTim2Period,
@@ -1082,6 +1095,13 @@ void THEREMIN_1sTask(void)
 				(int)slTimbre,
 				(int) slVol1,
 				(int) slVol2
+				);
+		*/
+
+		// Debug values for pitch
+		printf("%d %d\n",
+				(int)usPitchPeriod,
+				(int)slPitchPeriodeFilt
 				);
 
 
