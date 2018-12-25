@@ -80,7 +80,6 @@ int32_t slVolTim1PeriodeFilt;	// low pass filtered period
 int32_t slVolTim2PeriodeFilt;	// low pass filtered period
 int32_t slVolTim1MeanPeriode;	// low pass filtered period
 int32_t slVolTim2MeanPeriode;	// low pass filtered period
-int32_t slVol1Raw;				// volume value
 int32_t slVol1;					// volume value
 int32_t slVol2;					// volume value
 int32_t slVolFiltL;				// volume value, filtered (internal filter value)
@@ -600,7 +599,8 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	fOscCorr = 1.0f +(1 -(fOscSin * fOscSin + fOscCos * fOscCos)*0.01f);
 	fOscCos *= fOscCorr;
 	fOscSin *= fOscCorr;
-	result = fabs(fOscSin) * (float)slVolFilt;
+	result = fOscSin * (float)slVolFilt;
+	//result = fabs(fOscSin) * (float)slVolFilt;
 	STOPWATCH_STOP();
 
 
@@ -1031,6 +1031,10 @@ void THEREMIN_1msTask(void)
 			{
 				VOLUME_CalibrationStart();
 			}
+			else if (USB_STICK_EmptyFileExists("CALPITCH.CSV"))
+			{
+				PITCH_CalibrationStart();
+			}
 			else
 			{
 				// activate output
@@ -1045,6 +1049,11 @@ void THEREMIN_1msTask(void)
 	if (iVolCal_active)
 	{
 		VOLUME_CalibrationTask();
+	}
+
+	if (iPitchCal_active)
+	{
+		PITCH_CalibrationTask();
 	}
 
 	// pitch scale pot
@@ -1147,7 +1156,7 @@ void THEREMIN_1sTask(void)
 
 
 
-		printf("Stopwatch %d\n", ulStopwatch);
+		//printf("Stopwatch %d\n", ulStopwatch);
 	}
 #endif
 }

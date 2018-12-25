@@ -1,8 +1,8 @@
 /**
  *  Project     timbremin
- *  @file		volume.c
+ *  @file		pitch.c
  *  @author		Gerd Bartelt - www.sebulli.com
- *  @brief		controls the volume antenna
+ *  @brief		controls the pitch antenna
  *
  *  @copyright	GPL3
  *
@@ -26,22 +26,22 @@
 #include "beep.h"
 #include "theremin.h"
 #include "audio_out.h"
-#include "volume.h"
+#include "pitch.h"
 #include "usb_stick.h"
 
 /* global variables  ------------------------------------------------------- */
-VOLUME_VolCalibrationType aCalibrationEntries[20+1]; // Array containing calibration values for each cm
+PITCH_PitchCalibrationType aCalibrationEntries[20+1]; // Array containing calibration values for each cm
 
 /* local variables  ------------------------------------------------------- */
-int iVolCal_delay;	// Delay timer between each cm steps
-int iVolVal_step;		// cm step
-int iVolCal_active = 0;  // Flag if calibration is active
+int iPitchCal_delay;	// Delay timer between each cm steps
+int iPitchVal_step;		// cm step
+int iPitchCal_active = 0;  // Flag if calibration is active
 
 /**
  * @brief Initialize the module
  *
  */
-void VOLUME_Init(void)
+void PITCH_Init(void)
 {
 
 }
@@ -50,11 +50,11 @@ void VOLUME_Init(void)
  * @brief Starts a new calibration sequence
  *
  */
-void VOLUME_CalibrationStart(void)
+void PITCH_CalibrationStart(void)
 {
-	iVolVal_step = 20;
-	iVolCal_delay = 8000; // begin with 8 seconds
-	iVolCal_active = 1;
+	iPitchVal_step = 20;
+	iPitchCal_delay = 8000; // begin with 8 seconds
+	iPitchCal_active = 1;
 }
 
 /**
@@ -62,29 +62,28 @@ void VOLUME_CalibrationStart(void)
  * 		  Call it every 1ms
  *
  */
-void VOLUME_CalibrationTask(void)
+void PITCH_CalibrationTask(void)
 {
-	iVolCal_delay--;
+	iPitchCal_delay--;
 
-	if ((iVolCal_delay == 7000) && (iVolVal_step == 20))
+	if ((iPitchCal_delay == 7000) && (iPitchVal_step == 20))
 	{
 		// Beep for "start calibration"
 		BEEP_Play(NOTE_D7,50,50);
 		BEEP_Play(NOTE_D7,50,50);
 	}
 
-	if (iVolCal_delay <= 0)
+	if (iPitchCal_delay <= 0)
 	{
-		iVolCal_delay = 4000; // time between 2 steps: 4sec
-		if (iVolVal_step >= 0)
+		iPitchCal_delay = 4000; // time between 2 steps: 4sec
+		if (iPitchVal_step >= 0)
 		{
-			aCalibrationEntries[iVolVal_step].cm = iVolVal_step;
-			aCalibrationEntries[iVolVal_step].vol1 = slVolTim1MeanPeriode;
-			aCalibrationEntries[iVolVal_step].vol2 = slVolTim2MeanPeriode;
+			aCalibrationEntries[iPitchVal_step].cm = iPitchVal_step * 2;
+			aCalibrationEntries[iPitchVal_step].pitch = slPitchPeriodeFilt - slPitchOffset;
 		}
-		iVolVal_step--;
+		iPitchVal_step--;
 
-		if (iVolVal_step >= 0)
+		if (iPitchVal_step >= 0)
 		{
 			// Beep for "next calibration step"
 			BEEP_Play(NOTE_D5,100,100);
@@ -92,18 +91,18 @@ void VOLUME_CalibrationTask(void)
 		}
 
 		// Calibration finished
-		if (iVolVal_step == -1)
+		if (iPitchVal_step == -1 )
 		{
 			// Beep for "calibration ends"
 			BEEP_Play(NOTE_A5,500,100);
-			iVolCal_delay = 1000; // Wait until "beep" is played
+			iPitchCal_delay = 1000; // Wait until "beep" is played
 		}
 
 		// Save result and end calibration
-		if (iVolVal_step == -2)
+		if (iPitchVal_step == -2)
 		{
-			USB_STICK_WriteVolCalFile("CALVOL.CSV", aCalibrationEntries);
-			iVolCal_active = 0;
+			USB_STICK_WritePitchCalFile("CALPITCH.CSV", aCalibrationEntries);
+			iPitchCal_active = 0;
 			// reactivate output
 			bMute = 0;
 		}

@@ -62,7 +62,10 @@ extern int16_t ssWaveTable[4 * 1024];
 extern e_waveform eWaveform;
 extern int32_t slVol1;
 extern int32_t slVol2;
-
+extern int32_t slPitchOffset; 		// offset value (result of auto-tune)
+extern int32_t slPitchPeriodeFilt;	// low pass filtered period
+extern int32_t slVolTim1MeanPeriode;	// low pass filtered period
+extern int32_t slVolTim2MeanPeriode;	// low pass filtered period
 
 
 /* Function prototypes ----------------------------------------------------- */

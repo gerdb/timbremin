@@ -206,7 +206,7 @@ int USB_STICK_EmptyFileExists(char* filename)
 
 
 /**
- * @brief Reads the WAV file
+ * @brief writes the volume calibration values to a file
  */
 void USB_STICK_WriteVolCalFile(char* filename, VOLUME_VolCalibrationType aCalibrationEntries[])
 {
@@ -219,7 +219,6 @@ void USB_STICK_WriteVolCalFile(char* filename, VOLUME_VolCalibrationType aCalibr
 		// Open the Wave file to be played
 		if (f_open(&USBHFile, filename, FA_WRITE) == FR_OK)
 		{
-			f_printf(&USBHFile, "H");
 			f_printf(&USBHFile,"Result volume antenna calibration:\n");
 			f_printf(&USBHFile,"VOL1;VOL2;cm\n");
 			for (int i=0; i<= 20; i++)
@@ -227,6 +226,34 @@ void USB_STICK_WriteVolCalFile(char* filename, VOLUME_VolCalibrationType aCalibr
 				f_printf(&USBHFile,"%d;%d;%d\n",
 						aCalibrationEntries[i].vol1,
 						aCalibrationEntries[i].vol2,
+						aCalibrationEntries[i].cm);
+			}
+	        f_close(&USBHFile);
+		}
+	}
+}
+
+
+/**
+ * @brief writes the volume calibration values to a file
+ */
+void USB_STICK_WritePitchCalFile(char* filename, PITCH_PitchCalibrationType aCalibrationEntries[])
+{
+	if (!bMounted)
+		return;
+
+
+	if (bMounted)
+	{
+		// Open the Wave file to be played
+		if (f_open(&USBHFile, filename, FA_WRITE) == FR_OK)
+		{
+			f_printf(&USBHFile,"Result pitch antenna calibration:\n");
+			f_printf(&USBHFile,"PITCH;cm\n");
+			for (int i=0; i<= 20; i++)
+			{
+				f_printf(&USBHFile,"%d;%d\n",
+						aCalibrationEntries[i].pitch,
 						aCalibrationEntries[i].cm);
 			}
 	        f_close(&USBHFile);
