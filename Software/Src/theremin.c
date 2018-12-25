@@ -58,6 +58,7 @@ int32_t slPitchPeriodeFilt;	// low pass filtered period
 // wavetablefrq = Audiofreq * 11184.81066 ...
 int32_t slPitch;			// pitch value
 float fPitch;			// pitch value
+float fPitchFrq;		// pitch frequency scaled to 96kHz task
 
 float fPitchScale = 1.0f;
 float fPitchShift = 1.0f;
@@ -90,6 +91,9 @@ int32_t slVolumeRaw;
 int32_t slVolume;
 int32_t slTimbre;
 
+float fOscSin = 0.0f;
+float fOscCos = 1.0f;
+float fOscCorr = 1.0f;
 
 float fVolScale = 1.0f;
 float fVolShift = 0.0f;
@@ -554,6 +558,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	floatint_ut u;
 	int iWavOut;
 
+
 	float result = 0.0f;
 
 
@@ -570,6 +575,36 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	usPitchLastCC = usPitchCC;
 
 
+
+	// cycles:21
+	fPitchFrq = ((float) (slPitchPeriodeFilt - slPitchOffset))*0.00000001f;
+
+
+	// cycles: 12
+	//fPitchFrq = fPitch * 0.00000001f;
+
+
+	// cycles: 10
+	if (fPitchFrq > 0.4f)
+	{
+		fPitchFrq = 0.4f;
+	}
+	if (fPitchFrq < -0.0f)
+	{
+		fPitchFrq = -0.0f;
+	}
+
+	STOPWATCH_START();
+	fOscSin += fPitchFrq * fOscCos;
+	fOscCos -= fPitchFrq * fOscSin;
+	fOscCorr = 1.0f +(1 -(fOscSin * fOscSin + fOscCos * fOscCos)*0.01f);
+	fOscCos *= fOscCorr;
+	fOscSin *= fOscCorr;
+	result = fabs(fOscSin) * (float)slVolFilt;
+	STOPWATCH_STOP();
+
+
+	/*
 	if (fPitch >= 1.0f)
 	{
 		// cycles: 59..62
@@ -581,14 +616,14 @@ inline void THEREMIN_96kHzDACTask_A(void)
 		tabsub = (u.ui & 0x0001FFFF) >> 2;
 		p1f = (float)ulPitchLinTable[tabix];
 		p2f = (float)ulPitchLinTable[tabix + 1];
-		fWavStepFilt = (p1f + (((p2f - p1f) * tabsub) * 0.000030518f /*1/32768*/));
+		fWavStepFilt = (p1f + (((p2f - p1f) * tabsub) * 0.000030518f )); // *1/32768
 		//fWavStepFilt += ((p1f + (((p2f - p1f) * tabsub) * 0.000007629394531f))- fWavStepFilt) * 0.0001f;
 		//fWavStepFilt = 81460152.0f;
 		ulWaveTableIndex += (uint32_t)(fWavStepFilt  );
 	}
+	*/
 
-
-
+	/*
 	// cycles: 29..38
 	// WAV output to audio DAC
 	tabix = ulWaveTableIndex >> 20; // use only the 12MSB of the 32bit counter
@@ -596,6 +631,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	p1 = ssWaveTable[tabix & iWavMask];
 	p2 = ssWaveTable[(tabix + 1) & iWavMask];
 	iWavOut = ((p1 + (((p2 - p1) * tabsub) / 256)) * slVolFilt / 1024);
+	*/
 	/*
 	if (bUseNonLinTab)
 	{
@@ -610,7 +646,10 @@ inline void THEREMIN_96kHzDACTask_A(void)
 		result = (float)iWavOut;
 	}
 	*/
-	result = (float)iWavOut;
+
+
+
+	//result = (float)iWavOut;
 
 	// cycles
 	// Low pass filter the output to avoid aliasing noise.
@@ -670,8 +709,7 @@ inline void THEREMIN_96kHzDACTask_Common(void)
 	}
 
 
-	// cycles: 34
-	fPitch = (float) ((slPitchPeriodeFilt - slPitchOffset) * 8);
+
 
 
 
@@ -998,7 +1036,8 @@ void THEREMIN_1msTask(void)
 				// activate output
 				bMute = 0;
 			}
-
+			fOscSin = 0.0f;
+			fOscCos = 1.0f;
 			iTuned = 1;
 		}
 	}
@@ -1099,13 +1138,16 @@ void THEREMIN_1sTask(void)
 		*/
 
 		// Debug values for pitch
+		/*
 		printf("%d %d\n",
-				(int)usPitchPeriod,
-				(int)slPitchPeriodeFilt
+				(int)(fPitchFrq*1000.0f),
+				(int)(slPitchPeriodeFilt - slPitchOffset)
 				);
+		*/
 
 
-		//printf("Stopwatch %d\n", ulStopwatch);
+
+		printf("Stopwatch %d\n", ulStopwatch);
 	}
 #endif
 }
