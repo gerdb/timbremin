@@ -40,7 +40,7 @@ int16_t ssWaveTable[4096];
 // Linearization tables for pitch an volume
 uint32_t ulVol1LinTable[1024];
 uint32_t ulVol2LinTable[1024];
-uint32_t ulPitchLinTable[2048];
+float fPitchLinTable[2048];
 
 float fNonLinTable[1024+1];
 
@@ -217,7 +217,6 @@ void THEREMIN_Init(void)
 void THEREMIN_Calc_PitchTable(void)
 {
 	floatint_ut u;
-	uint32_t val;
 	float f;
 
 	for (int32_t i = 0; i < 2048; i++)
@@ -231,17 +230,20 @@ void THEREMIN_Calc_PitchTable(void)
 		//	slWavStep = (int32_t) (u.f*10000000.0f);
 
 		f = expf(logf(u.f * 0.0000001f * fPitchShift) * fPitchScale)
-				* 10000000.0f;
+				* 0.1f;
 
-		// Convert it to integer
-		val = (uint32_t) (f);
-		// Limit it to maximum
-		if (val > 500000000)
+		// Limit the output values
+		if (f > 0.4f)
 		{
-			val = 500000000;
+			f = 0.4f;
 		}
+		if (f < 0.0f)
+		{
+			f = 0.0f;
+		}
+
 		// Fill the pitch table
-		ulPitchLinTable[i] = val;
+		fPitchLinTable[i] = f;
 	}
 }
 
@@ -552,12 +554,9 @@ void THEREMIN_Calc_WavTable(void)
  */
 inline void THEREMIN_96kHzDACTask_A(void)
 {
-	int32_t p1, p2, tabix, tabsub;
-	float p1f, p2f;
+	int32_t tabix;
+	float p1f, p2f, tabsub;
 	floatint_ut u;
-	int iWavOut;
-
-
 	float result = 0.0f;
 
 
@@ -576,22 +575,29 @@ inline void THEREMIN_96kHzDACTask_A(void)
 
 
 	// cycles:21
-	fPitchFrq = ((float) (slPitchPeriodeFilt - slPitchOffset))*0.00000001f;
+	fPitch = ((float) (slPitchPeriodeFilt - slPitchOffset));//*0.00000001f;
 
 
-	// cycles: 12
-	//fPitchFrq = fPitch * 0.00000001f;
 
-
-	// cycles: 10
-	if (fPitchFrq > 0.4f)
+	if (fPitch >= 1.0f)
 	{
-		fPitchFrq = 0.4f;
+		// cycles:
+		// fast pow approximation by LUT with interpolation
+		// float bias: 127, so 127 << 23bit mantissa is: 0x3F800000
+		// We use (5 bit of) the exponent and 6 bit of the mantissa
+		u.f = fPitch;
+		tabix = ((u.ui - 0x3F800000) >> 17);
+//		tabsub = (u.ui & 0x0001FFFF) >> 2;
+		tabsub = (u.ui & 0x0001FFFF) *  0.000007629f; // =2^-18
+		p1f = fPitchLinTable[tabix];
+		p2f = fPitchLinTable[tabix + 1];
+		fPitchFrq = (p1f + (((p2f - p1f) * tabsub)));
 	}
-	if (fPitchFrq < -0.0f)
+	else
 	{
-		fPitchFrq = -0.0f;
+		fPitchFrq = 0.0f;
 	}
+
 
 	STOPWATCH_START();
 	fOscSin += fPitchFrq * fOscCos;
@@ -605,22 +611,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 
 
 	/*
-	if (fPitch >= 1.0f)
-	{
-		// cycles: 59..62
-		// fast pow approximation by LUT with interpolation
-		// float bias: 127, so 127 << 23bit mantissa is: 0x3F800000
-		// We use (5 bit of) the exponent and 6 bit of the mantissa
-		u.f = fPitch;
-		tabix = ((u.ui - 0x3F800000) >> 17);
-		tabsub = (u.ui & 0x0001FFFF) >> 2;
-		p1f = (float)ulPitchLinTable[tabix];
-		p2f = (float)ulPitchLinTable[tabix + 1];
-		fWavStepFilt = (p1f + (((p2f - p1f) * tabsub) * 0.000030518f )); // *1/32768
-		//fWavStepFilt += ((p1f + (((p2f - p1f) * tabsub) * 0.000007629394531f))- fWavStepFilt) * 0.0001f;
-		//fWavStepFilt = 81460152.0f;
-		ulWaveTableIndex += (uint32_t)(fWavStepFilt  );
-	}
+
 	*/
 
 	/*
