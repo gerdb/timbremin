@@ -70,13 +70,16 @@ void POTS_Init(void)
 		strPots[i].usStabilized = 0;
 		strPots[i].iStabilizeCnt = 0;
 		strPots[i].bChanged = 1;
-		strPots[i].iMaxValue = 4096;
+		strPots[i].iMaxValue = 1000;
 		strPots[i].iScaledValue = 0;
 		strPots[i].iScaledValueOld = 0;
+		strPots[i].eConfigEntry = CFG_E_NONE;
 	}
 
 	// Start with -1, so in the next task, the first value will be 0
 	iPotTask = -1;
+
+	CONFIG_Assign_All_Pots();
 }
 
 
@@ -133,36 +136,33 @@ void POTS_1msTask(void)
 
 
 		}
+		break;
+
+	case 2:
+
+		for (int i=0;i<ADC_CHANNELS ; i++)
+		{
+			if (strPots[i].bChanged && strPots[i].eConfigEntry != CFG_E_NONE)
+			{
+				// Update the configuration value with the potentiometer value
+				aConfigWorkingSet[strPots[i].eConfigEntry].iVal = strPots[i].iScaledValue;
+				strPots[i].bChanged = 0;
+			}
+		}
 		// Next iPotTask will be 0
 		iPotTask = -1;
 		break;
 	}
 }
 
-
 /**
- * @brief Get the scaled pot value
- *
- * @channel Potentiometer
- * @return the scaled pot value
+ * @brief Assigns a potentiometer to a configuration entry
  */
-int POTS_GetScaledValue(int channel)
+void POTS_Assign(int pot, CONFIG_eConfigEntry configurationEntry)
 {
-	return strPots[channel].iScaledValue;
-}
-
-/**
- * @brief returns the bChanged flag
- *
- * @channel Potentiometer
- * @return 1, if the pot value has changed
- */
-int POTS_HasChanged(int channel)
-{
-	int retval = strPots[channel].bChanged;
-
-	strPots[channel].bChanged = 0;
-
-	return retval;
-
+	if (pot >= 0 && pot <ADC_CHANNELS)
+	{
+		strPots[pot].eConfigEntry = configurationEntry;
+		strPots[pot].iMaxValue = aConfigWorkingSet[configurationEntry].iMaxVal;
+	}
 }

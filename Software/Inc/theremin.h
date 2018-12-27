@@ -82,7 +82,8 @@ void THEREMIN_Task_Capture_VOL1(void);
 void THEREMIN_Task_Capture_VOL2(void);
 void THEREMIN_Task_Calculate_VOL1(void);
 void THEREMIN_Task_Calculate_VOL2(void);
-void THEREMIN_Task_Volume_Timbre(void);
+void THEREMIN_Task_Volume(void);
+void THEREMIN_Task_Timbre(void);
 void THEREMIN_Task_Volume_Nonlin(void);
 
 

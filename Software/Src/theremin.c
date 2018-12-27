@@ -156,8 +156,9 @@ void THEREMIN_Init(void)
 
 	// Fill the task table
 	taskTable[0] = THEREMIN_Task_Select_VOL1;
-	taskTable[2] = THEREMIN_Task_Volume_Timbre;
-	taskTable[4] = THEREMIN_Task_Volume_Nonlin;
+	taskTable[2] = THEREMIN_Task_Volume;
+	taskTable[6] = THEREMIN_Task_Timbre;
+	taskTable[8] = THEREMIN_Task_Volume_Nonlin;
 	taskTable[16] = THEREMIN_Task_Activate_VOL1;
 	for (i = 18; i< 46; i+=2)
 	{
@@ -187,8 +188,6 @@ void THEREMIN_Init(void)
 	// Get the VolumeShift value from the flash configuration
 	fVolShift = ((float) (CONFIG.VolumeShift)) * 0.1f + 11.5f;
 
-	// 8 Waveforms
-	strPots[POT_WAVEFORM].iMaxValue = 8;
 
 	// Calculate the LUT for volume and pitch
 	THEREMIN_Calc_VolumeTable(VOLSEL_1);
@@ -233,9 +232,9 @@ void THEREMIN_Calc_PitchTable(void)
 				* 0.1f;
 
 		// Limit the output values
-		if (f > 0.4f)
+		if (f > 0.5f)
 		{
-			f = 0.4f;
+			f = 0.5f;
 		}
 		if (f < 0.0f)
 		{
@@ -485,7 +484,7 @@ void THEREMIN_Calc_WavTable(void)
 		{
 			ssWaveTable[i] = 0;
 		}
-		USB_STICK_ReadFiles();
+		USB_STICK_ReadWAVFiles();
 		break;
 
 	default:
@@ -599,7 +598,6 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	}
 
 
-	STOPWATCH_START();
 	fOscSin += fPitchFrq * fOscCos;
 	fOscCos -= fPitchFrq * fOscSin;
 	fOscCorr = 1.0f +(1 -(fOscSin * fOscSin + fOscCos * fOscCos)*0.01f);
@@ -607,8 +605,18 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	fOscSin *= fOscCorr;
 	result = fOscSin * (float)slVolFilt;
 	//result = fabs(fOscSin) * (float)slVolFilt;
-	STOPWATCH_STOP();
 
+/*	if (fOscCos > 1.0f)
+	{
+		fOscCos = 1.0f;
+		fOscSin = 0.0f;
+	}
+	if (fOscCos < -1.0f)
+	{
+		fOscCos = -1.0f;
+		fOscSin = 0.0f;
+	}
+*/
 
 	/*
 
@@ -837,17 +845,20 @@ void THEREMIN_Task_Capture_VOL2(void)
  */
 void THEREMIN_Task_Calculate_VOL1(void)
 {
-	if (slVolTim1PeriodeFilt != 0)
+	STOPWATCH_START();
+
+	if (slVolTim1PeriodeFilt > 0)
 	{
 		slVolTim1MeanPeriode = slVolTim1PeriodeFilt / slVolTim1PeriodeFilt_cnt;
-		slVol1 = ((CONFIG_VOL1_NUMERATOR * slVolTim1PeriodeFilt_cnt) /
-				(slVolTim1PeriodeFilt + slVolTim1PeriodeFilt_cnt * CONFIG_VOL1_OFFSET_A))
-				- CONFIG_VOL1_OFFSET_B;
+		slVol1 = ((aConfigWorkingSet[CFG_E_VOL1_NUMERATOR].iVal * slVolTim1PeriodeFilt_cnt) /
+				(slVolTim1PeriodeFilt + slVolTim1PeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL1_OFFSET_A].iVal))
+				- aConfigWorkingSet[CFG_E_VOL1_OFFSET_B].iVal;
 
 		// Prepare for next filter interval
 		slVolTim1PeriodeFilt_cnt = 0;
 		slVolTim1PeriodeFilt = 0;
 	}
+	STOPWATCH_STOP();
 
 	// Limit it
 	if (slVol1 < 0)
@@ -865,12 +876,12 @@ void THEREMIN_Task_Calculate_VOL1(void)
  */
 void THEREMIN_Task_Calculate_VOL2(void)
 {
-	if (slVolTim2PeriodeFilt != 0)
+	if (slVolTim2PeriodeFilt > 0)
 	{
 		slVolTim2MeanPeriode = slVolTim2PeriodeFilt / slVolTim2PeriodeFilt_cnt;
-		slVol2 = ((CONFIG_VOL2_NUMERATOR * slVolTim2PeriodeFilt_cnt) /
-				(slVolTim2PeriodeFilt + slVolTim2PeriodeFilt_cnt * CONFIG_VOL2_OFFSET_A))
-				- CONFIG_VOL2_OFFSET_B;
+		slVol2 = ((aConfigWorkingSet[CFG_E_VOL2_NUMERATOR].iVal * slVolTim2PeriodeFilt_cnt) /
+				(slVolTim2PeriodeFilt + slVolTim2PeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL2_OFFSET_A].iVal))
+				- aConfigWorkingSet[CFG_E_VOL2_OFFSET_B].iVal;
 
 		// Prepare for next filter interval
 		slVolTim2PeriodeFilt_cnt = 0;
@@ -887,16 +898,18 @@ void THEREMIN_Task_Calculate_VOL2(void)
 		slVol2 = 1024;
 	}
 }
-
 /**
- * Calculate the mean volume and timbre value from VOL1 and VOL2
+ * Calculate the mean volume from VOL1 and VOL2
  */
-void THEREMIN_Task_Volume_Timbre(void)
+void THEREMIN_Task_Volume(void)
 {
-	// Volume is the mean value of VOL1 and VOL2
-	slVolumeRaw = (slVol1 + slVol2) / 2;
-	// Timbre is the difference between VOL1 and VOL2 in the range of 0..128
-	slTimbre = (slVol1 - slVol2) + 128;
+
+	if ((slVolTim1MeanPeriode + slVolTim2MeanPeriode) > 0)
+	{
+		slVolumeRaw = ((aConfigWorkingSet[CFG_E_VOL12_NUMERATOR].iVal) /
+				(slVolTim1MeanPeriode + slVolTim2MeanPeriode + aConfigWorkingSet[CFG_E_VOL12_OFFSET_A].iVal))
+				- aConfigWorkingSet[CFG_E_VOL12_OFFSET_B].iVal;
+	}
 
 	// Limit the volume value
 	if (slVolumeRaw < 0)
@@ -913,6 +926,15 @@ void THEREMIN_Task_Volume_Timbre(void)
 	{
 		slVolumeRaw = 0;
 	}
+}
+
+/**
+ * Calculate the timbre value from VOL1 and VOL2
+ */
+void THEREMIN_Task_Timbre(void)
+{
+	// Timbre is the difference between VOL1 and VOL2 in the range of 0..128
+	slTimbre = (slVol1 - slVol2) + 128;
 
 	// Limit the timbre value
 	if (slTimbre < 0)
@@ -1047,30 +1069,34 @@ void THEREMIN_1msTask(void)
 		PITCH_CalibrationTask();
 	}
 
-	// pitch scale pot
-	if (POTS_HasChanged(POT_PITCH_SCALE))
+	// pitch scale configuration
+	if (aConfigWorkingSet[CFG_E_PITCH_SCALE].bHasChanged)
 	{
-		// from 2^0.5 ... 2^2.0
-		// 2^((POT-2048)/1024)
+		// from 2^-2.0 ... 2^2.0
+		// from 0.25 .. 4
+		// 2^((iCFG_PitchScale-500)/250)
 		fPitchScale = powf(2,
-				((float) (POTS_GetScaledValue(POT_PITCH_SCALE) - 2048))
-						* 0.000976562f /* 1/1024 */);
+				((float) (aConfigWorkingSet[CFG_E_PITCH_SCALE].iVal - 500))
+						* 0.004f /* 1/250 */);
 
 		// Request the calculation of a new pitch table
 		bReqCalcPitchTable = 1;
+		aConfigWorkingSet[CFG_E_PITCH_SCALE].bHasChanged = 0;
 	}
 
-	// pitch shift pot
-	if (POTS_HasChanged(POT_PITCH_SHIFT))
+	// pitch shift configuration
+	if (aConfigWorkingSet[CFG_E_PITCH_SHIFT].bHasChanged)
 	{
-		// from 2^0.25 ... 2^4.0
-		// 2^((POT-2048)/1024)
+		// from 2^-4.0 ... 2^4.0
+		// from 0.0625 .. 16
+		// 2^((iCFG_PitchShift-500)/125)
 		fPitchShift = powf(2,
-				((float) (POTS_GetScaledValue(POT_PITCH_SHIFT) - 2048))
-						* 0.001953125f /* 1/512 */);
+				((float) (aConfigWorkingSet[CFG_E_PITCH_SHIFT].iVal - 500))
+						* 0.008f /* 1/125 */);
 
 		// Request the calculation of a new pitch table
 		bReqCalcPitchTable = 1;
+		aConfigWorkingSet[CFG_E_PITCH_SHIFT].bHasChanged = 0;
 	}
 
 	// Is it necessary to recalculate the pitch table?
@@ -1078,7 +1104,7 @@ void THEREMIN_1msTask(void)
 	{
 		THEREMIN_Calc_PitchTable();
 	}
-
+/*
 	// volume scale pot
 	if (POTS_HasChanged(POT_VOL_SCALE))
 	{
@@ -1086,7 +1112,7 @@ void THEREMIN_1msTask(void)
 		// 2^((POT-2048)/1024)
 		fVolScale = powf(2,
 				((float) (POTS_GetScaledValue(POT_VOL_SCALE) - 2048))
-						* 0.000976562f /* 1/1024 */);
+						* 0.000976562f );// 1/1024
 		THEREMIN_Calc_VolumeTable(VOLSEL_1);
 		THEREMIN_Calc_VolumeTable(VOLSEL_2);
 	}
@@ -1097,7 +1123,7 @@ void THEREMIN_1msTask(void)
 		eWaveform = POTS_GetScaledValue(POT_WAVEFORM);
 		THEREMIN_Calc_WavTable();
 	}
-
+*/
 	if (siAutotune == 0)
 	{
 		// fWavStepFilt * 96kHz * (1 >> 20 / 1024(WaveTable length))

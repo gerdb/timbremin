@@ -25,6 +25,7 @@
 #include "fatfs.h"
 #include "usb_host.h"
 #include "theremin.h"
+#include "config.h"
 #include "usb_stick.h"
 
 /* Variable used by FatFs */
@@ -175,7 +176,7 @@ void USB_STICK_ReadWAVFile(char* filename)
 /**
  * @brief Reads the WAV file
  */
-void USB_STICK_ReadFiles(void)
+void USB_STICK_ReadWAVFiles(void)
 {
 	if (bMounted && (eWaveform == USBSTICK) && !bWavLoaded)
 	{
@@ -184,6 +185,113 @@ void USB_STICK_ReadFiles(void)
 		bWavLoaded = 1;
 	}
 }
+/**
+ * @brief Reads the Configuration file
+ */
+void USB_STICK_ReadConfigFile(void)
+{
+	int eqfound;
+	char c;
+	int i,ii;
+	int eol;
+	char sPartLeft[32];
+	char sPartRight[32];
+	int index = 0;
+
+	// File on stick?
+	if (f_open(&USBHFile, "CONFIG.TXT", FA_READ) == FR_OK)
+	{
+		// Reset the configuration to default
+		CONFIG_FillWithDefault();
+
+		// Read the *.c file line by line
+		while (f_gets(sLine, LINELENGTH, &USBHFile) != 0)
+		{
+
+			// Count the "=" signs
+			eqfound = 0;
+			i = 0;
+			ii= 0;
+			eol = 0;
+			index = -1;
+
+			do
+			{
+				c=sLine[i];
+				// End of line?
+				if (c== '\0' || c== '\''|| c== '/' || c== '\r' || c== '\n' || ii >=30 )
+				{
+					eol = 1;
+				}
+				else
+				{
+					if(c== '=')
+					{
+						eqfound++;
+						ii= 0;
+					}
+					else
+					{
+						// Value with index in brakets
+						if (c== '[')
+						{
+							if (sLine[i+2] == ']')
+							{
+								index = sLine[i+1]-'0';
+								i+=2;
+							}
+							else
+							{
+								eol = 1;
+								// mark it as invalid
+								eqfound = 0;
+							}
+						}
+						else
+						{
+							// Ignore spaced
+							if (c!= ' ')
+							{
+								// On the left or right side of the "="?
+								if (eqfound == 0)
+								{
+									sPartLeft[ii]=c;
+									sPartLeft[ii+1]='\0';
+									ii++;
+								}
+								if (eqfound == 1)
+								{
+									sPartRight[ii]=c;
+									sPartRight[ii+1]='\0';
+									ii++;
+								}
+							}
+						}
+					}
+				}
+				i++;
+			} while (!eol);
+			if (eqfound)
+			{
+				// Assign the potentiometer
+				if (strcmp(sPartLeft, "POT") == 0)
+				{
+					CONFIG_ConfigurePot(index, sPartRight);
+				}
+				// Set the parameter
+				else
+				{
+					CONFIG_ConfigureParameter(sPartLeft, index, atoi(sPartRight));
+				}
+			}
+		}
+		// Reload the current set
+		CONFIG_Update_Set();
+		// Close the file
+        f_close(&USBHFile);
+	}
+}
+
 
 /**
  * @brief Reads the WAV file
@@ -271,7 +379,8 @@ void USB_STICK_Connected(void)
 	if (f_mount(&USBHFatFS, (TCHAR const*) USBHPath, 0) == FR_OK)
 	{
 		bMounted = 1;
-		USB_STICK_ReadFiles();
+		USB_STICK_ReadWAVFiles();
+		USB_STICK_ReadConfigFile();
 	}
 }
 

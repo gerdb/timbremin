@@ -97,9 +97,6 @@ void AUDIO_OUT_Init(void)
 
 		    hi2s3.Instance->DR = 0;
 	  }
-
-	  // Set the volume pot from 0.. 85
-	  strPots[POT_VOLUME_OUT].iMaxValue = 85;
 }
 
 /*
@@ -108,8 +105,8 @@ void AUDIO_OUT_Init(void)
  */
 void AUDIO_OUT_1msTask(void)
 {
-	if (POTS_HasChanged(POT_VOLUME_OUT)) {
-		float vol =  ((float)POTS_GetScaledValue(POT_VOLUME_OUT))/85.0f;
+	if (aConfigWorkingSet[CFG_E_VOLUME_OUT].bHasChanged) {
+		float vol =  ((float)aConfigWorkingSet[CFG_E_VOLUME_OUT].iVal)*0.001f;
 		vol = powf(vol, 0.2f);
 		pAudioDrv->SetVolume(AUDIO_I2C_ADDRESS,vol * 85);
 	}

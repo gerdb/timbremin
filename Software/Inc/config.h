@@ -28,6 +28,7 @@
 #define VERSION_MINOR	0
 #define VERSION_BUILD	1
 
+#define SETS 8
 
 // Virtual EEProm addresses. 32bit values need 2 addresses
 #define EEPROM_ADDR_PITCH_AUTOTUNE_H	0
@@ -40,6 +41,38 @@
 
 
 /* Types ---------------------------------------------------------------- */
+typedef struct
+{
+	int32_t iVal;
+	int32_t	iMaxVal;
+	int32_t	iFactor;
+	int bHasChanged;
+	int bIsGlobal;
+}CONFIG_sConfigEntry;
+
+typedef enum
+{
+	CFG_E_SEL_SET,
+	CFG_E_VOL1_NUMERATOR,
+	CFG_E_VOL1_OFFSET_A,
+	CFG_E_VOL1_OFFSET_B,
+	CFG_E_VOL2_NUMERATOR,
+	CFG_E_VOL2_OFFSET_A,
+	CFG_E_VOL2_OFFSET_B,
+	CFG_E_VOL12_NUMERATOR,
+	CFG_E_VOL12_OFFSET_A,
+	CFG_E_VOL12_OFFSET_B,
+	CFG_E_VOLUME_OUT,
+	CFG_E_PITCH_SHIFT,
+	CFG_E_PITCH_SCALE,
+	CFG_E_VOLUME_SHIFT,
+	CFG_E_VOLUME_SCALE,
+
+	CFG_E_ENTRIES
+}CONFIG_eConfigEntry;
+
+#define CFG_E_NONE CFG_E_ENTRIES
+
 typedef struct
 {
   int32_t   Version;
@@ -114,17 +147,19 @@ typedef struct
 
 /* global variables ----------------------------------------------------- */
 volatile extern const CONFIG_TypeDef __attribute__((section (".myConfigSection"))) CONFIG;
-
-// Configuration parameters for fast access
-extern int CONFIG_VOL1_NUMERATOR;
-extern int CONFIG_VOL1_OFFSET_A;
-extern int CONFIG_VOL1_OFFSET_B;
-extern int CONFIG_VOL2_NUMERATOR;
-extern int CONFIG_VOL2_OFFSET_A;
-extern int CONFIG_VOL2_OFFSET_B;
+extern int32_t aConfigValues[SETS][CFG_E_ENTRIES];
+extern CONFIG_sConfigEntry aConfigWorkingSet[CFG_E_ENTRIES];
 
 /* Function prototypes ----------------------------------------------------- */
 void CONFIG_Init(void);
+void CONFIG_FillWithDefault(void);
+void CONFIG_Select_Set(int set);
+void CONFIG_Assign_All_Pots(void);
+void CONFIG_ConfigurePot(int index, char* cfgname);
+void CONFIG_ConfigureParameter(char* cfgname, int index, int val);
+void CONFIG_Update_Set(void);
+CONFIG_eConfigEntry CONFIG_NameToEnum(char* name);
+
 void CONFIG_Write_SLong(int addr, int32_t value);
 int32_t CONFIG_Read_SLong(int addr);
 

@@ -24,19 +24,22 @@
 #ifndef POTS_H_
 #define POTS_H_
 
+
+#include "config.h"
 #define ADC_CHANNELS 9
 #define POT_STAB_THERESHOLD 40
 #define POT_STAB_TIME 10
+#define AMOUNT_POTS ADC_CHANNELS
 
 
 /* Constants ------------------------------------------------------------ */
-
+/*
 #define POT_VOLUME_OUT	0
 #define POT_PITCH_SCALE	1
 #define POT_PITCH_SHIFT	2
 #define POT_VOL_SCALE	3
 #define POT_WAVEFORM	4
-
+*/
 /* Types ---------------------------------------------------------------- */
 typedef struct
 {
@@ -47,6 +50,7 @@ typedef struct
   int   	iMaxValue;
   int   	iScaledValue;
   int   	iScaledValueOld;
+  CONFIG_eConfigEntry eConfigEntry;
 }POTS_PotTypeDef;
 
 
@@ -57,7 +61,6 @@ extern POTS_PotTypeDef strPots[];
 /* Function prototypes ----------------------------------------------------- */
 void POTS_Init(void);
 void POTS_1msTask(void);
-int POTS_GetScaledValue(int channel);
-int POTS_HasChanged(int channel);
+void POTS_Assign(int pot, CONFIG_eConfigEntry configurationEntry);
 
 #endif /* POTS_H_ */
