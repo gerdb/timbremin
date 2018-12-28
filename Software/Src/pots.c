@@ -164,5 +164,7 @@ void POTS_Assign(int pot, CONFIG_eConfigEntry configurationEntry)
 	{
 		strPots[pot].eConfigEntry = configurationEntry;
 		strPots[pot].iMaxValue = aConfigWorkingSet[configurationEntry].iMaxVal;
+		strPots[pot].iScaledValue = (strPots[pot].usStabilized * strPots[pot].iMaxValue) / 4096;
+		strPots[pot].bChanged = 1;
 	}
 }

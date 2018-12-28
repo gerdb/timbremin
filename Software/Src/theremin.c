@@ -229,7 +229,7 @@ void THEREMIN_Calc_PitchTable(void)
 		//	slWavStep = (int32_t) (u.f*10000000.0f);
 
 		f = expf(logf(u.f * 0.0000001f * fPitchShift) * fPitchScale)
-				* 0.1f;
+				* 0.05f;
 
 		// Limit the output values
 		if (f > 0.5f)
@@ -598,6 +598,8 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	}
 
 
+	fOscSin += fPitchFrq * fOscCos;
+	fOscCos -= fPitchFrq * fOscSin;
 	fOscSin += fPitchFrq * fOscCos;
 	fOscCos -= fPitchFrq * fOscSin;
 	fOscCorr = 1.0f +(1 -(fOscSin * fOscSin + fOscCos * fOscCos)*0.01f);
