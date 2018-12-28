@@ -49,14 +49,11 @@ typedef struct
 
 /* global variables -------------------------------------------------------- */
 extern int bMounted;
-extern int bWavLoaded;
 
 /* Function prototypes ----------------------------------------------------- */
 void USB_STICK_Connected(void);
 void USB_STICK_Disconnected(void);
 void USB_STICK_ReadCFile(char* filename);
-void USB_STICK_ReadWAVFile(char* filename);
-void USB_STICK_ReadWAVFiles(void);
 void USB_STICK_ReadConfigFile(void);
 int USB_STICK_EmptyFileExists(char* filename);
 void USB_STICK_WriteVolCalFile(char* filename, VOLUME_VolCalibrationType aCalibrationEntries[]);

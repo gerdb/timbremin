@@ -87,12 +87,10 @@ void THEREMIN_Task_Timbre(void);
 void THEREMIN_Task_Volume_Nonlin(void);
 
 
-
+void THEREMIN_Calc_PitchTable(void);
+void THEREMIN_Calc_NonLinTable(void);
 void THEREMIN_1msTask(void);
 void THEREMIN_1sTask(void);
-void THEREMIN_Calc_VolumeTable(e_vol_sel vol_sel);
-void THEREMIN_Calc_PitchTable(void);
-void THEREMIN_Calc_WavTable(void);
 
 
 

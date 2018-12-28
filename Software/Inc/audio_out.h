@@ -33,8 +33,8 @@
 
 /* Global variables -------------------------------------------------------- */
 extern int bMute;
-extern uint16_t usDACValueR;
-extern uint16_t usDACValueL;
+extern int16_t ssDACValueR;
+extern int16_t ssDACValueL;
 
 /* Function prototypes ----------------------------------------------------- */
 void AUDIO_OUT_Init();

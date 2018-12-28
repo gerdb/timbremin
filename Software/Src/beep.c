@@ -140,7 +140,7 @@ void BEEP_Task(void)
 		);
 
 	// Apply the beep only to the ear phone
-	usDACValueR = (int16_t)((usBeepWave[(iBeepTimeCnt/1024) & 0x000003FF] * iADSRCnt) / 16384);
+	ssDACValueR = (int16_t)((usBeepWave[(iBeepTimeCnt/1024) & 0x000003FF] * iADSRCnt) / 16384);
 
 }
 

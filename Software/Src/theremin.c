@@ -34,15 +34,11 @@
 #include <math.h>
 #include <stdlib.h>
 
-uint16_t usCC[8];
-int16_t ssWaveTable[4096];
 
 // Linearization tables for pitch an volume
-uint32_t ulVol1LinTable[1024];
-uint32_t ulVol2LinTable[1024];
-float fPitchLinTable[2048];
+float fPitchLinTable[2048+1];
 
-float fNonLinTable[1024+1];
+uint16_t usNonLinTable[2048+1];
 
 // Pitch
 uint16_t usPitchCC;			// value of capture compare register
@@ -50,12 +46,6 @@ uint16_t usPitchLastCC; 	// last value (last task)
 uint16_t usPitchPeriod;		// period of oscillator
 int32_t slPitchOffset; 		// offset value (result of auto-tune)
 int32_t slPitchPeriodeFilt;	// low pass filtered period
-// Divider = 2exp(20)
-// Wavetable: 4096
-// DAC: 48kHz
-// Audiofreq = 48000Hz * wavetablefrq / (2exp(20)) / 1024 tableentries * 2(channel left & right);
-// wavetablefrq = Audiofreq / 48000Hz * 2exp(20) * 1024 /2
-// wavetablefrq = Audiofreq * 11184.81066 ...
 int32_t slPitch;			// pitch value
 float fPitch;			// pitch value
 float fPitchFrq;		// pitch frequency scaled to 96kHz task
@@ -128,6 +118,7 @@ e_vol_sel vol_sel = VOLSEL_NONE;
 
 int32_t test1;
 int32_t test2;
+int test3;
 int task = 0;
 
 
@@ -190,10 +181,8 @@ void THEREMIN_Init(void)
 
 
 	// Calculate the LUT for volume and pitch
-	THEREMIN_Calc_VolumeTable(VOLSEL_1);
-	THEREMIN_Calc_VolumeTable(VOLSEL_2);
 	THEREMIN_Calc_PitchTable();
-	THEREMIN_Calc_WavTable();
+	THEREMIN_Calc_NonLinTable();
 
 	HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_RESET);
@@ -246,305 +235,26 @@ void THEREMIN_Calc_PitchTable(void)
 	}
 }
 
-
-
 /**
- * @brief Recalculates the volume LUT
+ * @brief Recalculates the non-linearity LUT
  *
  */
-void THEREMIN_Calc_VolumeTable(e_vol_sel vol_sel)
+void THEREMIN_Calc_NonLinTable(void)
 {
-	floatint_ut u;
-	uint32_t val;
-	float f;
+	float f,fmin,fmax, fscale;
+	float fNonLin = 10.0f;
 
-	for (int32_t i = 0; i < 1024; i++)
+	fmin = expf((float)(   0-1024)*0.000976562f * fNonLin);
+	fmax = expf((float)(2048-1024)*0.000976562f * fNonLin);
+	fscale = 1.0f/(fmax-fmin);
+	for (int32_t i = 0; i <= 2048; i++)
 	{
-		// Calculate back the x values of the table
-		u.ui = (i << 17) + 0x3F800000;
-		// And now calculate the precise log2 value instead of only the approximation
-		// used for x values in THEREMIN_96kHzDACTask(void) when using the table.
-		f = (16.0f /*fVolShift*/ - log2f(u.f)) * 64.0f ;/* * fVolScale*/;
-
-		//Scale it to 20cm and then to 1024 units
-		f = pow(f,2.7450703915f) * 0.0000007370395f * 1024.0f/20.0f;
-		if (vol_sel == VOLSEL_2)
-		{
-			f*= 1.1;
-		}
-		// Limit the float value before we square it;
-		if (f > 1024.0f)
-			f = 1024.0f;
-		if (f < 0.0f)
-			f = 0.0f;
-
-		// Square the volume value
-		val = (uint32_t)f;//((f * f) * 0.000976562f); /* =1/1024 */
-		;
-		// Limit it to maximum
-		if (val > 1023)
-		{
-			val = 1023;
-		}
-
-		// Fill the volume table
-		if (vol_sel == VOLSEL_1)
-		{
-			ulVol1LinTable[i] = val;
-		}
-		else if (vol_sel == VOLSEL_2)
-		{
-			ulVol2LinTable[i] = val;
-		}
+		// Calculate the nonlinear function
+		f = fscale * (expf((float)(i-1024)*0.000976562f * fNonLin) - fmin );
+		// Fill the non-linearity LUT
+		usNonLinTable[i] = f*65535.0f;
 	}
 }
-
-
-/**
- * @brief Sets the length ov the wave LUT
- * @length of the LUT, only 2expN values <= 4096 are valid
- *
- */
-void THEREMIN_SetWavelength(int length)
-{
-	iWavLength = length;
-	iWavMask = length - 1;
-}
-
-/**
- * @brief Recalculates the wave LUT
- *
- */
-void THEREMIN_Calc_WavTable(void)
-{
-	int bLpFilt = 0;
-	float a0=0.0f;
-	float a1=0.0f;
-	float a2=0.0f;
-	float b1=0.0f;
-	float b2=0.0f;
-
-	// Mute as long as new waveform is being calculated
-	bMute = 1;
-	THEREMIN_SetWavelength(4096);
-	bUseNonLinTab = 0;
-
-	if (eWaveform != USBSTICK)
-	{
-		bWavLoaded = 0;
-	}
-
-	switch (eWaveform)
-	{
-	case SINE:
-		for (int i = 0; i < 1024; i++)
-		{
-			ssWaveTable[i] = 32767 * sin((i * 2 * M_PI) / 1024.0f);
-		}
-		THEREMIN_SetWavelength(1024);
-		break;
-
-	case CAT:
-		for (int i = 0; i < 4096; i++)
-		{
-			if (i < 1024)
-			{
-				ssWaveTable[i] = 0;
-			}
-			else
-			{
-				ssWaveTable[i] = 32767 * sin((i * 2 * M_PI) / 1024.0f);
-			}
-		}
-		// http://www.earlevel.com/main/2013/10/13/biquad-calculator-v2/
-		// 48kHz, Fc=60, Q=0.7071, A=0dB
-
-		a0 = 0.00001533600755608856f;
-		a1 = 0.00003067201511217712f;
-		a2 = 0.00001533600755608856f;
-		b1 = -1.9888928005576803f;
-		b2 = 0.9889541445879048f;
-		bLpFilt = 1;
-		break;
-
-	case COSPULSE:
-		for (int i = 0; i < 4096; i++)
-		{
-			if (i < 2048)
-			{
-				ssWaveTable[i] = - 32767 * cos((i * 2 * M_PI) / 2048.0f);
-			}
-			else
-			{
-				ssWaveTable[i] = -32767;
-			}
-		}
-		break;
-
-
-	case HARMON:
-		for (int i = 0; i < 4096; i++)
-		{
-			ssWaveTable[i] = 16384 * (0.8f*sin((i * 2.0f * M_PI) / 1024.0f) + 1.0f * sin((i * 6.0f * M_PI) / 1024.0f)) ;
-		}
-		break;
-
-	case COMPRESSED:
-		for (int i = 0; i < 1024; i++)
-		{
-			ssWaveTable[i] = 32767 * sin((i * 2 * M_PI) / 1024.0f);
-		}
-
-		fNonLinTable[512] = 0.0f;
-
-		for (int i = 0; i < 512; i++)
-		{
-			float lin = ((float)i)/511.0;
-
-			fNonLinTable[513 + i] = ((1.0-lin)*((float)i / 512.0f) + lin *powf(((float)i / 512.0f),0.8f)) * 32767.0f;
-			fNonLinTable[511 - i] = -fNonLinTable[513 + i];
-		}
-		bUseNonLinTab = 1;
-		THEREMIN_SetWavelength(1024);
-
-		// http://www.earlevel.com/main/2013/10/13/biquad-calculator-v2/
-		// 48kHz, Fc=60, Q=0.7071, A=0dB
-
-		a0 = 0.00001533600755608856f;
-		a1 = 0.00003067201511217712f;
-		a2 = 0.00001533600755608856f;
-		b1 = -1.9888928005576803f;
-		b2 = 0.9889541445879048f;
-		bLpFilt = 1;
-
-		break;
-
-	case GLOTTAL:
-
-		// Based on:
-		// http://www.fon.hum.uva.nl/praat/manual/PointProcess__To_Sound__phonation____.html
-		for (int i = 0; i < 768; i++)
-		{
-			ssWaveTable[i] = (int32_t)(621368.0 * (powf((float)i / 768.0f, 3) - powf((float)i / 768.0f, 4))) - 32768 ;
-		}
-		for (int i = 768; i < 1024; i++)
-		{
-			ssWaveTable[i] = -32768 ;
-		}
-		THEREMIN_SetWavelength(1024);
-
-		// http://www.earlevel.com/main/2013/10/13/biquad-calculator-v2/
-		// 48kHz, Fc=400, Q=0.7071, A=0dB
-
-		a0 = 0.0006607788720867079f;
-		a1 = 0.0013215577441734157f;
-		a2 = 0.0006607788720867079f;
-		b1 = -1.9259833105871227f;
-		b2 = 0.9286264260754695f;
-		bLpFilt = 1;
-
-		break;
-
-	case THEREMIN:
-		for (int i = 0; i < 1024; i++)
-		{
-			ssWaveTable[i] = 32767 * sin((i * 2 * M_PI) / 1024.0);
-		}
-		for (int i = 0; i < 1024; i++)
-		{
-			fNonLinTable[i] = 32767.0f-(65536.0f*((expf((((float)i/1024.0f)*4.5f)))-1)/(expf(4.5f)-1.0f));
-		}
-		fNonLinTable[1024] = -32768;
-		bUseNonLinTab = 1;
-		THEREMIN_SetWavelength(1024);
-
-		break;
-
-
-	/*
-	case SAWTOOTH:
-		for (int i = 0; i < 4096; i++)
-		{
-			ssWaveTable[i] = (i & 0x03FF)*64-32768;
-		}
-		a0 = 0.00001533600755608856f;
-		a1 = 0.00003067201511217712f;
-		a2 = 0.00001533600755608856f;
-		b1 = -1.9888928005576803f;
-		b2 = 0.9889541445879048f;
-
-		bLpFilt = 1;
-
-		break;
-	 */
-
-
-	case USBSTICK:
-		for (int i = 0; i < 4096; i++)
-		{
-			ssWaveTable[i] = 0;
-		}
-		USB_STICK_ReadWAVFiles();
-		break;
-
-	default:
-		for (int i = 0; i < 4096; i++)
-		{
-			ssWaveTable[i] = 0;
-		}
-	}
-
-	// Additional low pass filter;
-	if (bLpFilt)
-	{
-		float result = 0.0f;
-		float sample = 0.0f;
-		float x1=0.0f;
-		float x2=0.0f;
-		float y1=0.0f;
-		float y2=0.0f;
-
-		for (int run = 0; run < 2; run ++)
-		{
-			for (int i = 0; i < iWavLength; i++)
-			{
-				sample = ((float)ssWaveTable[i]) * 0.8f;
-
-			    // the biquad filter
-			    result = a0 * sample + a1 * x1 + a2 * x2 -b1 * y1 - b2 * y2;
-
-			    // shift x1 to x2, sample to x1
-			    x2 = x1;
-			    x1 = sample;
-
-			    //shift y1 to y2, result to y1
-			    y2 = y1;
-			    y1 = result;
-
-			    if (run == 1)
-			    {
-			    	if (result > 32767.0)
-			    	{
-			    		ssWaveTable[i] = 32767;
-			    	}
-			    	else if (result < -32768.0)
-			    	{
-			    		ssWaveTable[i] = -32768;
-			    	}
-			    	else
-			    	{
-						ssWaveTable[i] = (int16_t)result;
-			    	}
-			    }
-			}
-		}
-	}
-
-	// Mute as long as new waveform is being calculated
-	bMute = 0;
-
-}
-
 
 /**
  * @brief 96kHz DAC task called in interrupt
@@ -554,10 +264,12 @@ void THEREMIN_Calc_WavTable(void)
 inline void THEREMIN_96kHzDACTask_A(void)
 {
 	int32_t tabix;
-	float p1f, p2f, tabsub;
+	float p1f, p2f, tabsubf;
+	int p1, p2, tabsub;
 	floatint_ut u;
 	float result = 0.0f;
-
+	int16_t ssResult;
+	uint16_t usResult;
 
 	if (bBeepActive)
 	{
@@ -587,82 +299,38 @@ inline void THEREMIN_96kHzDACTask_A(void)
 		u.f = fPitch;
 		tabix = ((u.ui - 0x3F800000) >> 17);
 //		tabsub = (u.ui & 0x0001FFFF) >> 2;
-		tabsub = (u.ui & 0x0001FFFF) *  0.000007629f; // =2^-18
+		tabsubf = (u.ui & 0x0001FFFF) *  0.000007629f; // =2^-18
 		p1f = fPitchLinTable[tabix];
 		p2f = fPitchLinTable[tabix + 1];
-		fPitchFrq = (p1f + (((p2f - p1f) * tabsub)));
+		fPitchFrq = (p1f + (((p2f - p1f) * tabsubf)));
 	}
 	else
 	{
 		fPitchFrq = 0.0f;
 	}
 
+	//fPitchFrq = 0.1f;
 
 	fOscSin += fPitchFrq * fOscCos;
 	fOscCos -= fPitchFrq * fOscSin;
 	fOscSin += fPitchFrq * fOscCos;
 	fOscCos -= fPitchFrq * fOscSin;
-	fOscCorr = 1.0f +(1 -(fOscSin * fOscSin + fOscCos * fOscCos)*0.01f);
+	fOscCorr = 1.0f +((1.0f - (fOscSin * fOscSin + fOscCos * fOscCos))*0.01f);
 	fOscCos *= fOscCorr;
 	fOscSin *= fOscCorr;
-	result = fOscSin * (float)slVolFilt;
+
+	/*
+	if (fOscSin > 1.0f)
+	{
+		fOscSin = 1.0f;
+	}
+	if (fOscSin < -1.0f)
+	{
+		fOscSin = -1.0f;
+	}*/
+	ssResult = fOscSin * 30.0f * (float)slVolFilt;
 	//result = fabs(fOscSin) * (float)slVolFilt;
-
-/*	if (fOscCos > 1.0f)
-	{
-		fOscCos = 1.0f;
-		fOscSin = 0.0f;
-	}
-	if (fOscCos < -1.0f)
-	{
-		fOscCos = -1.0f;
-		fOscSin = 0.0f;
-	}
-*/
-
-	/*
-
-	*/
-
-	/*
-	// cycles: 29..38
-	// WAV output to audio DAC
-	tabix = ulWaveTableIndex >> 20; // use only the 12MSB of the 32bit counter
-	tabsub = (ulWaveTableIndex >> 12) & 0x000000FF;
-	p1 = ssWaveTable[tabix & iWavMask];
-	p2 = ssWaveTable[(tabix + 1) & iWavMask];
-	iWavOut = ((p1 + (((p2 - p1) * tabsub) / 256)) * slVolFilt / 1024);
-	*/
-	/*
-	if (bUseNonLinTab)
-	{
-		tabix = (iWavOut+32768) / 64;
-		tabsub = iWavOut & 0x003F;
-		p1f = fNonLinTable[tabix];
-		p2f = fNonLinTable[tabix + 1];
-		result = (p1f + (((p2f - p1f) * tabsub) * 0.015625f));
-	}
-	else
-	{
-		result = (float)iWavOut;
-	}
-	*/
-
-
-
-	//result = (float)iWavOut;
-
-	// cycles
-	// Low pass filter the output to avoid aliasing noise.
-	slVolFiltL += slVolume - slVolFilt;
-	slVolFilt = slVolFiltL / 1024;
-
-
-	// Limit the output to 16bit
-	if (bMute)
-	{
-		usDACValueR = 0;
-	}
+/*
 	else if (result > 32767.0)
 	{
 		usDACValueR = 32767;
@@ -675,9 +343,31 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	{
 		usDACValueR = (int16_t)result;
 	}
+*/
+
+	tabix = (ssResult+32768) / 32;
+	tabsub = ssResult & 0x001F;
+	p1 = usNonLinTable[tabix];
+	p2 = usNonLinTable[tabix + 1];
+	usResult = (p1 + (((p2 - p1) * tabsub) / 32));
+
+	ssDACValueR = usResult-32768;
+	//result = (float)iWavOut;
+
+	// Low pass filter the output to avoid aliasing noise.
+	slVolFiltL += slVolume - slVolFilt;
+	slVolFilt = slVolFiltL / 1024;
+
+
+	// Limit the output to 16bit
+	if (bMute)
+	{
+		ssDACValueR = 0;
+	}
+
 
 	// Output also to the speaker
-	usDACValueL = usDACValueR;
+	ssDACValueL = ssDACValueR;
 }
 
 /**

@@ -33,8 +33,8 @@
 
 /* global variables  ------------------------------------------------------- */
 int bMute = 0;
-uint16_t usDACValueR;		// wave table output for audio DAC RIGHT (ear phone)
-uint16_t usDACValueL;		// wave table output for audio DAC LEFT (speaker)
+int16_t ssDACValueR;		// output for audio DAC RIGHT (ear phone)
+int16_t ssDACValueL;		// output for audio DAC LEFT (speaker)
 
 /* local variables  ------------------------------------------------------- */
 __IO uint32_t I2S_DR;
@@ -124,14 +124,14 @@ void AUDIO_OUT_I2S_IRQHandler(void)
 	if (toggle)
 	{
 		// Fill the audio DAC with the LEFT value = speaker
-		hi2s3.Instance->DR = usDACValueL;
+		hi2s3.Instance->DR = ssDACValueL;
 		toggle = 0;
 		THEREMIN_96kHzDACTask_A();
 	}
 	else
 	{
 		// Fill the audio DAC with the RIGHT value = ear phone
-		hi2s3.Instance->DR = usDACValueR;
+		hi2s3.Instance->DR = ssDACValueR;
 		toggle = 1;
 		THEREMIN_96kHzDACTask_B();
 	}
