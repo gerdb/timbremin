@@ -79,6 +79,7 @@ int32_t slVolFilt;				// volume value, filtered
 int32_t slVolumeRaw;
 int32_t slVolume;
 int32_t slTimbre;
+float fTimbre = 0.0f;
 
 float fOscSin = 0.0f;
 float fOscCos = 1.0f;
@@ -246,11 +247,12 @@ void THEREMIN_Calc_NonLinTable(void)
 
 	fmin = expf((float)(   0-1024)*0.000976562f * fNonLin);
 	fmax = expf((float)(2048-1024)*0.000976562f * fNonLin);
-	fscale = 1.0f/(fmax-fmin);
+	fscale = 1.0f/(fmax - 1.0f );
+	//fscale = 1.0f/(fmax-fmin);
 	for (int32_t i = 0; i <= 2048; i++)
 	{
 		// Calculate the nonlinear function
-		f = fscale * (expf((float)(i-1024)*0.000976562f * fNonLin) - fmin );
+		f = 0.5f*(fscale * (expf((float)(i-1024)*0.000976562f * fNonLin)-1.0f )+1.0f );
 		// Fill the non-linearity LUT
 		usNonLinTable[i] = f*65535.0f;
 	}
@@ -267,7 +269,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	float p1f, p2f, tabsubf;
 	int p1, p2, tabsub;
 	floatint_ut u;
-	float result = 0.0f;
+	//float fresult = 0.0f;
 	int16_t ssResult;
 	uint16_t usResult;
 
@@ -351,7 +353,8 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	p2 = usNonLinTable[tabix + 1];
 	usResult = (p1 + (((p2 - p1) * tabsub) / 32));
 
-	ssDACValueR = usResult-32768;
+	ssDACValueR = (slTimbre * (usResult-32768) + (256-slTimbre) * ssResult) / 256 ;
+
 	//result = (float)iWavOut;
 
 	// Low pass filter the output to avoid aliasing noise.
@@ -613,6 +616,12 @@ void THEREMIN_Task_Volume(void)
 		slVolumeRaw = 1023;
 	}
 
+	// change the direction
+	if (aConfigWorkingSet[CFG_E_LOUDER_DOWN].iVal == 1)
+	{
+		slVolumeRaw = 1023 - slVolumeRaw;
+	}
+
 	// switch sound off, if not tuned.
 	if (!iTuned)
 	{
@@ -637,6 +646,9 @@ void THEREMIN_Task_Timbre(void)
 	{
 		slTimbre = 256;
 	}
+
+	// Scale it from 0..256 to 0.0f .. 1.0f
+	fTimbre = (float)slTimbre * 0.00390625f;
 }
 
 /**

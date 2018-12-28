@@ -128,6 +128,7 @@ void CONFIG_FillWithDefault(void)
 		aConfigValues[i][CFG_E_PITCH_SCALE] = 500;
 		aConfigValues[i][CFG_E_VOLUME_SHIFT] = 500;
 		aConfigValues[i][CFG_E_VOLUME_SCALE] = 500;
+		aConfigValues[i][CFG_E_LOUDER_DOWN] = 1;
 	}
 }
 /**
@@ -250,6 +251,7 @@ CONFIG_eConfigEntry CONFIG_NameToEnum(char* name)
 	if (strcmp(name, "PITCH_SCALE") == 0) return CFG_E_PITCH_SCALE;
 	if (strcmp(name, "VOLUME_SHIFT") == 0) return CFG_E_VOLUME_SHIFT;
 	if (strcmp(name, "VOLUME_SCALE") == 0) return CFG_E_VOLUME_SCALE;
+	if (strcmp(name, "LOUDER_DOWN") == 0) return CFG_E_LOUDER_DOWN;
 	return CFG_E_NONE;
 }
 
