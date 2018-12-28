@@ -1126,8 +1126,8 @@ void THEREMIN_1msTask(void)
 */
 	if (siAutotune == 0)
 	{
-		// fWavStepFilt * 96kHz * (1 >> 20 / 1024(WaveTable length))
-		DISPLAY_PitchDisplay(fWavStepFilt * 0.0000894069671631);
+		// fPitchFrq * 48kHz / 2PI)
+		DISPLAY_PitchDisplay(fWavStepFilt * 7639.4372f);
 	}
 	else
 	{
@@ -1164,14 +1164,13 @@ void THEREMIN_1sTask(void)
 		*/
 
 		// Debug values for pitch
+
 		/*
 		printf("%d %d\n",
 				(int)(fPitchFrq*1000.0f),
 				(int)(slPitchPeriodeFilt - slPitchOffset)
 				);
 		*/
-
-
 
 		//printf("Stopwatch %d\n", ulStopwatch);
 	}

@@ -261,6 +261,8 @@ CONFIG_eConfigEntry CONFIG_NameToEnum(char* name)
  */
 void CONFIG_ConfigurePot(int index, char* cfgname)
 {
+	index--; //we count internally from 0..8 instead of 1..9
+
 	CONFIG_eConfigEntry eConfigEntry;
 	eConfigEntry = CONFIG_NameToEnum(cfgname);
 

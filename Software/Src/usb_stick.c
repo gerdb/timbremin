@@ -233,9 +233,9 @@ void USB_STICK_ReadConfigFile(void)
 					else
 					{
 						// Value with index in brakets
-						if (c== '[')
+						if (c== '(')
 						{
-							if (sLine[i+2] == ']')
+							if (sLine[i+2] == ')')
 							{
 								index = sLine[i+1]-'0';
 								i+=2;
