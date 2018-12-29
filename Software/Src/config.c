@@ -91,6 +91,7 @@ void CONFIG_Init(void)
 	aConfigWorkingSet[CFG_E_VOL1_OFFSET_A].iFactor = 10;
 	aConfigWorkingSet[CFG_E_VOL2_OFFSET_A].iFactor = 10;
 	aConfigWorkingSet[CFG_E_VOL12_OFFSET_A].iFactor = 10;
+	aConfigWorkingSet[CFG_E_STARTUP_AUTOTUNE].iFactor = 100;
 
 	CONFIG_FillWithDefault();
 
@@ -129,6 +130,11 @@ void CONFIG_FillWithDefault(void)
 		aConfigValues[i][CFG_E_VOLUME_SHIFT] = 500;
 		aConfigValues[i][CFG_E_VOLUME_SCALE] = 500;
 		aConfigValues[i][CFG_E_LOUDER_DOWN] = 1;
+		aConfigValues[i][CFG_E_DISTORTION] = 1000;
+		aConfigValues[i][CFG_E_STARTUP_AUTOTUNE] = 30;
+
+
+
 	}
 }
 /**
@@ -252,6 +258,11 @@ CONFIG_eConfigEntry CONFIG_NameToEnum(char* name)
 	if (strcmp(name, "VOLUME_SHIFT") == 0) return CFG_E_VOLUME_SHIFT;
 	if (strcmp(name, "VOLUME_SCALE") == 0) return CFG_E_VOLUME_SCALE;
 	if (strcmp(name, "LOUDER_DOWN") == 0) return CFG_E_LOUDER_DOWN;
+	if (strcmp(name, "DISTORTION") == 0) return CFG_E_DISTORTION;
+	if (strcmp(name, "STARTUP_AUTOTUNE") == 0) return CFG_E_STARTUP_AUTOTUNE;
+
+
+
 	return CFG_E_NONE;
 }
 
