@@ -687,6 +687,14 @@ void THEREMIN_1msTask(void)
 	static int startup_cnt = 1;
 	int bReqCalcPitchTable = 0;
 
+	int iAutoTuneStart = aConfigWorkingSet[CFG_E_STARTUP_AUTOTUNE].iVal;
+	if (iAutoTuneStart>0)
+	{
+		// Delay 2s so the auto-tune on start-up will be started
+		// not earlier than after the power-on beep
+		iAutoTuneStart+=2000;
+	}
+
 	if (startup_cnt < 1000000)
 	{
 		startup_cnt++;
@@ -698,7 +706,7 @@ void THEREMIN_1msTask(void)
 	{
 		// Start auto-tune by pressing BUTTON_KEY
 		if (BSP_PB_GetState(BUTTON_KEY) == GPIO_PIN_SET ||
-				(startup_cnt == aConfigWorkingSet[CFG_E_STARTUP_AUTOTUNE].iVal)
+				(startup_cnt == iAutoTuneStart)
 			)
 		{
 			// Disable further auto-tune after startup

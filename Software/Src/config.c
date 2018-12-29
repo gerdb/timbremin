@@ -84,6 +84,8 @@ void CONFIG_Init(void)
 	aConfigWorkingSet[CFG_E_VOL1_OFFSET_B].bIsGlobal = 1;
 	aConfigWorkingSet[CFG_E_VOL2_OFFSET_B].bIsGlobal = 1;
 	aConfigWorkingSet[CFG_E_VOL12_OFFSET_B].bIsGlobal = 1;
+	aConfigWorkingSet[CFG_E_STARTUP_AUTOTUNE].bIsGlobal = 1;
+
 
 	aConfigWorkingSet[CFG_E_VOL1_NUMERATOR].iFactor = 10000;
 	aConfigWorkingSet[CFG_E_VOL2_NUMERATOR].iFactor = 10000;
@@ -131,7 +133,7 @@ void CONFIG_FillWithDefault(void)
 		aConfigValues[i][CFG_E_VOLUME_SCALE] = 500;
 		aConfigValues[i][CFG_E_LOUDER_DOWN] = 1;
 		aConfigValues[i][CFG_E_DISTORTION] = 1000;
-		aConfigValues[i][CFG_E_STARTUP_AUTOTUNE] = 30;
+		aConfigValues[i][CFG_E_STARTUP_AUTOTUNE] = 1;
 
 
 
