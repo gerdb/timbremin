@@ -81,7 +81,6 @@ int32_t slVolume;
 int32_t slTimbre;
 float fTimbre = 0.0f;
 
-int16_t ssNonTimbreVol = 0;
 float fOscSin = 0.0f;
 float fOscCos = 1.0f;
 float fOscCorr = 1.0f;
@@ -243,40 +242,40 @@ void THEREMIN_Calc_PitchTable(void)
  */
 void THEREMIN_Calc_DistortionTable(void)
 {
-	float f,fmin50,fmax50,fmax, fscale;
-	float fNonLin = ((float)aConfigWorkingSet[CFG_E_DISTORTION].iVal * 0.001f)*6.0f;
+	float f,f1;
+	float fNonLin = ((float)aConfigWorkingSet[CFG_E_DISTORTION].iVal * 0.001f)*10.0f;
 
 	if (aConfigWorkingSet[CFG_E_DISTORTION].iVal != 0)
 	{
-		fmax = expf(fNonLin);
-		fscale = 1.0f/(fmax - 1.0f );
-
 		// take the Vpp value at 50% volume and use it to scale the
 		// sine value
-		fmin50 = 0.5f*(fscale * (expf(-0.5f * fNonLin)-1.0f )+1.0f );
-		fmax50 = 0.5f*(fscale * (expf(+0.5f * fNonLin)-1.0f )+1.0f );
-		ssNonTimbreVol = 256 * (fmax50-fmin50);
-
-		//fscale = 1.0f/(fmax-fmin);
-		for (int32_t i = 0; i <= 2048; i++)
+		for (int32_t i = 0; i < 1024; i++)
 		{
 			// Calculate the nonlinear function
-			f = 0.5f*(fscale * (expf((float)(i-1024)*0.000976562f * fNonLin)-1.0f )+1.0f );
+			f1 = ((float)(1024-i)*0.000976562f);
+			f=(1.0f-f1+((expf(-f1*fNonLin)-1.0f)/fNonLin+f1))*0.5f;
 			// Fill the distortion LUT
 			usNonLinTable[i] = f*65535.0f;
 		}
-	}
-	else
-	{
-		ssNonTimbreVol = 128;
-		for (int32_t i = 0; i < 2048; i++)
+
+		for (int32_t i = 1024; i < 2048; i++)
 		{
 			// Fill the distortion LUT
 			usNonLinTable[i] = i*32;
 		}
-		usNonLinTable[2048] = 65535;
 	}
+	else
+	{
+		for (int32_t i = 0; i < 2048; i++)
+		{
+			// Fill the distortion LUT with non distortion value
+			usNonLinTable[i] = i*32;
+		}
+	}
+	usNonLinTable[2048] = 65535;
 }
+
+
 
 /**
  * @brief 96kHz DAC task called in interrupt
@@ -373,7 +372,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	p2 = usNonLinTable[tabix + 1];
 	usResult = (p1 + (((p2 - p1) * tabsub) / 32));
 
-	ssDACValueR = (slTimbre * 128 * (usResult-32768) + (256-slTimbre) * ssResult  * ssNonTimbreVol) / (256*128) ;
+	ssDACValueR = (slTimbre * (usResult-32768) + (256-slTimbre) * ssResult ) / 256 ;
 
 	//result = (float)iWavOut;
 
