@@ -38,7 +38,8 @@
 // Linearization tables for pitch an volume
 float fPitchLinTable[2048+1];
 
-uint16_t usNonLinTable[2048+1];
+uint16_t usDistortionTable[2048+1];
+uint16_t usImpedanceTable[2048+1];
 
 // Pitch
 uint16_t usPitchCC;			// value of capture compare register
@@ -75,6 +76,7 @@ int32_t slVol2;					// volume value
 int32_t slVolFiltL;				// volume value, filtered (internal filter value)
 int32_t slVolFilt;				// volume value, filtered
 
+int32_t	slOutCapacitor = 0;
 
 int32_t slVolumeRaw;
 int32_t slVolume;
@@ -184,6 +186,7 @@ void THEREMIN_Init(void)
 	// Calculate the LUT for volume and pitch
 	THEREMIN_Calc_PitchTable();
 	THEREMIN_Calc_DistortionTable();
+	THEREMIN_Calc_ImpedanceTable();
 
 	HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_RESET);
@@ -243,25 +246,23 @@ void THEREMIN_Calc_PitchTable(void)
 void THEREMIN_Calc_DistortionTable(void)
 {
 	float f,f1;
-	float fNonLin = ((float)aConfigWorkingSet[CFG_E_DISTORTION].iVal * 0.001f)*10.0f;
+	float fDistortion = ((float)aConfigWorkingSet[CFG_E_DISTORTION].iVal * 0.001f)*10.0f;
 
 	if (aConfigWorkingSet[CFG_E_DISTORTION].iVal != 0)
 	{
-		// take the Vpp value at 50% volume and use it to scale the
-		// sine value
 		for (int32_t i = 0; i < 1024; i++)
 		{
 			// Calculate the nonlinear function
 			f1 = ((float)(1024-i)*0.000976562f);
-			f=(1.0f-f1+((expf(-f1*fNonLin)-1.0f)/fNonLin+f1))*0.5f;
+			f=(1.0f-f1+((expf(-f1*fDistortion)-1.0f)/fDistortion+f1))*0.5f;
 			// Fill the distortion LUT
-			usNonLinTable[i] = f*65535.0f;
+			usDistortionTable[i] = f*65535.0f;
 		}
 
 		for (int32_t i = 1024; i < 2048; i++)
 		{
 			// Fill the distortion LUT
-			usNonLinTable[i] = i*32;
+			usDistortionTable[i] = i*32;
 		}
 	}
 	else
@@ -269,12 +270,43 @@ void THEREMIN_Calc_DistortionTable(void)
 		for (int32_t i = 0; i < 2048; i++)
 		{
 			// Fill the distortion LUT with non distortion value
-			usNonLinTable[i] = i*32;
+			usDistortionTable[i] = i*32;
 		}
 	}
-	usNonLinTable[2048] = 65535;
+	usDistortionTable[2048] = 65535;
 }
 
+
+/**
+ * @brief Recalculates the impedance LUT
+ *
+ */
+void THEREMIN_Calc_ImpedanceTable(void)
+{
+	float f,f1;
+	float fImpedance = ((float)aConfigWorkingSet[CFG_E_IMPEDANCE].iVal * 0.001f)*4.0f;
+
+	if (aConfigWorkingSet[CFG_E_IMPEDANCE].iVal != 0)
+	{
+		for (int32_t i = 0; i < 2048; i++)
+		{
+			// Calculate the nonlinear function
+			f1 = ((float)(i)*0.000488281f);
+			f=powf(f1,fImpedance)*0.8f;
+			// Fill the distortion LUT
+			usImpedanceTable[i] = f*65535.0f;
+		}
+	}
+	else
+	{
+		for (int32_t i = 0; i < 2048; i++)
+		{
+			// Fill the impedance LUT with R=0Ohm value
+			usImpedanceTable[i] = 65535;
+		}
+	}
+	usImpedanceTable[2048] = 65535;
+}
 
 
 /**
@@ -290,7 +322,8 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	floatint_ut u;
 	//float fresult = 0.0f;
 	int16_t ssResult;
-	uint16_t usResult;
+	uint16_t usDistorted, usImpedance;
+	int i1;
 
 	if (bBeepActive)
 	{
@@ -368,12 +401,22 @@ inline void THEREMIN_96kHzDACTask_A(void)
 
 	tabix = (ssResult+32768) / 32;
 	tabsub = ssResult & 0x001F;
-	p1 = usNonLinTable[tabix];
-	p2 = usNonLinTable[tabix + 1];
-	usResult = (p1 + (((p2 - p1) * tabsub) / 32));
+	p1 = usDistortionTable[tabix];
+	p2 = usDistortionTable[tabix + 1];
+	usDistorted = (p1 + (((p2 - p1) * tabsub) / 32));
 
-	ssDACValueR = (slTimbre * (usResult-32768) + (256-slTimbre) * ssResult ) / 256 ;
+	i1 = (slTimbre * (usDistorted-32768) + (256-slTimbre) * ssResult ) / 256 ;
 
+
+	p1 = usImpedanceTable[tabix];
+	p2 = usImpedanceTable[tabix + 1];
+	usImpedance = (p1 + (((p2 - p1) * tabsub) / 32));
+
+	//slOutCapacitor += (i1-slOutCapacitor) * ((i1 + 32768)/64) / 65536;
+	slOutCapacitor += ((i1-slOutCapacitor) * usImpedance) / 65536;
+
+
+	ssDACValueR = slOutCapacitor;
 	//result = (float)iWavOut;
 
 	// Low pass filter the output to avoid aliasing noise.

@@ -132,8 +132,9 @@ void CONFIG_FillWithDefault(void)
 		aConfigValues[i][CFG_E_VOLUME_SHIFT] = 500;
 		aConfigValues[i][CFG_E_VOLUME_SCALE] = 500;
 		aConfigValues[i][CFG_E_LOUDER_DOWN] = 1;
-		aConfigValues[i][CFG_E_DISTORTION] = 1000;
 		aConfigValues[i][CFG_E_STARTUP_AUTOTUNE] = 1;
+		aConfigValues[i][CFG_E_DISTORTION] = 0;
+		aConfigValues[i][CFG_E_IMPEDANCE] = 250;
 
 
 
@@ -260,8 +261,9 @@ CONFIG_eConfigEntry CONFIG_NameToEnum(char* name)
 	if (strcmp(name, "VOLUME_SHIFT") == 0) return CFG_E_VOLUME_SHIFT;
 	if (strcmp(name, "VOLUME_SCALE") == 0) return CFG_E_VOLUME_SCALE;
 	if (strcmp(name, "LOUDER_DOWN") == 0) return CFG_E_LOUDER_DOWN;
-	if (strcmp(name, "DISTORTION") == 0) return CFG_E_DISTORTION;
 	if (strcmp(name, "STARTUP_AUTOTUNE") == 0) return CFG_E_STARTUP_AUTOTUNE;
+	if (strcmp(name, "DISTORTION") == 0) return CFG_E_DISTORTION;
+	if (strcmp(name, "IMPEDANCE") == 0) return CFG_E_IMPEDANCE;
 
 
 
