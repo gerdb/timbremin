@@ -150,6 +150,7 @@ float fSVF_out_6 = 0.0f;
 float fVolScale = 1.0f;
 float fVolShift = 0.0f;
 
+int32_t slFilterIn = 0;
 
 int32_t slPitchOld;
 int32_t slVolTim1Old;
@@ -181,7 +182,7 @@ e_vol_sel vol_sel = VOLSEL_NONE;
 
 int32_t test1;
 int32_t test2;
-int test3;
+int32_t test3;
 int task = 0;
 
 
@@ -200,6 +201,68 @@ float fBQZ2_4 = 0.0f;
 float fBQ_out_5 = 0.0f;
 float fBQZ1_5 = 0.0f;
 float fBQZ2_5 = 0.0f;
+
+#define DELAY1_LENGTH 12
+#define DELAY2_LENGTH 42
+#define DELAY3_LENGTH 902
+#define DELAY4_LENGTH 17
+#define DELAY5_LENGTH 59
+#define DELAY6_LENGTH 1003
+#define DELAY7_LENGTH 21
+#define DELAY8_LENGTH 77
+#define DELAY9_LENGTH 1272
+#define DELAY10_LENGTH 39
+#define DELAY11_LENGTH 101
+#define DELAY12_LENGTH 1323
+
+// Reverb
+int32_t slD1[DELAY1_LENGTH];
+int32_t slD2[DELAY2_LENGTH];
+int32_t slD3[DELAY3_LENGTH];
+int32_t slD4[DELAY4_LENGTH];
+int32_t slD5[DELAY5_LENGTH];
+int32_t slD6[DELAY6_LENGTH];
+int32_t slD7[DELAY7_LENGTH];
+int32_t slD8[DELAY8_LENGTH];
+int32_t slD9[DELAY9_LENGTH];
+int32_t slD10[DELAY10_LENGTH];
+int32_t slD11[DELAY11_LENGTH];
+int32_t slD12[DELAY12_LENGTH];
+uint32_t iDc1_in = 0;
+uint32_t iDc1_out = 1;
+uint32_t iDc2_in = 0;
+uint32_t iDc2_out = 1;
+uint32_t iDc3_in = 0;
+uint32_t iDc3_out = 1;
+uint32_t iDc4_in = 0;
+uint32_t iDc4_out = 1;
+uint32_t iDc5_in = 0;
+uint32_t iDc5_out = 1;
+uint32_t iDc6_in = 0;
+uint32_t iDc6_out = 1;
+uint32_t iDc7_in = 0;
+uint32_t iDc7_out = 1;
+uint32_t iDc8_in = 0;
+uint32_t iDc8_out = 1;
+uint32_t iDc9_in = 0;
+uint32_t iDc9_out = 1;
+uint32_t iDc10_in = 0;
+uint32_t iDc10_out = 1;
+uint32_t iDc11_in = 0;
+uint32_t iDc11_out = 1;
+uint32_t iDc12_in = 0;
+uint32_t iDc12_out = 1;
+uint32_t iDcEarly1 = 0;
+uint32_t iDcEarly2 = 607;
+uint32_t iDcEarly3 = 699;
+uint32_t iDcEarly4 = 813;
+uint32_t iDcEarly5 = 900;
+
+int32_t slReverbLP = 0;
+
+#define KRT 120
+
+
 
 // Biquad coefficients for 48kHz sampling frequency, f0= 10kHz and 10th order LP
 // see http://www.earlevel.com/main/2016/09/29/cascading-filters/
@@ -735,12 +798,12 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	}*/
 
 	ssResult =
-			 - fOscSin2 * fVollAddSynth_l2 * 10.0f +
-			fOscSin3 * fVollAddSynth_l3 * 10.0f +
-			fOscSin4 * fVollAddSynth_l4 * 10.0f +
-			fOscSin5 * fVollAddSynth_l5 * 10.0f +
+			 - fOscSin2 * fVollAddSynth_l2 * 12.0f +
+			fOscSin3 * fVollAddSynth_l3 * 20.0f +
+			fOscSin4 * fVollAddSynth_l4 * 20.0f +
+			fOscSin5 * fVollAddSynth_l5 * 20.0f +
 
-			fOscSin * 10.0f * (float)slVolFilt;
+			fOscSin * 20.0f * (float)slVolFilt;
 
 	/*if (ssResult < 0)
 	{
@@ -789,7 +852,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 
 	//fFilterIn = slOutCapacitor;
 //	fFilterIn = (slTimbre * (usDistorted-32768) + (256-slTimbre) * ssResult ) / 256 ;
-	fFilterIn = (slTimbre * slOutCapacitor + (256-slTimbre) * ssResult ) / 256 ;
+	slFilterIn = (slTimbre * slOutCapacitor + (256-slTimbre) * ssResult ) / 256 ;
 
 
 	//result = (float)iWavOut;
@@ -901,8 +964,83 @@ inline void THEREMIN_96kHzDACTask_B(void)
 */
 
 
+	// https://valhalladsp.com/2010/08/25/rip-keith-barr/
+	// http://www.spinsemi.com/knowledge_base/effects.html#Reverberation
+	slD1[iDc1_in] =  slFilterIn - slD1[iDc1_out] / 2 + (KRT * slReverbLP ) / (256*128);
+	slD2[iDc2_in] = - slD2[iDc2_out] / 2 + slD1[iDc1_out] + slD1[iDc1_in] / 2;
+	slD3[iDc3_in] =  slD2[iDc2_out] + slD2[iDc2_in] / 2;
 
-	ssDACValueR = fFilterIn;
+	slD4[iDc4_in] =   - slD4[iDc4_out] / 2 + (KRT * slD3[iDc3_out]) / 256;
+	slD5[iDc5_in] = - slD5[iDc5_out] / 2 + slD4[iDc4_out] + slD4[iDc4_in] / 2;
+	slD6[iDc6_in] =  slD5[iDc5_out] + slD5[iDc5_in] / 2;
+
+	slD7[iDc7_in] =  0 - slD7[iDc7_out] / 2 + (KRT * slD6[iDc6_out]) / 256;
+	slD8[iDc8_in] = - slD8[iDc8_out] / 2 + slD7[iDc7_out] + slD7[iDc7_in] / 2;
+	slD9[iDc9_in] =  slD8[iDc8_out] + slD8[iDc8_in] / 2;
+
+	slD10[iDc10_in] =   slFilterIn - slD10[iDc10_out] / 2 + (KRT * slD9[iDc9_out]) / 256;
+	slD11[iDc11_in] = - slD11[iDc11_out] / 2 + slD10[iDc10_out] + slD10[iDc10_in] / 2;
+	slD12[iDc12_in] =  slD11[iDc11_out] + slD11[iDc11_in] / 2;
+
+	slReverbLP += ( slD12[iDc12_out] * 128 - slReverbLP) / 64;
+
+
+	iDc1_in = iDc1_out;
+	iDc2_in = iDc2_out;
+	iDc3_in = iDc3_out;
+	iDc4_in = iDc4_out;
+	iDc5_in = iDc5_out;
+	iDc6_in = iDc6_out;
+	iDc7_in = iDc7_out;
+	iDc8_in = iDc8_out;
+	iDc9_in = iDc9_out;
+	iDc10_in = iDc10_out;
+	iDc11_in = iDc11_out;
+	iDc12_in = iDc12_out;
+	iDc1_out ++;
+	iDc2_out ++;
+	iDc3_out ++;
+	iDc4_out ++;
+	iDc5_out ++;
+	iDc6_out ++;
+	iDc7_out ++;
+	iDc8_out ++;
+	iDc9_out ++;
+	iDc10_out ++;
+	iDc11_out ++;
+	iDc12_out ++;
+	iDcEarly1 ++;
+	iDcEarly2 ++;
+	iDcEarly3 ++;
+	iDcEarly4 ++;
+	iDcEarly5 ++;
+	if (iDc1_out == DELAY1_LENGTH) iDc1_out = 0;
+	if (iDc2_out == DELAY2_LENGTH) iDc2_out = 0;
+	if (iDc3_out == DELAY3_LENGTH) iDc3_out = 0;
+	if (iDc4_out == DELAY4_LENGTH) iDc4_out = 0;
+	if (iDc5_out == DELAY5_LENGTH) iDc5_out = 0;
+	if (iDc6_out == DELAY6_LENGTH) iDc6_out = 0;
+	if (iDc7_out == DELAY7_LENGTH) iDc7_out = 0;
+	if (iDc8_out == DELAY8_LENGTH) iDc8_out = 0;
+	if (iDc9_out == DELAY9_LENGTH) iDc9_out = 0;
+	if (iDc10_out == DELAY10_LENGTH) iDc10_out = 0;
+	if (iDc11_out == DELAY11_LENGTH) iDc11_out = 0;
+	if (iDc12_out == DELAY11_LENGTH) iDc12_out = 0;
+
+	if (iDcEarly1 == DELAY3_LENGTH) iDcEarly1 = 0;
+	if (iDcEarly2 == DELAY3_LENGTH) iDcEarly2 = 0;
+	if (iDcEarly3 == DELAY3_LENGTH) iDcEarly3 = 0;
+	if (iDcEarly4 == DELAY3_LENGTH) iDcEarly4 = 0;
+	if (iDcEarly5 == DELAY3_LENGTH) iDcEarly5 = 0;
+
+	//ssDACValueR =slD3[iDcEarly1];
+
+	ssDACValueR =(
+			slD3[iDcEarly1] * 200 +
+			slD3[iDcEarly2] * 30 +
+			slD3[iDcEarly3] * 20 +
+			slD3[iDcEarly4] * 8 +
+			slD3[iDcEarly5] * 5 ) / 256;
 	// Output also to the speaker
 	ssDACValueL = ssDACValueR;
 }

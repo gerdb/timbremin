@@ -108,7 +108,7 @@ void AUDIO_OUT_1msTask(void)
 	if (aConfigWorkingSet[CFG_E_VOLUME_OUT].bHasChanged) {
 		float vol =  ((float)aConfigWorkingSet[CFG_E_VOLUME_OUT].iVal)*0.001f;
 		vol = powf(vol, 0.2f);
-		pAudioDrv->SetVolume(AUDIO_I2C_ADDRESS,vol * 85);
+		pAudioDrv->SetVolume(AUDIO_I2C_ADDRESS,vol * 90);
 	}
 }
 
