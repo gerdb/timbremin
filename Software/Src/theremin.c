@@ -50,9 +50,16 @@ int32_t slPitchPeriodeFilt;	// low pass filtered period
 int32_t slPitch;			// pitch value
 float fPitch;			// pitch value
 float fPitchFrq;		// pitch frequency scaled to 96kHz task
-
+float fPitchFrq1;		// pitch frequency scaled to 96kHz task
+float fPitchFrq2;		// pitch frequency scaled to 96kHz task
+float fPitchFrq3;		// pitch frequency scaled to 96kHz task
+float fPitchFrq4;		// pitch frequency scaled to 96kHz task
+float fPitchFrq5;		// pitch frequency scaled to 96kHz task
+float fFiltLP1 = 0.0f;
+float fFiltLP2 = 0.0f;
 float fPitchScale = 1.0f;
 float fPitchShift = 1.0f;
+float fFilterIn = 0.0f;
 
 // Volume
 float fVol = 0.0;			// volume value
@@ -86,6 +93,59 @@ float fTimbre = 0.0f;
 float fOscSin = 0.0f;
 float fOscCos = 1.0f;
 float fOscCorr = 1.0f;
+float fOscSin2 = 0.0f;
+float fOscCos2 = 1.0f;
+float fOscCorr2 = 1.0f;
+float fOscSin3 = 0.0f;
+float fOscCos3 = 1.0f;
+float fOscCorr3 = 1.0f;
+float fOscSin4 = 0.0f;
+float fOscCos4 = 1.0f;
+float fOscCorr4 = 1.0f;
+float fOscSin5 = 0.0f;
+float fOscCos5 = 1.0f;
+float fOscCorr5 = 1.0f;
+
+float fVollAddSynth_2 = 0.0f;
+float fVollAddSynth_3 = 0.0f;
+float fVollAddSynth_4 = 0.0f;
+float fVollAddSynth_5 = 0.0f;
+float fVollAddSynth_l2 = 0.0f;
+float fVollAddSynth_l3 = 0.0f;
+float fVollAddSynth_l4 = 0.0f;
+float fVollAddSynth_l5 = 0.0f;
+
+// State variable filters for formants
+float fSVFf_1;
+float fSVFq_1;
+float fSVFf_2;
+float fSVFq_2;
+float fSVFf_3;
+float fSVFq_3;
+float fSVFf_4;
+float fSVFq_4;
+float fSVFf_5;
+float fSVFq_5;
+float fSVFf_6;
+float fSVFq_6;
+float fSVFZ1_1 = 0.0f;
+float fSVFZ2_1 = 0.0f;
+float fSVFZ1_2 = 0.0f;
+float fSVFZ2_2 = 0.0f;
+float fSVFZ1_3 = 0.0f;
+float fSVFZ2_3 = 0.0f;
+float fSVFZ1_4 = 0.0f;
+float fSVFZ2_4 = 0.0f;
+float fSVFZ1_5 = 0.0f;
+float fSVFZ2_5 = 0.0f;
+float fSVFZ1_6 = 0.0f;
+float fSVFZ2_6 = 0.0f;
+float fSVF_out_1 = 0.0f;
+float fSVF_out_2 = 0.0f;
+float fSVF_out_3 = 0.0f;
+float fSVF_out_4 = 0.0f;
+float fSVF_out_5 = 0.0f;
+float fSVF_out_6 = 0.0f;
 
 float fVolScale = 1.0f;
 float fVolShift = 0.0f;
@@ -125,6 +185,89 @@ int test3;
 int task = 0;
 
 
+float fBQ_out_1 = 0.0f;
+float fBQZ1_1 = 0.0f;
+float fBQZ2_1 = 0.0f;
+float fBQ_out_2 = 0.0f;
+float fBQZ1_2 = 0.0f;
+float fBQZ2_2 = 0.0f;
+float fBQ_out_3 = 0.0f;
+float fBQZ1_3 = 0.0f;
+float fBQZ2_3 = 0.0f;
+float fBQ_out_4 = 0.0f;
+float fBQZ1_4 = 0.0f;
+float fBQZ2_4 = 0.0f;
+float fBQ_out_5 = 0.0f;
+float fBQZ1_5 = 0.0f;
+float fBQZ2_5 = 0.0f;
+
+// Biquad coefficients for 48kHz sampling frequency, f0= 10kHz and 10th order LP
+// see http://www.earlevel.com/main/2016/09/29/cascading-filters/
+// and http://www.earlevel.com/main/2013/10/13/biquad-calculator-v2/
+// Q-Values: 0.50623256, 0.56116312, 0.70710678, 1.1013446, 3.1962266
+/*
+//Q: 0.50623256
+#define BQ_A0_1 0.1896540888062538f
+#define BQ_A1_1 0.3793081776125076f
+#define BQ_A2_1 0.1896540888062538f
+#define BQ_B1_1 -0.26490745527271625f
+#define BQ_B2_1 0.023523810497731508f
+//Q: 0.56116312
+#define BQ_A0_2 0.19917299441439854f
+#define BQ_A1_2 0.39834598882879707f
+#define BQ_A2_2 0.19917299441439854f
+#define BQ_B1_2 -0.27820339356493434f
+#define BQ_B2_2 0.07489537122252837f
+//Q: 0.70710678
+#define BQ_A0_3 0.22019470012300807f
+#define BQ_A1_3 0.44038940024601614f
+#define BQ_A2_3 0.22019470012300807f
+#define BQ_B1_3 -0.3075663595827598f
+#define BQ_B2_3 0.18834516007479202f
+//Q: 1.1013446
+#define BQ_A0_4 0.2576190655938374f
+#define BQ_A1_4 0.5152381311876748f
+#define BQ_A2_4 0.2576190655938374f
+#define BQ_B1_4 -0.35984044175243773f
+#define BQ_B2_4 0.39031670412778746f
+//Q: 3.1962266
+#define BQ_A0_5 0.32194349801676825f
+#define BQ_A1_5 0.6438869960335365f
+#define BQ_A2_5 0.32194349801676825f
+#define BQ_B1_5 -0.4496883422763653f
+#define BQ_B2_5 0.7374623343434382f
+*/
+
+//Q: 0.50623256
+#define BQ_A0_1 0.06452600200988579f
+#define BQ_A1_1 0.12905200401977157f
+#define BQ_A2_1 0.06452600200988579f
+#define BQ_B1_1 -0.9909072675518413f
+#define BQ_B2_1 0.24901127559138433f
+//Q: 0.56116312
+#define BQ_A0_2 0.06698822155330401f
+#define BQ_A1_2 0.13397644310660803f
+#define BQ_A2_2 0.06698822155330401f
+#define BQ_B1_2 -1.0287188654175745f
+#define BQ_B2_2 0.2966717516307906f
+//Q: 0.70710678
+#define BQ_A0_3 0.07223087528927949f
+#define BQ_A1_3 0.14446175057855898f
+#define BQ_A2_3 0.07223087528927949f
+#define BQ_B1_3 -1.109228792058311f
+#define BQ_B2_3 0.39815229321542905f
+//Q: 1.1013446
+#define BQ_A0_4 0.0809508018494106f
+#define BQ_A1_4 0.1619016036988212f
+#define BQ_A2_4 0.0809508018494106f
+#define BQ_B1_4 -1.2431381980622418f
+#define BQ_B2_4 0.5669414054598841f
+//Q: 3.1962266
+#define BQ_A0_5 0.09433928047651055f
+#define BQ_A1_5 0.1886785609530211f
+#define BQ_A2_5 0.09433928047651055f
+#define BQ_B1_5 -1.4487412163776068f
+#define BQ_B2_5 0.8260983382836492f
 
 int taskTableCnt = 0;
 void (*taskTable[96]) () = {0};
@@ -184,6 +327,7 @@ void THEREMIN_Init(void)
 
 
 	// Calculate the LUT for volume and pitch
+	THEREMIN_InitStateVariableFilters();
 	THEREMIN_Calc_PitchTable();
 	THEREMIN_Calc_DistortionTable();
 	THEREMIN_Calc_ImpedanceTable();
@@ -199,6 +343,27 @@ void THEREMIN_Init(void)
 	BEEP_Play(NOTE_A6,100,50);
 	BEEP_Play(NOTE_F6,300,500);
 
+}
+
+/**
+ * @brief Recalculates the pitch LUT
+ *
+ */
+void THEREMIN_InitStateVariableFilters(void)
+{
+	fSVFf_1 = 2.0f * sinf(M_PI_f * 360.0f / 48000.0f);
+	fSVFq_1 = 49.0f/ 360.0f;
+	fSVFf_2 = 2.0f * sinf(M_PI_f * 1700.0f / 48000.0f);
+	fSVFq_2 = 38.0f / 1700.0f;;
+	fSVFf_3 = 2.0f * sinf(M_PI_f * 2313.0f / 48000.0f);
+	fSVFq_3 = 59.0f / 2313.0f;
+	fSVFf_4 = 2.0f * sinf(M_PI_f * 2827.0f / 48000.0f);
+	fSVFq_4 = 74.0f/ 2827.0f;
+	fSVFf_5 = 2.0f * sinf(M_PI_f * 3751.0f / 48000.0f);
+	fSVFq_5 = 135.0f / 3751.0f;
+
+	fSVFf_6 = 2.0f * sinf(M_PI_f * 2000.0f / 48000.0f);
+	fSVFq_6 = 1.0f;
 }
 
 
@@ -243,6 +408,7 @@ void THEREMIN_Calc_PitchTable(void)
  * @brief Recalculates the distortion LUT
  *
  */
+
 void THEREMIN_Calc_DistortionTable(void)
 {
 	float f,f1;
@@ -276,6 +442,48 @@ void THEREMIN_Calc_DistortionTable(void)
 	usDistortionTable[2048] = 65535;
 }
 
+/**
+ * @brief Recalculates the distortion LUT
+ *
+ */
+/*
+void THEREMIN_Calc_DistortionTable(void)
+{
+	float f,fmin50,fmax50,fmax, fscale;
+	float fNonLin = ((float)aConfigWorkingSet[CFG_E_DISTORTION].iVal * 0.001f)*6.0f;
+
+	if (aConfigWorkingSet[CFG_E_DISTORTION].iVal != 0)
+	{
+		fmax = expf(fNonLin);
+		fscale = 1.0f/(fmax - 1.0f );
+
+		// take the Vpp value at 50% volume and use it to scale the
+		// sine value
+		fmin50 = 0.5f*(fscale * (expf(-0.5f * fNonLin)-1.0f )+1.0f );
+		fmax50 = 0.5f*(fscale * (expf(+0.5f * fNonLin)-1.0f )+1.0f );
+		//ssNonTimbreVol = 256 * (fmax50-fmin50);
+
+		//fscale = 1.0f/(fmax-fmin);
+		for (int32_t i = 0; i <= 2048; i++)
+		{
+			// Calculate the nonlinear function
+			f = 0.5f*(fscale * (expf((float)(i-1024)*0.000976562f * fNonLin)-1.0f )+1.0f );
+			// Fill the distortion LUT
+			usDistortionTable[i] = f*65535.0f;
+		}
+	}
+	else
+	{
+		//ssNonTimbreVol = 128;
+		for (int32_t i = 0; i < 2048; i++)
+		{
+			// Fill the distortion LUT
+			usDistortionTable[i] = i*32;
+		}
+		usDistortionTable[2048] = 65535;
+}
+}
+*/
 
 /**
  * @brief Recalculates the impedance LUT
@@ -292,7 +500,7 @@ void THEREMIN_Calc_ImpedanceTable(void)
 		{
 			// Calculate the nonlinear function
 			f1 = ((float)(i)*0.000488281f);
-			f=powf(f1,fImpedance)*0.8f;
+			f=powf(f1,fImpedance);
 			// Fill the distortion LUT
 			usImpedanceTable[i] = f*65535.0f;
 		}
@@ -317,14 +525,16 @@ void THEREMIN_Calc_ImpedanceTable(void)
 inline void THEREMIN_96kHzDACTask_A(void)
 {
 	int32_t tabix;
-	float p1f, p2f, tabsubf;
+	float p1f, p2f, tabsubf, fResult1,f;
 	int p1, p2, tabsub;
 	floatint_ut u;
 	//float fresult = 0.0f;
-	int16_t ssResult;
+	int16_t ssResult, ssResult2,ssResult3,ssResult4,ssResult5;
 	uint16_t usDistorted, usImpedance;
 	int i1;
+	int32_t slResult;
 
+	//STOPWATCH_START();
 	if (bBeepActive)
 	{
 		BEEP_Task();
@@ -362,8 +572,15 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	{
 		fPitchFrq = 0.0f;
 	}
+	/*
+	fPitchFrq1 = fPitchFrq * 0.5f;
 
+	fPitchFrq3 = fPitchFrq * 3.0f;
+	fPitchFrq4 = fPitchFrq * 4.0f;
+	fPitchFrq5 = fPitchFrq * 5.0f;
 	//fPitchFrq = 0.1f;
+*/
+	fPitchFrq2 = fPitchFrq * 2.0f;
 
 	fOscSin += fPitchFrq * fOscCos;
 	fOscCos -= fPitchFrq * fOscSin;
@@ -372,6 +589,80 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	fOscCorr = 1.0f +((1.0f - (fOscSin * fOscSin + fOscCos * fOscCos))*0.01f);
 	fOscCos *= fOscCorr;
 	fOscSin *= fOscCorr;
+
+
+	fOscSin2 += fPitchFrq * fOscCos2;
+	fOscCos2 -= fPitchFrq * fOscSin2;
+	fOscSin2 += fPitchFrq * fOscCos2;
+	fOscCos2 -= fPitchFrq * fOscSin2;
+	fOscSin2 += fPitchFrq * fOscCos2;
+	fOscCos2 -= fPitchFrq * fOscSin2;
+	fOscSin2 += fPitchFrq * fOscCos2;
+	fOscCos2 -= fPitchFrq * fOscSin2;
+	fOscCorr2 = 1.0f +((1.0f - (fOscSin2 * fOscSin2 + fOscCos2 * fOscCos2))*0.01f);
+	fOscCos2 *= fOscCorr2;
+	fOscSin2 *= fOscCorr2;
+
+	fOscSin3 += fPitchFrq * fOscCos3;
+	fOscCos3 -= fPitchFrq * fOscSin3;
+	fOscSin3 += fPitchFrq * fOscCos3;
+	fOscCos3 -= fPitchFrq * fOscSin3;
+	fOscSin3 += fPitchFrq * fOscCos3;
+	fOscCos3 -= fPitchFrq * fOscSin3;
+	fOscSin3 += fPitchFrq * fOscCos3;
+	fOscCos3 -= fPitchFrq * fOscSin3;
+	fOscSin3 += fPitchFrq * fOscCos3;
+	fOscCos3 -= fPitchFrq * fOscSin3;
+	fOscSin3 += fPitchFrq * fOscCos3;
+	fOscCos3 -= fPitchFrq * fOscSin3;
+	fOscCorr3 = 1.0f +((1.0f - (fOscSin3 * fOscSin3 + fOscCos3 * fOscCos3))*0.01f);
+	fOscCos3 *= fOscCorr3;
+	fOscSin3 *= fOscCorr3;
+
+
+	fOscSin4 += fPitchFrq * fOscCos4;
+	fOscCos4 -= fPitchFrq * fOscSin4;
+	fOscSin4 += fPitchFrq * fOscCos4;
+	fOscCos4 -= fPitchFrq * fOscSin4;
+	fOscSin4 += fPitchFrq * fOscCos4;
+	fOscCos4 -= fPitchFrq * fOscSin4;
+	fOscSin4 += fPitchFrq * fOscCos4;
+	fOscCos4 -= fPitchFrq * fOscSin4;
+	fOscSin4 += fPitchFrq * fOscCos4;
+	fOscCos4 -= fPitchFrq * fOscSin4;
+	fOscSin4 += fPitchFrq * fOscCos4;
+	fOscCos4 -= fPitchFrq * fOscSin4;
+	fOscSin4 += fPitchFrq * fOscCos4;
+	fOscCos4 -= fPitchFrq * fOscSin4;
+	fOscSin4 += fPitchFrq * fOscCos4;
+	fOscCos4 -= fPitchFrq * fOscSin4;
+	fOscCorr4 = 1.0f +((1.0f - (fOscSin4 * fOscSin4 + fOscCos4 * fOscCos4))*0.01f);
+	fOscCos4 *= fOscCorr4;
+	fOscSin4 *= fOscCorr4;
+
+	fOscSin5 += fPitchFrq * fOscCos5;
+	fOscCos5 -= fPitchFrq * fOscSin5;
+	fOscSin5 += fPitchFrq * fOscCos5;
+	fOscCos5 -= fPitchFrq * fOscSin5;
+	fOscSin5 += fPitchFrq * fOscCos5;
+	fOscCos5 -= fPitchFrq * fOscSin5;
+	fOscSin5 += fPitchFrq * fOscCos5;
+	fOscCos5 -= fPitchFrq * fOscSin5;
+	fOscSin5 += fPitchFrq * fOscCos5;
+	fOscCos5 -= fPitchFrq * fOscSin5;
+	fOscSin5 += fPitchFrq * fOscCos5;
+	fOscCos5 -= fPitchFrq * fOscSin5;
+	fOscSin5 += fPitchFrq * fOscCos5;
+	fOscCos5 -= fPitchFrq * fOscSin5;
+	fOscSin5 += fPitchFrq * fOscCos5;
+	fOscCos5 -= fPitchFrq * fOscSin5;
+	fOscSin5 += fPitchFrq * fOscCos5;
+	fOscCos5 -= fPitchFrq * fOscSin5;
+	fOscSin5 += fPitchFrq * fOscCos5;
+	fOscCos5 -= fPitchFrq * fOscSin5;
+	fOscCorr5 = 1.0f +((1.0f - (fOscSin5 * fOscSin5 + fOscCos5 * fOscCos5))*0.01f);
+	fOscCos5 *= fOscCorr5;
+	fOscSin5 *= fOscCorr5;
 
 	/*
 	if (fOscSin > 1.0f)
@@ -382,7 +673,88 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	{
 		fOscSin = -1.0f;
 	}*/
-	ssResult = fOscSin * 30.0f * (float)slVolFilt;
+/*
+	fOscSin5 = (fOscSin + 0.5f) *4.0f;
+	if (fOscSin5 > 0.6f)
+	{
+		fOscSin5 = 0.6f;
+	}
+	if (fOscSin5 < -0.6f)
+	{
+		fOscSin5 = -0.6f;
+	}
+*/
+	//ssResult = (fOscSin  * 30.0f /*+ fOscSin2 * 10.0f - fOscSin3 * 5.0f*/) * (float)slVolFilt;
+/*
+	slResult = ((fOscSin + 0.8f) * 8.0* 30.0f) * (float)slVolFilt;
+	if (slResult>20000)
+	{
+		ssResult = 20000;
+	}
+	else if (slResult<-20000)
+	{
+		ssResult = -20000;
+	}
+	else
+	{
+		ssResult = slResult;
+
+	}
+*/
+	/*
+	ssResult = (fOscSin * 30000.0f);
+	if (ssResult > (slVolFilt * 32) )
+	{
+		ssResult = (slVolFilt * 32) ;
+	}
+	if (ssResult < ( - slVolFilt * 32) )
+	{
+		ssResult = ( - slVolFilt * 32) ;
+	}
+*/
+	f = (float)slVolFilt;
+	f = f * f * 0.000976562f;
+	fVollAddSynth_l2 = fVollAddSynth_2 * f;
+	fVollAddSynth_l3 = fVollAddSynth_3 * f;
+	fVollAddSynth_l4 = fVollAddSynth_4 * f;
+	fVollAddSynth_l5 = fVollAddSynth_5 * f;
+	/*
+	fVollAddSynth_l2 = fVollAddSynth_2 * (f-300.0f);
+	fVollAddSynth_l3 = fVollAddSynth_3 * (f-300.0f);
+	fVollAddSynth_l4 = fVollAddSynth_4 * (f-300.0f);
+	fVollAddSynth_l5 = fVollAddSynth_5 * (f-300.0f);
+	if (fVollAddSynth_l2<0.0f ) fVollAddSynth_l2 = 0.0f;
+	if (fVollAddSynth_l3<0.0f ) fVollAddSynth_l3 = 0.0f;
+	if (fVollAddSynth_l4<0.0f ) fVollAddSynth_l4 = 0.0f;
+	if (fVollAddSynth_l5<0.0f ) fVollAddSynth_l5 = 0.0f;*/
+
+/*
+	if (ssResult < 0)
+	{
+		ssResult *= -1;
+	}*/
+
+	ssResult =
+			 - fOscSin2 * fVollAddSynth_l2 * 10.0f +
+			fOscSin3 * fVollAddSynth_l3 * 10.0f +
+			fOscSin4 * fVollAddSynth_l4 * 10.0f +
+			fOscSin5 * fVollAddSynth_l5 * 10.0f +
+
+			fOscSin * 10.0f * (float)slVolFilt;
+
+	/*if (ssResult < 0)
+	{
+		ssResult *= -1;
+	}*/
+
+/*
+	fFiltLP1 += (fResult1 - fFiltLP1) * 0.1f; // fPitchFrq1 * 2.0f;
+	fFiltLP2 += (fFiltLP1 - fFiltLP2) * 0.1f; // fPitchFrq1 * 2.0f;
+	ssResult = fFiltLP2;
+*/
+	//ssResult += (fOscSin2 * 15.0f - fOscSin3 * 15.0f) * (float)slVolFilt;
+	//ssResult2 = 0;
+
 	//result = fabs(fOscSin) * (float)slVolFilt;
 /*
 	else if (result > 32767.0)
@@ -406,17 +778,20 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	usDistorted = (p1 + (((p2 - p1) * tabsub) / 32));
 
 	i1 = (slTimbre * (usDistorted-32768) + (256-slTimbre) * ssResult ) / 256 ;
+	//i1 -=( ssResult * 3 )/ 4;
 
+	i1 = (slTimbre * ssResult2 + 256 * ssResult ) / 256 ;
 
 	p1 = usImpedanceTable[tabix];
 	p2 = usImpedanceTable[tabix + 1];
 	usImpedance = (p1 + (((p2 - p1) * tabsub) / 32));
+	slOutCapacitor += ((ssResult-slOutCapacitor) * usImpedance) / 65536;
 
-	//slOutCapacitor += (i1-slOutCapacitor) * ((i1 + 32768)/64) / 65536;
-	slOutCapacitor += ((i1-slOutCapacitor) * usImpedance) / 65536;
+	//fFilterIn = slOutCapacitor;
+//	fFilterIn = (slTimbre * (usDistorted-32768) + (256-slTimbre) * ssResult ) / 256 ;
+	fFilterIn = (slTimbre * slOutCapacitor + (256-slTimbre) * ssResult ) / 256 ;
 
 
-	ssDACValueR = slOutCapacitor;
 	//result = (float)iWavOut;
 
 	// Low pass filter the output to avoid aliasing noise.
@@ -424,15 +799,27 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	slVolFilt = slVolFiltL / 1024;
 
 
+	// cycles: 29
+	// Low pass filter period values
+	// factor *1024 is necessary, because of the /1024 integer division
+	// factor *1024 is necessary, because we want to over sample the input signal
+	if (usPitchPeriod != 0)
+	{
+		//                                   11bit                10bit  10bit
+		slPitchPeriodeFilt += ((int16_t) (usPitchPeriod - 2048) * 1024 * 1024
+				- slPitchPeriodeFilt) / 256;
+	}
 	// Limit the output to 16bit
 	if (bMute)
 	{
-		ssDACValueR = 0;
+		fFilterIn = 0;
 	}
 
 
-	// Output also to the speaker
-	ssDACValueL = ssDACValueR;
+
+
+	//STOPWATCH_STOP();
+
 }
 
 /**
@@ -442,8 +829,82 @@ inline void THEREMIN_96kHzDACTask_A(void)
  */
 inline void THEREMIN_96kHzDACTask_B(void)
 {
+	if (bBeepActive)
+	{
+		return;
+	}
+	/*
+	float flp;
+
+	flp = fSVFZ1_1 * fSVFf_1 + fSVFZ2_1;
+	fSVF_out_1 = fSVFZ1_1 + fSVFf_1 * (fFilterIn * fSVFq_1 - fSVFq_1 * fSVFZ1_1 - flp);
+	fSVFZ2_1 = flp;
+	fSVFZ1_1 = fSVF_out_1;
+
+	flp = fSVFZ1_2 * fSVFf_2 + fSVFZ2_2;
+	fSVF_out_2 = fSVFZ1_2 + fSVFf_2 * (fFilterIn * fSVFq_2 - fSVFq_2 * fSVFZ1_2 - flp);
+	fSVFZ2_2 = flp;
+	fSVFZ1_2 = fSVF_out_2;
+
+	flp = fSVFZ1_3 * fSVFf_3 + fSVFZ2_3;
+	fSVF_out_3 = fSVFZ1_3 + fSVFf_3 * (fFilterIn * fSVFq_3 - fSVFq_3 * fSVFZ1_3 - flp);
+	fSVFZ2_3 = flp;
+	fSVFZ1_3 = fSVF_out_3;
+
+	flp = fSVFZ1_4 * fSVFf_4 + fSVFZ2_4;
+	fSVF_out_4 = fSVFZ1_4 + fSVFf_4 * (fFilterIn * fSVFq_4 - fSVFq_4 * fSVFZ1_4 - flp);
+	fSVFZ2_4 = flp;
+	fSVFZ1_4 = fSVF_out_4;
+
+	flp = fSVFZ1_5 * fSVFf_5 + fSVFZ2_5;
+	fSVF_out_5 = fSVFZ1_5 + fSVFf_5 * (fFilterIn * fSVFq_5 - fSVFq_5 * fSVFZ1_5 - flp);
+	fSVFZ2_5 = flp;
+	fSVFZ1_5 = fSVF_out_5;
 
 
+	flp = fSVFZ1_6 * fSVFf_6 + fSVFZ2_6;
+	fSVF_out_6 = fSVFZ1_6 + fSVFf_6 * (
+//			(fFilterIn * 0.1f + fSVF_out_1 + fSVF_out_2 + fSVF_out_3 + fSVF_out_4 + fSVF_out_5)
+			(fFilterIn)
+			- fSVFq_6 * fSVFZ1_6 - flp);
+	fSVFZ2_6 = flp;
+	fSVFZ1_6 = fSVF_out_6;
+	ssDACValueR = flp *0.5f;//fBQ_out_5;
+
+*/
+
+
+
+
+/*
+	// Biquad 1
+	fBQ_out_1 	= BQ_A0_1 * fFilterIn + fBQZ1_1;
+	fBQZ1_1		= BQ_A1_1 * fFilterIn + fBQZ2_1 - BQ_B1_1 * fBQ_out_1;
+	fBQZ2_1		= BQ_A2_1 * fFilterIn           - BQ_B2_1 * fBQ_out_1;
+	// Biquad 2
+	fBQ_out_2 	= BQ_A0_2 * fBQ_out_1 + fBQZ1_2;
+	fBQZ1_2		= BQ_A1_2 * fBQ_out_1 + fBQZ2_2 - BQ_B1_2 * fBQ_out_2;
+	fBQZ2_2		= BQ_A2_2 * fBQ_out_1           - BQ_B2_2 * fBQ_out_2;
+	// Biquad 3
+	fBQ_out_3 	= BQ_A0_3 * fBQ_out_2 + fBQZ1_3;
+	fBQZ1_3		= BQ_A1_3 * fBQ_out_2 + fBQZ2_3 - BQ_B1_3 * fBQ_out_3;
+	fBQZ2_3		= BQ_A2_3 * fBQ_out_2           - BQ_B2_3 * fBQ_out_3;
+	// Biquad 4
+	fBQ_out_4 	= BQ_A0_4 * fBQ_out_3 + fBQZ1_4;
+	fBQZ1_4		= BQ_A1_4 * fBQ_out_3 + fBQZ2_4 - BQ_B1_4 * fBQ_out_4;
+	fBQZ2_4		= BQ_A2_4 * fBQ_out_3           - BQ_B2_4 * fBQ_out_4;
+	// Biquad 5
+	fBQ_out_5 	= BQ_A0_5 * fBQ_out_4 + fBQZ1_5;
+	fBQZ1_5		= BQ_A1_5 * fBQ_out_4 + fBQZ2_5 - BQ_B1_5 * fBQ_out_5;
+	fBQZ2_5		= BQ_A2_5 * fBQ_out_4           - BQ_B2_5 * fBQ_out_5;
+
+*/
+
+
+
+	ssDACValueR = fFilterIn;
+	// Output also to the speaker
+	ssDACValueL = ssDACValueR;
 }
 
 /**
@@ -453,16 +914,7 @@ inline void THEREMIN_96kHzDACTask_B(void)
  */
 inline void THEREMIN_96kHzDACTask_Common(void)
 {
-	// cycles: 29
-	// Low pass filter period values
-	// factor *1024 is necessary, because of the /1024 integer division
-	// factor *1024 is necessary, because we want to over sample the input signal
-	if (usPitchPeriod != 0)
-	{
-		//                                   11bit                10bit  10bit
-		slPitchPeriodeFilt += ((int16_t) (usPitchPeriod - 2048) * 1024 * 1024
-				- slPitchPeriodeFilt) / 1024;
-	}
+
 
 
 
@@ -602,7 +1054,6 @@ void THEREMIN_Task_Capture_VOL2(void)
  */
 void THEREMIN_Task_Calculate_VOL1(void)
 {
-	STOPWATCH_START();
 
 	if (slVolTim1PeriodeFilt > 0)
 	{
@@ -615,7 +1066,6 @@ void THEREMIN_Task_Calculate_VOL1(void)
 		slVolTim1PeriodeFilt_cnt = 0;
 		slVolTim1PeriodeFilt = 0;
 	}
-	STOPWATCH_STOP();
 
 	// Limit it
 	if (slVol1 < 0)
@@ -696,6 +1146,7 @@ void THEREMIN_Task_Volume(void)
  */
 void THEREMIN_Task_Timbre(void)
 {
+	float f;
 	// Timbre is the difference between VOL1 and VOL2 in the range of 0..128
 	slTimbre = (slVol1 - slVol2) + 128;
 
@@ -711,6 +1162,17 @@ void THEREMIN_Task_Timbre(void)
 
 	// Scale it from 0..256 to 0.0f .. 1.0f
 	fTimbre = (float)slTimbre * 0.00390625f;
+
+	f = ((float)aConfigWorkingSet[CFG_E_ADDSYNTH_2].iVal * 0.001f);
+	fVollAddSynth_2 = f*f;
+	f = ((float)aConfigWorkingSet[CFG_E_ADDSYNTH_3].iVal * 0.001f);
+	fVollAddSynth_3 = f*f;
+	f = ((float)aConfigWorkingSet[CFG_E_ADDSYNTH_4].iVal * 0.001f);
+	fVollAddSynth_4 = f*f;
+	f = ((float)aConfigWorkingSet[CFG_E_ADDSYNTH_5].iVal * 0.001f);
+	fVollAddSynth_5 = f*f;
+
+					;
 }
 
 /**

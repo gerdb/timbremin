@@ -134,7 +134,12 @@ void CONFIG_FillWithDefault(void)
 		aConfigValues[i][CFG_E_LOUDER_DOWN] = 1;
 		aConfigValues[i][CFG_E_STARTUP_AUTOTUNE] = 1;
 		aConfigValues[i][CFG_E_DISTORTION] = 0;
-		aConfigValues[i][CFG_E_IMPEDANCE] = 250;
+		aConfigValues[i][CFG_E_IMPEDANCE] = 1000;
+		aConfigValues[i][CFG_E_ADDSYNTH_2] = 800;
+		aConfigValues[i][CFG_E_ADDSYNTH_3] = 200;
+		aConfigValues[i][CFG_E_ADDSYNTH_4] = 500;
+		aConfigValues[i][CFG_E_ADDSYNTH_5] = 300;
+
 
 
 
@@ -264,6 +269,10 @@ CONFIG_eConfigEntry CONFIG_NameToEnum(char* name)
 	if (strcmp(name, "STARTUP_AUTOTUNE") == 0) return CFG_E_STARTUP_AUTOTUNE;
 	if (strcmp(name, "DISTORTION") == 0) return CFG_E_DISTORTION;
 	if (strcmp(name, "IMPEDANCE") == 0) return CFG_E_IMPEDANCE;
+	if (strcmp(name, "ADDSYNTH_2") == 0) return CFG_E_ADDSYNTH_2;
+	if (strcmp(name, "ADDSYNTH_3") == 0) return CFG_E_ADDSYNTH_3;
+	if (strcmp(name, "ADDSYNTH_4") == 0) return CFG_E_ADDSYNTH_4;
+	if (strcmp(name, "ADDSYNTH_5") == 0) return CFG_E_ADDSYNTH_5;
 
 
 
