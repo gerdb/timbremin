@@ -259,8 +259,9 @@ uint32_t iDcEarly4 = 813;
 uint32_t iDcEarly5 = 900;
 
 int32_t slReverbLP = 0;
+int32_t slReverbHP = 0;
 
-#define KRT 120
+#define KRT 150
 
 
 
@@ -966,15 +967,15 @@ inline void THEREMIN_96kHzDACTask_B(void)
 
 	// https://valhalladsp.com/2010/08/25/rip-keith-barr/
 	// http://www.spinsemi.com/knowledge_base/effects.html#Reverberation
-	slD1[iDc1_in] =  slFilterIn - slD1[iDc1_out] / 2 + (KRT * slReverbLP ) / (256*128);
+	slD1[iDc1_in] =  slFilterIn - slD1[iDc1_out] / 2 + (KRT * slD12[iDc12_out]) / 256;
 	slD2[iDc2_in] = - slD2[iDc2_out] / 2 + slD1[iDc1_out] + slD1[iDc1_in] / 2;
 	slD3[iDc3_in] =  slD2[iDc2_out] + slD2[iDc2_in] / 2;
 
-	slD4[iDc4_in] =   - slD4[iDc4_out] / 2 + (KRT * slD3[iDc3_out]) / 256;
+	slD4[iDc4_in] =   slFilterIn - slD4[iDc4_out] / 2 + (KRT * slD3[iDc3_out]) / 256;
 	slD5[iDc5_in] = - slD5[iDc5_out] / 2 + slD4[iDc4_out] + slD4[iDc4_in] / 2;
 	slD6[iDc6_in] =  slD5[iDc5_out] + slD5[iDc5_in] / 2;
 
-	slD7[iDc7_in] =  0 - slD7[iDc7_out] / 2 + (KRT * slD6[iDc6_out]) / 256;
+	slD7[iDc7_in] =  slFilterIn - slD7[iDc7_out] / 2 + (KRT * slD6[iDc6_out]) / 256;
 	slD8[iDc8_in] = - slD8[iDc8_out] / 2 + slD7[iDc7_out] + slD7[iDc7_in] / 2;
 	slD9[iDc9_in] =  slD8[iDc8_out] + slD8[iDc8_in] / 2;
 
@@ -982,8 +983,8 @@ inline void THEREMIN_96kHzDACTask_B(void)
 	slD11[iDc11_in] = - slD11[iDc11_out] / 2 + slD10[iDc10_out] + slD10[iDc10_in] / 2;
 	slD12[iDc12_in] =  slD11[iDc11_out] + slD11[iDc11_in] / 2;
 
-	slReverbLP += ( slD12[iDc12_out] * 128 - slReverbLP) / 64;
-
+	//slReverbLP += ( slD12[iDc12_out] * 256 - slReverbLP) / 512;
+	//slReverbHP = slD12[iDc12_out] - slReverbLP / 256;
 
 	iDc1_in = iDc1_out;
 	iDc2_in = iDc2_out;
@@ -1035,8 +1036,8 @@ inline void THEREMIN_96kHzDACTask_B(void)
 
 	//ssDACValueR =slD3[iDcEarly1];
 
-	ssDACValueR =(
-			slD3[iDcEarly1] * 200 +
+	ssDACValueR =(slFilterIn * 200 +
+			slD3[iDcEarly1] * 50 +
 			slD3[iDcEarly2] * 30 +
 			slD3[iDcEarly3] * 20 +
 			slD3[iDcEarly4] * 8 +
