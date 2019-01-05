@@ -27,6 +27,7 @@
 #include "stm32f4xx_hal.h"
 #include "audio_out.h"
 #include "theremin.h"
+#include "reverb.h"
 #include "pots.h"
 #include <math.h>
 
@@ -133,7 +134,7 @@ void AUDIO_OUT_I2S_IRQHandler(void)
 		// Fill the audio DAC with the RIGHT value = ear phone
 		hi2s3.Instance->DR = ssDACValueR;
 		toggle = 1;
-		THEREMIN_96kHzDACTask_B();
+		REVERB_Task();
 	}
 	// Get the new value for the next task
 	THEREMIN_96kHzDACTask_Common();

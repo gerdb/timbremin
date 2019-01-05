@@ -68,7 +68,7 @@ extern int32_t slPitchOffset; 		// offset value (result of auto-tune)
 extern int32_t slPitchPeriodeFilt;	// low pass filtered period
 extern int32_t slVolTim1MeanPeriode;	// low pass filtered period
 extern int32_t slVolTim2MeanPeriode;	// low pass filtered period
-
+extern int32_t slThereminOut;	// Output sound from theremin into reverb
 
 /* Function prototypes ----------------------------------------------------- */
 void THEREMIN_Init(void);
@@ -88,7 +88,6 @@ void THEREMIN_Task_Volume(void);
 void THEREMIN_Task_Timbre(void);
 void THEREMIN_Task_Volume_Nonlin(void);
 
-void THEREMIN_InitStateVariableFilters(void);
 void THEREMIN_Calc_PitchTable(void);
 void THEREMIN_Calc_DistortionTable(void);
 void THEREMIN_Calc_ImpedanceTable(void);
