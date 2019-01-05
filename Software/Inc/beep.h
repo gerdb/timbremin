@@ -59,6 +59,7 @@ extern int bBeepActive;
 /* Function prototypes ----------------------------------------------------- */
 void BEEP_Init(void);
 void BEEP_Play(float frequency, int duration, int pause);
+void BEEP_AutoTuneSound(int autotuneCounter);
 void BEEP_Task(void);
 
 #endif /* BEEP_H_ */

@@ -39,6 +39,7 @@ e_ADSR eADSR = ATTAC;	// ADSR state
 int iADSRCnt = 0; // AD_R counter
 int iTimeCnt = 0; // Sustain counter
 uint32_t iBeepTimeCnt = 0; // Counter for beep wave table
+int iAutoTuneCnt = 0;
 
 /**
  * @brief Initialize the module
@@ -68,79 +69,113 @@ void BEEP_Play(float frequency, int duration, int pause)
 }
 
 /**
+ * @brief plays a sound during auto tune procedure
+ *
+ * @autotuneCounter counter during auto tune from 999 down to 0
+ *
+ */
+void BEEP_AutoTuneSound(int autotuneCounter)
+{
+	iAutoTuneCnt = autotuneCounter;
+	bBeepActive = iAutoTuneCnt != 0;
+}
+
+/**
  * @brief Play it
  *
  *
  */
 void BEEP_Task(void)
 {
+	int beepVol;
 	if (!bBeepActive)
 		return;
 
-	switch (eADSR)
+	if (iAutoTuneCnt > 0 )
 	{
-	case ATTAC:
-		iADSRCnt += ATTAC_SPEED;
-		if (iADSRCnt >= ATTAC_VALUE )
-		{
-			iADSRCnt = ATTAC_VALUE;
-			eADSR = DECAY;
-		}
-		break;
-	case DECAY:
-		iADSRCnt -= DECAY_SPEED;
-		if (iADSRCnt <= SUSTAIN_VALUE )
-		{
-			iADSRCnt = SUSTAIN_VALUE;
-			eADSR = SUSTAIN;
-			iTimeCnt = 0;
-		}
-		break;
-	case SUSTAIN:
-		iTimeCnt ++;
-		if (iTimeCnt >= thisBeep->duration )
-		{
-			eADSR = RELEASE;
-		}
-		break;
-	case RELEASE:
-		iADSRCnt -= RELEASE_SPEED;
-		if (iADSRCnt <= 0 )
-		{
-			iADSRCnt = 0;
-			iTimeCnt = 0;
-			eADSR = PAUSE;
-		}
-		break;
-	case PAUSE:
-		iTimeCnt ++;
-		if (iTimeCnt >= thisBeep->pause )
-		{
-			eADSR = ATTAC;
+		//iBeepTimeCnt += thisBeep->frequency*1024.0f / 48000.0f * 1024.0f;
+		iBeepTimeCnt += ((1400 - iAutoTuneCnt)*(1400 - iAutoTuneCnt)) / 32;
 
-			// Get the next beep note
-			iBeepReadCnt ++;
-			iBeepReadCnt &= 0xFF;
-			thisBeep = &aBeeps[iBeepReadCnt];
-
-			// Are there any more note? or was it the last one?
-			if (iBeepReadCnt == iBeepWriteCnt)
-			{
-				bBeepActive = 0;
-			}
-
+		beepVol = iAutoTuneCnt & 0x003F;
+		if (beepVol > 32)
+		{
+			beepVol = 0;
 		}
-		break;
+		else
+		{
+			beepVol *=256;
+		}
+		// Apply the beep only to the ear phone
+		ssDACValueR = (int16_t)((usBeepWave[(iBeepTimeCnt/1024) & 0x000003FF] * beepVol) / 16384);
+
 	}
+	else
+	{
+		switch (eADSR)
+		{
+		case ATTAC:
+			iADSRCnt += ATTAC_SPEED;
+			if (iADSRCnt >= ATTAC_VALUE )
+			{
+				iADSRCnt = ATTAC_VALUE;
+				eADSR = DECAY;
+			}
+			break;
+		case DECAY:
+			iADSRCnt -= DECAY_SPEED;
+			if (iADSRCnt <= SUSTAIN_VALUE )
+			{
+				iADSRCnt = SUSTAIN_VALUE;
+				eADSR = SUSTAIN;
+				iTimeCnt = 0;
+			}
+			break;
+		case SUSTAIN:
+			iTimeCnt ++;
+			if (iTimeCnt >= thisBeep->duration )
+			{
+				eADSR = RELEASE;
+			}
+			break;
+		case RELEASE:
+			iADSRCnt -= RELEASE_SPEED;
+			if (iADSRCnt <= 0 )
+			{
+				iADSRCnt = 0;
+				iTimeCnt = 0;
+				eADSR = PAUSE;
+			}
+			break;
+		case PAUSE:
+			iTimeCnt ++;
+			if (iTimeCnt >= thisBeep->pause )
+			{
+				eADSR = ATTAC;
 
-	//iBeepTimeCnt += thisBeep->frequency*1024.0f / 48000.0f * 1024.0f;
-	iBeepTimeCnt += (uint32_t)(thisBeep->frequency*21.845333333f
-			//Modulate the frequency so the beep sounds a little bit "liquid"
-			* ((32767.0f- (float)(iADSRCnt)) * 0.000030518f)
-		);
+				// Get the next beep note
+				iBeepReadCnt ++;
+				iBeepReadCnt &= 0xFF;
+				thisBeep = &aBeeps[iBeepReadCnt];
 
-	// Apply the beep only to the ear phone
-	ssDACValueR = (int16_t)((usBeepWave[(iBeepTimeCnt/1024) & 0x000003FF] * iADSRCnt) / 16384/2);
+				// Are there any more note? or was it the last one?
+				if (iBeepReadCnt == iBeepWriteCnt)
+				{
+					bBeepActive = 0;
+				}
+
+			}
+			break;
+		}
+
+		//iBeepTimeCnt += thisBeep->frequency*1024.0f / 48000.0f * 1024.0f;
+		iBeepTimeCnt += (uint32_t)(thisBeep->frequency*21.845333333f
+				//Modulate the frequency so the beep sounds a little bit "liquid"
+				* ((32767.0f- (float)(iADSRCnt)) * 0.000030518f)
+			);
+
+		// Apply the beep only to the ear phone
+		ssDACValueR = (int16_t)((usBeepWave[(iBeepTimeCnt/1024) & 0x000003FF] * iADSRCnt) / 16384/2);
+	}
 
 }
 

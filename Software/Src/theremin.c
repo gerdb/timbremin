@@ -873,11 +873,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 		slPitchPeriodeFilt += ((int16_t) (usPitchPeriod - 2048) * 1024 * 1024
 				- slPitchPeriodeFilt) / 256;
 	}
-	// Limit the output to 16bit
-	if (bMute)
-	{
-		fFilterIn = 0;
-	}
+
 
 
 
@@ -893,10 +889,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
  */
 inline void THEREMIN_96kHzDACTask_B(void)
 {
-	if (bBeepActive)
-	{
-		return;
-	}
+
 	/*
 	float flp;
 
@@ -963,7 +956,10 @@ inline void THEREMIN_96kHzDACTask_B(void)
 	fBQZ2_5		= BQ_A2_5 * fBQ_out_4           - BQ_B2_5 * fBQ_out_5;
 
 */
-
+	if (bMute != 0 || bBeepActive )
+	{
+		slFilterIn = 0;
+	}
 
 	// https://valhalladsp.com/2010/08/25/rip-keith-barr/
 	// http://www.spinsemi.com/knowledge_base/effects.html#Reverberation
@@ -1034,16 +1030,20 @@ inline void THEREMIN_96kHzDACTask_B(void)
 	if (iDcEarly4 == DELAY3_LENGTH) iDcEarly4 = 0;
 	if (iDcEarly5 == DELAY3_LENGTH) iDcEarly5 = 0;
 
-	//ssDACValueR =slD3[iDcEarly1];
+	if (bMute == 0 && !bBeepActive )
+	{
+		//ssDACValueR =slD3[iDcEarly1];
+		// Limit the output to 16bit
+		ssDACValueR =(slFilterIn * 200 +
+				slD3[iDcEarly1] * 50 +
+				slD3[iDcEarly2] * 30 +
+				slD3[iDcEarly3] * 20 +
+				slD3[iDcEarly4] * 8 +
+				slD3[iDcEarly5] * 5 ) / 256;
+		// Output also to the speaker
+		ssDACValueL = ssDACValueR;
+	}
 
-	ssDACValueR =(slFilterIn * 200 +
-			slD3[iDcEarly1] * 50 +
-			slD3[iDcEarly2] * 30 +
-			slD3[iDcEarly3] * 20 +
-			slD3[iDcEarly4] * 8 +
-			slD3[iDcEarly5] * 5 ) / 256;
-	// Output also to the speaker
-	ssDACValueL = ssDACValueR;
 }
 
 /**
@@ -1358,9 +1358,9 @@ void THEREMIN_1msTask(void)
 			bMute = 1;
 
 			// Beep for "Auto tune start"
-			BEEP_Play(NOTE_A6,50,50);
-			BEEP_Play(NOTE_B6,50,50);
-			BEEP_Play(NOTE_C7,100,50);
+			//BEEP_Play(NOTE_A6,50,50);
+			//BEEP_Play(NOTE_B6,50,50);
+			//BEEP_Play(NOTE_C7,100,50);
 
 			DISPLAY_Dark();
 
@@ -1379,7 +1379,7 @@ void THEREMIN_1msTask(void)
 			slMinVol2Periode = 0x7FFFFFFF;
 		}
 	}
-	else if (bBeepActive == 0)
+	else// if (bBeepActive == 0)
 	{
 
 
@@ -1399,6 +1399,8 @@ void THEREMIN_1msTask(void)
 		}
 		siAutotune--;
 
+		BEEP_AutoTuneSound(siAutotune);
+
 		// LED indicator
 		ulLedCircleSpeed = siAutotune;
 		ulLedCirclePos += ulLedCircleSpeed;
@@ -1411,7 +1413,7 @@ void THEREMIN_1msTask(void)
 
 
 			// Beep for "Auto tune ends"
-			BEEP_Play(NOTE_A5,100,100);
+			//BEEP_Play(NOTE_A5,100,100);
 
 			DISPLAY_Dark();
 			// Use minimum values for offset of pitch and volume
