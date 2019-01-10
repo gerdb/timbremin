@@ -21,12 +21,13 @@ So you need only 3 additional oscillators and some potentiometers and switches.
 ![tinnitus](pics/osc_sch.png "timbremin oscillator schematic")
 
 ### Layout
-The oscillators can be built up on a breadboard:
-
+The oscillators can be built up on a breadboard.
 With THD components:
+
 ![timbremin](pics/osc_THD.png "timbremin oscillator built on a breadboard")
 
 Or with SMD components:
+
 ![timbremin](pics/osc_SMD.png "timbremin oscillators built on a breadboard")
 
 
