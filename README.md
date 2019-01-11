@@ -1,5 +1,10 @@
 ![timbremin](pics/timbremin_logo.png "logo timbremin")
 
+<br><br><br><br><br>
+# !! Project under construction !!
+<br><br><br><br><br><br><br><br>
+
+
 ### An easy to build Theremin for only 50$
 
 * Only an STM32 evaluation board, 3 oscillators and some knobs and switches needed.
@@ -32,18 +37,16 @@ Or with SMD components:
 
 
 ### Bill of material
-| Component     | Value        | Details                             |
-| ------------- | ------------ |------------------------------------ |
-| C1            | 22pF         | ceramic capacitor NP0 2.54mm        |
-| C2            | 10pF         | ceramic capacitor NP0 2.54mm        |
-| C3            | 1nF          | ceramic capacitor NP0 or X7R 2.54mm |
-| C4            | 220pF        | ceramic capacitor NP0 2.54mm        |
-| C5            | 1µF          | ceramic capacitor X7R or X5R 5.08mm |
-| R1            | 100k         | resistor 1% size 0207               |
-| R2            | 10R          | resistor 1% size 0207               |
-| R3            | 1k           | resistor 1% size 0207               |
-| L1            | 2.5, 3, 4mH  | air coil, see below                 |
-| T1            | BC557C       | TO92                                |
+| Component | Volume 1  | Volume 2  | Pitch     |                   |
+| --------- | --------- | --------- | --------- |------------------ |
+| C1        | 1µF       | 1µF       | 1µF       | ceramic capacitor |
+| C2        | 470pF     | 470pF     | 470pF     | ceramic capacitor |
+| C3        | 33pF      | **68pF**  | 33pF      | ceramic capacitor |
+| C4        | 470pF     | 470pF     | 470pF     | ceramic capacitor |
+| R1        | 10R       | 10R       | 10R       | resistor 1%       |
+| R2        | 22k       | 22k       | **1Meg**  | resistor 1%       |
+| R3        | 100R      | 100R      | 100R      | resistor 1%       |
+| IC1       | CD4011UBE | CD4011UBE | CD4011UBE | Quad NAND         |
 
 
 L1 should be an air-coil with 2.5mH, 3mH and 4mH.
@@ -111,14 +114,6 @@ cathodes of to GND:
 The STM32 discovery board must be supplied by 5V (100mA). It is importand that the GND is connected to earth (PE). If a normal wall adapter is used, there must be an extra connection to earth (PE).
 
 The best power supply would be a linear one like this: https://github.com/gerdb/tinnitus32/wiki/Power-supply
-
-
-## USB-stick with sound file
-It's possible to store a \*.WAV or a \*.C file on an USB-stick and use it as sound source for the theremin.
-#### WAV file
-The file name must be **WAV1.WAV** and it must contain 1 periode of a sound sample. File format must be WAV (Microsoft) and the data format signed 16 bit PCM with only one mono track. Use Audacity to export it. https://www.audacityteam.org/ 
-#### C file
-The file name must be **WAV1.C** and it must contain 1 periode of a sound sample. File format must be the same as the Audio Wavetables from the Open.Theremin V3 project. http://www.gaudi.ch/OpenTheremin/index.php/download/audio-wavetables 
 
 
 ## Programming software for STM32
