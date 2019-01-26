@@ -42,7 +42,7 @@ Or with SMD components:
 | C1        | 1µF       | 1µF       | 1µF       | ceramic capacitor |
 | C2        | 470pF     | 470pF     | 470pF     | ceramic capacitor |
 | C3        | 33pF      | **68pF**  | 33pF      | ceramic capacitor |
-| C4        | 470pF     | 470pF     | 470pF     | ceramic capacitor |
+| C4        | 2.2nF     | 2.2nF     | 2.2nF     | ceramic capacitor |
 | R1        | 10R       | 10R       | 10R       | resistor 1%       |
 | R2        | 22k       | 22k       | **1Meg**  | resistor 1%       |
 | R3        | 100R      | 100R      | 100R      | resistor 1%       |

@@ -541,11 +541,19 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	uint16_t usDistorted, usImpedance;
 
 	//STOPWATCH_START();
-	if (bBeepActive)
-	{
-		BEEP_Task();
-		return;
-	}
+
+
+
+
+	// Low pass filter the output to avoid aliasing noise.
+	slVolFiltL += slVolume - slVolFilt;
+	slVolFilt = slVolFiltL / 1024;
+
+
+
+
+
+
 
 
 	// Get the input capture value and calculate the period time
@@ -554,9 +562,27 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	usPitchLastCC = usPitchCC;
 
 
+	// cycles: 29
+	// Low pass filter period values
+	// factor *1024 is necessary, because of the /1024 integer division
+	// factor *1024 is necessary, because we want to over sample the input signal
+	if (usPitchPeriod != 0)
+	{
+		//                                   11bit                10bit  10bit
+		slPitchPeriodeFilt += ((int16_t) (usPitchPeriod - 2048) * 1024 * 1024
+				- slPitchPeriodeFilt) / 256;
+	}
 
 	// cycles:21
 	fPitch = ((float) (slPitchPeriodeFilt - slPitchOffset));//*0.00000001f;
+
+
+	if (bBeepActive)
+	{
+		BEEP_Task();
+		return;
+	}
+
 
 
 
@@ -800,21 +826,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 
 	//result = (float)iWavOut;
 
-	// Low pass filter the output to avoid aliasing noise.
-	slVolFiltL += slVolume - slVolFilt;
-	slVolFilt = slVolFiltL / 1024;
 
-
-	// cycles: 29
-	// Low pass filter period values
-	// factor *1024 is necessary, because of the /1024 integer division
-	// factor *1024 is necessary, because we want to over sample the input signal
-	if (usPitchPeriod != 0)
-	{
-		//                                   11bit                10bit  10bit
-		slPitchPeriodeFilt += ((int16_t) (usPitchPeriod - 2048) * 1024 * 1024
-				- slPitchPeriodeFilt) / 256;
-	}
 
 
 
@@ -1342,13 +1354,18 @@ void THEREMIN_1sTask(void)
 
 		// Debug values for pitch
 
-		/*
-		printf("%d %d\n",
+/*
+		printf("%d %d %d %d\n",
 				(int)(fPitchFrq*1000.0f),
-				(int)(slPitchPeriodeFilt - slPitchOffset)
+				(int)usPitchPeriod,
+				(int)slPitchPeriodeFilt , (int)slPitchOffset
 				);
-		*/
-
+*/
+		printf("%d %d %d\n",
+				(int)usVolTim1Period,
+				(int)usVolTim2Period,
+				(int)usPitchPeriod
+				);
 		//printf("Stopwatch %d\n", ulStopwatch);
 	}
 #endif

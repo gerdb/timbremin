@@ -255,12 +255,22 @@ inline void REVERB_Task(void)
 	{
 		//ssDACValueR =slD3[iDcEarly1];
 		// Limit the output to 16bit
-		ssDACValueR =(slThereminOut * 200 +
+		int32_t slVal = (slThereminOut * 200 +
 				slD3[iDcEarly1] * 50 +
 				slD3[iDcEarly2] * 30 +
 				slD3[iDcEarly3] * 20 +
 				slD3[iDcEarly4] * 8 +
 				slD3[iDcEarly5] * 5 ) / 256;
+		// Limit to 16 bit signed for DAC
+		if (slVal > 32767)
+		{
+			slVal = 32767;
+		}
+		if (slVal < -32768)
+		{
+			slVal = -32768;
+		}
+		ssDACValueR =slVal;
 		// Output also to the speaker
 		ssDACValueL = ssDACValueR;
 	}
