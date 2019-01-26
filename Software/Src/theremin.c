@@ -1181,21 +1181,24 @@ void THEREMIN_1msTask(void)
 	}
 	else// if (bBeepActive == 0)
 	{
-
-
-		// Find lowest pitch period
-		if (slPitchPeriodeFilt < slMinPitchPeriode)
+		// Wait 200ms to start with the detection
+		// until both volume channels are stabilized
+		if (siAutotune < (1000-200))
 		{
-			slMinPitchPeriode = slPitchPeriodeFilt;
-		}
-		// Find lowest volume period
-		if (slVolTim1MeanPeriode < slMinVol1Periode)
-		{
-			slMinVol1Periode = slVolTim1MeanPeriode;
-		}
-		if (slVolTim2MeanPeriode < slMinVol2Periode)
-		{
-			slMinVol2Periode = slVolTim2MeanPeriode;
+			// Find lowest pitch period
+			if (slPitchPeriodeFilt < slMinPitchPeriode)
+			{
+				slMinPitchPeriode = slPitchPeriodeFilt;
+			}
+			// Find lowest volume period
+			if (slVolTim1MeanPeriode < slMinVol1Periode)
+			{
+				slMinVol1Periode = slVolTim1MeanPeriode;
+			}
+			if (slVolTim2MeanPeriode < slMinVol2Periode)
+			{
+				slMinVol2Periode = slVolTim2MeanPeriode;
+			}
 		}
 		siAutotune--;
 
@@ -1361,11 +1364,15 @@ void THEREMIN_1sTask(void)
 				(int)slPitchPeriodeFilt , (int)slPitchOffset
 				);
 */
-		printf("%d %d %d\n",
+		/*
+		printf("%d %d %d %d %d\n",
 				(int)usVolTim1Period,
 				(int)usVolTim2Period,
+				(int)slVolTim1MeanPeriode,
+				(int)slVolTim2MeanPeriode,
 				(int)usPitchPeriod
 				);
+		*/
 		//printf("Stopwatch %d\n", ulStopwatch);
 	}
 #endif
