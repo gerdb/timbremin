@@ -29,6 +29,7 @@
 
 /* Global variables  ------------------------------------------------------- */
 int bBeepActive = 0;
+
 /* local variables  ------------------------------------------------------- */
 int iBeepReadCnt = 0;	// Stack read counter
 int iBeepWriteCnt = 0; // Stack write counter

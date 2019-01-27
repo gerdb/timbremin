@@ -1,8 +1,8 @@
 /**
  *  Project     timbremin
- *  @file		reverb.c
+ *  @file		effect.c
  *  @author		Gerd Bartelt - www.sebulli.com
- *  @brief		Reverb effect
+ *  @brief		Chorus and Reverb effect
  *
  *  @copyright	GPL3
  *
@@ -21,18 +21,45 @@
  *
  */
 
+
 #include "../Drivers/BSP/STM32F4-Discovery/stm32f4_discovery.h"
 #include "stm32f4xx_hal.h"
+#include <math.h>
+#include <stdlib.h>
 #include "audio_out.h"
 #include "beep.h"
-#include "reverb.h"
 #include "theremin.h"
+#include "effect.h"
+
+/* local variables  ------------------------------------------------------- */
+
+// LFO for chorus effect
+float fLFOSin1 = 0.0f;
+float fLFOCos1 = 1.0f;
+float fLFOFrq1 = 2.0f * (2.0f * M_PI / 48000.0f) ;
+float fLFOCorr1;
+float fLFOSin2 = 0.0f;
+float fLFOCos2 = 1.0f;
+float fLFOFrq2 = 2.9f * (2.0f * M_PI / 48000.0f) ;
+float fLFOCorr2;
+
+int32_t slChorusDelay[1024];
+int iChDelW = 0;
+int iChDelR1 = 0;
+int iChDelRnext1 = 0;
+int iChDelLength1 = 100;
+int iChDelR2 = 0;
+int iChDelRnext2 = 0;
+int iChDelLength2 = 100;
+int32_t slChorusDelayIn;
+int32_t slChorusDelayed1;
+int32_t slChorusDelayed2;
+int32_t slChorusOut;
 
 
 
 
-// Reverb
-
+// The length of each delay block
 #define DELAY1_LENGTH 12
 #define DELAY2_LENGTH 42
 #define DELAY3_LENGTH 902
@@ -58,40 +85,46 @@ int32_t slD9[DELAY9_LENGTH];
 int32_t slD10[DELAY10_LENGTH];
 int32_t slD11[DELAY11_LENGTH];
 int32_t slD12[DELAY12_LENGTH];
+
+// Delay counter
 uint32_t iDc1_in = 0;
-uint32_t iDc1_out = 1;
 uint32_t iDc2_in = 0;
-uint32_t iDc2_out = 1;
 uint32_t iDc3_in = 0;
-uint32_t iDc3_out = 1;
 uint32_t iDc4_in = 0;
-uint32_t iDc4_out = 1;
 uint32_t iDc5_in = 0;
-uint32_t iDc5_out = 1;
 uint32_t iDc6_in = 0;
-uint32_t iDc6_out = 1;
 uint32_t iDc7_in = 0;
-uint32_t iDc7_out = 1;
 uint32_t iDc8_in = 0;
-uint32_t iDc8_out = 1;
 uint32_t iDc9_in = 0;
-uint32_t iDc9_out = 1;
 uint32_t iDc10_in = 0;
-uint32_t iDc10_out = 1;
 uint32_t iDc11_in = 0;
-uint32_t iDc11_out = 1;
 uint32_t iDc12_in = 0;
+// Initialize all output counter with +1, so it becomes a ring buffer
+uint32_t iDc1_out = 1;
+uint32_t iDc2_out = 1;
+uint32_t iDc3_out = 1;
+uint32_t iDc4_out = 1;
+uint32_t iDc5_out = 1;
+uint32_t iDc6_out = 1;
+uint32_t iDc7_out = 1;
+uint32_t iDc8_out = 1;
+uint32_t iDc9_out = 1;
+uint32_t iDc10_out = 1;
+uint32_t iDc11_out = 1;
 uint32_t iDc12_out = 1;
+// Delays of the early reflections
 uint32_t iDcEarly1 = 0;
 uint32_t iDcEarly2 = 607;
 uint32_t iDcEarly3 = 699;
 uint32_t iDcEarly4 = 813;
 uint32_t iDcEarly5 = 900;
 
+// High pass filter
 int32_t slReverbLP = 0;
 int32_t slReverbHP = 0;
 
-#define KRT 150
+// Loop gain
+int iKRT = 150;
 
 
 
@@ -99,110 +132,77 @@ int32_t slReverbHP = 0;
  * @brief Initialize the module
  *
  */
-void REVERB_Init(void)
+void EFFECT_Init(void)
 {
 
 }
 
 /**
- * @brief calculate the reverb effect
+ * @brief calculate the chorus and reverb effect
  *
  */
-inline void REVERB_Task(void)
+inline void EFFECT_Task(void)
 {
-
-	/*
-	float flp;
-
-	flp = fSVFZ1_1 * fSVFf_1 + fSVFZ2_1;
-	fSVF_out_1 = fSVFZ1_1 + fSVFf_1 * (fFilterIn * fSVFq_1 - fSVFq_1 * fSVFZ1_1 - flp);
-	fSVFZ2_1 = flp;
-	fSVFZ1_1 = fSVF_out_1;
-
-	flp = fSVFZ1_2 * fSVFf_2 + fSVFZ2_2;
-	fSVF_out_2 = fSVFZ1_2 + fSVFf_2 * (fFilterIn * fSVFq_2 - fSVFq_2 * fSVFZ1_2 - flp);
-	fSVFZ2_2 = flp;
-	fSVFZ1_2 = fSVF_out_2;
-
-	flp = fSVFZ1_3 * fSVFf_3 + fSVFZ2_3;
-	fSVF_out_3 = fSVFZ1_3 + fSVFf_3 * (fFilterIn * fSVFq_3 - fSVFq_3 * fSVFZ1_3 - flp);
-	fSVFZ2_3 = flp;
-	fSVFZ1_3 = fSVF_out_3;
-
-	flp = fSVFZ1_4 * fSVFf_4 + fSVFZ2_4;
-	fSVF_out_4 = fSVFZ1_4 + fSVFf_4 * (fFilterIn * fSVFq_4 - fSVFq_4 * fSVFZ1_4 - flp);
-	fSVFZ2_4 = flp;
-	fSVFZ1_4 = fSVF_out_4;
-
-	flp = fSVFZ1_5 * fSVFf_5 + fSVFZ2_5;
-	fSVF_out_5 = fSVFZ1_5 + fSVFf_5 * (fFilterIn * fSVFq_5 - fSVFq_5 * fSVFZ1_5 - flp);
-	fSVFZ2_5 = flp;
-	fSVFZ1_5 = fSVF_out_5;
-
-
-	flp = fSVFZ1_6 * fSVFf_6 + fSVFZ2_6;
-	fSVF_out_6 = fSVFZ1_6 + fSVFf_6 * (
-//			(fFilterIn * 0.1f + fSVF_out_1 + fSVF_out_2 + fSVF_out_3 + fSVF_out_4 + fSVF_out_5)
-			(fFilterIn)
-			- fSVFq_6 * fSVFZ1_6 - flp);
-	fSVFZ2_6 = flp;
-	fSVFZ1_6 = fSVF_out_6;
-	ssDACValueR = flp *0.5f;//fBQ_out_5;
-
-*/
-
-
-
-
-/*
-	// Biquad 1
-	fBQ_out_1 	= BQ_A0_1 * fFilterIn + fBQZ1_1;
-	fBQZ1_1		= BQ_A1_1 * fFilterIn + fBQZ2_1 - BQ_B1_1 * fBQ_out_1;
-	fBQZ2_1		= BQ_A2_1 * fFilterIn           - BQ_B2_1 * fBQ_out_1;
-	// Biquad 2
-	fBQ_out_2 	= BQ_A0_2 * fBQ_out_1 + fBQZ1_2;
-	fBQZ1_2		= BQ_A1_2 * fBQ_out_1 + fBQZ2_2 - BQ_B1_2 * fBQ_out_2;
-	fBQZ2_2		= BQ_A2_2 * fBQ_out_1           - BQ_B2_2 * fBQ_out_2;
-	// Biquad 3
-	fBQ_out_3 	= BQ_A0_3 * fBQ_out_2 + fBQZ1_3;
-	fBQZ1_3		= BQ_A1_3 * fBQ_out_2 + fBQZ2_3 - BQ_B1_3 * fBQ_out_3;
-	fBQZ2_3		= BQ_A2_3 * fBQ_out_2           - BQ_B2_3 * fBQ_out_3;
-	// Biquad 4
-	fBQ_out_4 	= BQ_A0_4 * fBQ_out_3 + fBQZ1_4;
-	fBQZ1_4		= BQ_A1_4 * fBQ_out_3 + fBQZ2_4 - BQ_B1_4 * fBQ_out_4;
-	fBQZ2_4		= BQ_A2_4 * fBQ_out_3           - BQ_B2_4 * fBQ_out_4;
-	// Biquad 5
-	fBQ_out_5 	= BQ_A0_5 * fBQ_out_4 + fBQZ1_5;
-	fBQZ1_5		= BQ_A1_5 * fBQ_out_4 + fBQZ2_5 - BQ_B1_5 * fBQ_out_5;
-	fBQZ2_5		= BQ_A2_5 * fBQ_out_4           - BQ_B2_5 * fBQ_out_5;
-
-*/
+	// Mute the input of the reverb effect, but calculate the reverb
+	// to prevents clicks after / before a beep
 	if (bMute != 0 || bBeepActive )
 	{
 		slThereminOut = 0;
 	}
 
+	// LFO
+	fLFOSin1 += fLFOFrq1 * fLFOCos1;
+	fLFOCos1 -= fLFOFrq1 * fLFOSin1;
+	fLFOCorr1 = 1.0f +((1.0f - (fLFOSin1 * fLFOSin1 + fLFOCos1 * fLFOCos1))*0.0001f);
+	fLFOSin1 *= fLFOCorr1;
+	fLFOCos1 *= fLFOCorr1;
+	fLFOSin2 += fLFOFrq2 * fLFOCos2;
+	fLFOCos2 -= fLFOFrq2 * fLFOSin2;
+	fLFOCorr2 = 1.0f +((1.0f - (fLFOSin2 * fLFOSin2 + fLFOCos2 * fLFOCos2))*0.0001f);
+	fLFOSin2 *= fLFOCorr2;
+	fLFOCos2 *= fLFOCorr2;
+
+	iChDelW++;
+	iChDelW &= 0x000003FF;
+	iChDelLength1 = (fLFOSin1 + 8.0f) * 256 * 50.0f;
+	iChDelLength2 = (fLFOSin2 + 8.0f) * 256 * 40.0f;
+
+
+	iChDelR1 = (iChDelW - (iChDelLength1 / 256)) & 0x000003FF;
+	iChDelRnext1 = (iChDelW - (iChDelLength1 / 256) - 1) & 0x000003FF;
+	slChorusDelayed1 = (slChorusDelay[iChDelR1]* (255 - (iChDelLength1 & 0x00FF)) + slChorusDelay[iChDelRnext1] * (iChDelLength1 & 0x00FF))/256;
+	iChDelR2 = (iChDelW - (iChDelLength2 / 256)) & 0x000003FF;
+	iChDelRnext2 = (iChDelW - (iChDelLength2 / 256) - 1) & 0x000003FF;
+	slChorusDelayed2 = (slChorusDelay[iChDelR2]* (255 - (iChDelLength2 & 0x00FF)) + slChorusDelay[iChDelRnext2] * (iChDelLength2 & 0x00FF))/256;
+
+	slChorusDelayIn = (180 * slThereminOut + slChorusDelayed1 * 40+ slChorusDelayed2 * 40)/ 256;
+	slChorusDelay[iChDelW] = slChorusDelayIn;
+	slChorusOut = (160 * slThereminOut + slChorusDelayed1 * 50 + slChorusDelayed2 * 50)/ 256;
+
+
+
 	// https://valhalladsp.com/2010/08/25/rip-keith-barr/
 	// http://www.spinsemi.com/knowledge_base/effects.html#Reverberation
-	slD1[iDc1_in] =  slThereminOut - slD1[iDc1_out] / 2 + (KRT * slD12[iDc12_out]) / 256;
+	slD1[iDc1_in] =  slThereminOut - slD1[iDc1_out] / 2 + (iKRT * slD12[iDc12_out]) / 256;
 	slD2[iDc2_in] = - slD2[iDc2_out] / 2 + slD1[iDc1_out] + slD1[iDc1_in] / 2;
 	slD3[iDc3_in] =  slD2[iDc2_out] + slD2[iDc2_in] / 2;
 
-	slD4[iDc4_in] =   slThereminOut - slD4[iDc4_out] / 2 + (KRT * slD3[iDc3_out]) / 256;
+	slD4[iDc4_in] =   slThereminOut - slD4[iDc4_out] / 2 + (iKRT * slD3[iDc3_out]) / 256;
 	slD5[iDc5_in] = - slD5[iDc5_out] / 2 + slD4[iDc4_out] + slD4[iDc4_in] / 2;
 	slD6[iDc6_in] =  slD5[iDc5_out] + slD5[iDc5_in] / 2;
 
-	slD7[iDc7_in] =  slThereminOut - slD7[iDc7_out] / 2 + (KRT * slD6[iDc6_out]) / 256;
+	slD7[iDc7_in] =  slThereminOut - slD7[iDc7_out] / 2 + (iKRT * slD6[iDc6_out]) / 256;
 	slD8[iDc8_in] = - slD8[iDc8_out] / 2 + slD7[iDc7_out] + slD7[iDc7_in] / 2;
 	slD9[iDc9_in] =  slD8[iDc8_out] + slD8[iDc8_in] / 2;
 
-	slD10[iDc10_in] =   slThereminOut - slD10[iDc10_out] / 2 + (KRT * slD9[iDc9_out]) / 256;
+	slD10[iDc10_in] =   slThereminOut - slD10[iDc10_out] / 2 + (iKRT * slD9[iDc9_out]) / 256;
 	slD11[iDc11_in] = - slD11[iDc11_out] / 2 + slD10[iDc10_out] + slD10[iDc10_in] / 2;
 	slD12[iDc12_in] =  slD11[iDc11_out] + slD11[iDc11_in] / 2;
 
 	//slReverbLP += ( slD12[iDc12_out] * 256 - slReverbLP) / 512;
 	//slReverbHP = slD12[iDc12_out] - slReverbLP / 256;
 
+	// Shift all delays
 	iDc1_in = iDc1_out;
 	iDc2_in = iDc2_out;
 	iDc3_in = iDc3_out;
@@ -215,6 +215,8 @@ inline void REVERB_Task(void)
 	iDc10_in = iDc10_out;
 	iDc11_in = iDc11_out;
 	iDc12_in = iDc12_out;
+
+	// Increment delay counter
 	iDc1_out ++;
 	iDc2_out ++;
 	iDc3_out ++;
@@ -227,11 +229,13 @@ inline void REVERB_Task(void)
 	iDc10_out ++;
 	iDc11_out ++;
 	iDc12_out ++;
+
 	iDcEarly1 ++;
 	iDcEarly2 ++;
 	iDcEarly3 ++;
 	iDcEarly4 ++;
 	iDcEarly5 ++;
+
 	if (iDc1_out == DELAY1_LENGTH) iDc1_out = 0;
 	if (iDc2_out == DELAY2_LENGTH) iDc2_out = 0;
 	if (iDc3_out == DELAY3_LENGTH) iDc3_out = 0;
@@ -251,16 +255,21 @@ inline void REVERB_Task(void)
 	if (iDcEarly4 == DELAY3_LENGTH) iDcEarly4 = 0;
 	if (iDcEarly5 == DELAY3_LENGTH) iDcEarly5 = 0;
 
+	// Get the early reflections
 	if (bMute == 0 && !bBeepActive )
 	{
 		//ssDACValueR =slD3[iDcEarly1];
 		// Limit the output to 16bit
-		int32_t slVal = (slThereminOut * 200 +
+		int32_t slVal;
+
+		slVal = (slThereminOut * 200 +
 				slD3[iDcEarly1] * 50 +
 				slD3[iDcEarly2] * 30 +
 				slD3[iDcEarly3] * 20 +
 				slD3[iDcEarly4] * 8 +
 				slD3[iDcEarly5] * 5 ) / 256;
+
+		slVal = slChorusOut;
 		// Limit to 16 bit signed for DAC
 		if (slVal > 32767)
 		{
@@ -270,9 +279,10 @@ inline void REVERB_Task(void)
 		{
 			slVal = -32768;
 		}
-		ssDACValueR =slVal;
-		// Output also to the speaker
-		ssDACValueL = ssDACValueR;
+		// Output it to the headphone (right channel)
+		ssDACValueR = slVal;
+		// and also to the speaker (left channel)
+		ssDACValueL = slVal;
 	}
 
 }

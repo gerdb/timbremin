@@ -154,6 +154,7 @@ int main(void)
   VOLUME_Init();
   THEREMIN_Init();
   AUDIO_OUT_Init();
+  EFFECT_Init();
 
   HAL_TIM_Base_Start(&htim1);
   HAL_TIM_IC_Start(&htim1,TIM_CHANNEL_1);

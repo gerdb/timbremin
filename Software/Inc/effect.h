@@ -1,8 +1,8 @@
 /**
  *  Project     timbremin
- *  @file		reverb.h
+ *  @file		effect.h
  *  @author		Gerd Bartelt - www.sebulli.com
- *  @brief		Header file for reverb.c
+ *  @brief		Header file for effect.c
  *
  *  @copyright	GPL3
  *
@@ -21,15 +21,15 @@
  *
  */
 
-#ifndef REVERB_H_
-#define REVERB_H_
+#ifndef EFFECT_H_
+#define EFFECT_H_
 
 /* Global variables  ------------------------------------------------------- */
 
 
 
 /* Function prototypes ----------------------------------------------------- */
-void REVERB_Init(void);
-void REVERB_Task(void);
+void EFFECT_Init(void);
+void EFFECT_Task(void);
 
-#endif /* REVERB_H_ */
+#endif /* EFFECT_H_ */
