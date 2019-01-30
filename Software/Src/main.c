@@ -10,7 +10,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * Copyright (c) 2018 STMicroelectronics International N.V. 
+  * Copyright (c) 2019 STMicroelectronics International N.V. 
   * All rights reserved.
   *
   * Redistribution and use in source and binary forms, with or without 
@@ -76,6 +76,8 @@ SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim1;
 
+UART_HandleTypeDef huart3;
+
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
@@ -92,6 +94,7 @@ static void MX_SPI1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_RNG_Init(void);
+static void MX_USART3_UART_Init(void);
 void MX_USB_HOST_Process(void);
 
 /* USER CODE BEGIN PFP */
@@ -144,6 +147,7 @@ int main(void)
   MX_ADC1_Init();
   MX_FATFS_Init();
   MX_RNG_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 #ifdef DEBUG
   initialise_monitor_handles();
@@ -500,6 +504,25 @@ static void MX_TIM1_Init(void)
 
 }
 
+/* USART3 init function */
+static void MX_USART3_UART_Init(void)
+{
+
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 115200;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
 /** 
   * Enable DMA controller clock
   */
@@ -538,7 +561,8 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, CS_I2C_SPI_Pin|PITCH_LED_0_Pin|PITCH_LED_1_Pin|PITCH_LED_2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, CS_I2C_SPI_Pin|PITCH_LED_8_Pin|PITCH_LED_9_Pin|PITCH_LED_0_Pin 
+                          |PITCH_LED_1_Pin|PITCH_LED_2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
@@ -548,15 +572,16 @@ static void MX_GPIO_Init(void)
                           |PITCH_LED_7_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, PITCH_LED_8_Pin|PITCH_LED_9_Pin|PITCH_LED_10_Pin|PITCH_LED_11_Pin 
-                          |LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin 
-                          |Audio_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, PITCH_LED_10_Pin|PITCH_LED_11_Pin|LD4_Pin|LD3_Pin 
+                          |LD5_Pin|LD6_Pin|Audio_RST_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, SEL_VOL_OSC_A_Pin|SEL_VOL_OSC_B_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : CS_I2C_SPI_Pin PITCH_LED_0_Pin PITCH_LED_1_Pin PITCH_LED_2_Pin */
-  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin|PITCH_LED_0_Pin|PITCH_LED_1_Pin|PITCH_LED_2_Pin;
+  /*Configure GPIO pins : CS_I2C_SPI_Pin PITCH_LED_8_Pin PITCH_LED_9_Pin PITCH_LED_0_Pin 
+                           PITCH_LED_1_Pin PITCH_LED_2_Pin */
+  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin|PITCH_LED_8_Pin|PITCH_LED_9_Pin|PITCH_LED_0_Pin 
+                          |PITCH_LED_1_Pin|PITCH_LED_2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -606,12 +631,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PITCH_LED_8_Pin PITCH_LED_9_Pin PITCH_LED_10_Pin PITCH_LED_11_Pin 
-                           LD4_Pin LD3_Pin LD5_Pin LD6_Pin 
-                           Audio_RST_Pin */
-  GPIO_InitStruct.Pin = PITCH_LED_8_Pin|PITCH_LED_9_Pin|PITCH_LED_10_Pin|PITCH_LED_11_Pin 
-                          |LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin 
-                          |Audio_RST_Pin;
+  /*Configure GPIO pins : PITCH_LED_10_Pin PITCH_LED_11_Pin LD4_Pin LD3_Pin 
+                           LD5_Pin LD6_Pin Audio_RST_Pin */
+  GPIO_InitStruct.Pin = PITCH_LED_10_Pin|PITCH_LED_11_Pin|LD4_Pin|LD3_Pin 
+                          |LD5_Pin|LD6_Pin|Audio_RST_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

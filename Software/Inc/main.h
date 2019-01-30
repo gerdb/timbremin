@@ -10,7 +10,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * Copyright (c) 2018 STMicroelectronics International N.V. 
+  * Copyright (c) 2019 STMicroelectronics International N.V. 
   * All rights reserved.
   *
   * Redistribution and use in source and binary forms, with or without 
@@ -103,6 +103,10 @@
 #define ANALOG_7_GPIO_Port GPIOB
 #define BOOT1_Pin GPIO_PIN_2
 #define BOOT1_GPIO_Port GPIOB
+#define PITCH_LED_8_Pin GPIO_PIN_7
+#define PITCH_LED_8_GPIO_Port GPIOE
+#define PITCH_LED_9_Pin GPIO_PIN_8
+#define PITCH_LED_9_GPIO_Port GPIOE
 #define PITCH_OSC_Pin GPIO_PIN_9
 #define PITCH_OSC_GPIO_Port GPIOE
 #define VOL_OSC_A_Pin GPIO_PIN_11
@@ -127,10 +131,6 @@
 #define PITCH_LED_6_GPIO_Port GPIOB
 #define PITCH_LED_7_Pin GPIO_PIN_15
 #define PITCH_LED_7_GPIO_Port GPIOB
-#define PITCH_LED_8_Pin GPIO_PIN_8
-#define PITCH_LED_8_GPIO_Port GPIOD
-#define PITCH_LED_9_Pin GPIO_PIN_9
-#define PITCH_LED_9_GPIO_Port GPIOD
 #define PITCH_LED_10_Pin GPIO_PIN_10
 #define PITCH_LED_10_GPIO_Port GPIOD
 #define PITCH_LED_11_Pin GPIO_PIN_11
