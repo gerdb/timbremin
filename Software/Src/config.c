@@ -25,6 +25,7 @@
 #include "eeprom.h"
 #include "pots.h"
 #include <string.h>
+#include <stdlib.h>
 
 
 /* global variables  ------------------------------------------------------- */
@@ -285,7 +286,7 @@ CONFIG_eConfigEntry CONFIG_NameToEnum(char* name)
  * @param index: index of the potentiometer
  * @param cfgname: name of the parameter
  */
-void CONFIG_ConfigurePot(int index, char* cfgname)
+int CONFIG_ConfigurePot(int index, char* cfgname)
 {
 	index--; //we count internally from 0..8 instead of 1..9
 
@@ -297,8 +298,11 @@ void CONFIG_ConfigurePot(int index, char* cfgname)
 	{
 		aPotsAssignedToConfigEntry[index] = eConfigEntry;
 		POTS_Assign(index, eConfigEntry);
+		return CFG_OK;
 	}
+	return CFG_INDEX_OUT_OF_RANGE;
 }
+
 
 /**
  * @brief Sets a parameter by its name and index
@@ -307,7 +311,7 @@ void CONFIG_ConfigurePot(int index, char* cfgname)
  * @param index: index of the set
  * @param val: value of the parameter
  */
-void CONFIG_ConfigureParameter(char* cfgname, int index, int val)
+int CONFIG_ConfigureParameter(char* cfgname, int index, int val)
 {
 	index--; //we count internally from 0..7 instead of 1..8
 
@@ -325,8 +329,109 @@ void CONFIG_ConfigureParameter(char* cfgname, int index, int val)
 		if ((index >= 0 && index < SETS) )
 		{
 			aConfigValues[index][eConfigEntry] = val;
+			return CFG_OK;
+		}
+		return CFG_INDEX_OUT_OF_RANGE;
+	}
+	return CFG_UNKNOWN_PARAMETER;
+
+}
+
+
+/**
+ * @brief Decodes a configuration line
+ *
+ * @param sLine: the line
+ */
+int CONFIG_DecodeLine(char* sLine)
+{
+	int eqfound;
+	char c;
+	int i,ii;
+	int eol;
+	char sPartLeft[32];
+	char sPartRight[32];
+	int index = 0;
+
+
+	// Count the "=" signs
+	eqfound = 0;
+	i = 0;
+	ii= 0;
+	eol = 0;
+	index = -1;
+
+	do
+	{
+		c=sLine[i];
+		// End of line?
+		if (c== '\0' || c== '\''|| c== '/' || c== '\r' || c== '\n' || ii >=30 )
+		{
+			eol = 1;
+		}
+		else
+		{
+			if(c== '=')
+			{
+				eqfound++;
+				ii= 0;
+			}
+			else
+			{
+				// Value with index in brackets
+				if (c== '(')
+				{
+					if (sLine[i+2] == ')')
+					{
+						index = sLine[i+1]-'0';
+						i+=2;
+					}
+					else
+					{
+						eol = 1;
+						// mark it as invalid
+						eqfound = 0;
+					}
+				}
+				else
+				{
+					// Ignore spaced
+					if (c!= ' ')
+					{
+						// On the left or right side of the "="?
+						if (eqfound == 0)
+						{
+							sPartLeft[ii]=c;
+							sPartLeft[ii+1]='\0';
+							ii++;
+						}
+						if (eqfound == 1)
+						{
+							sPartRight[ii]=c;
+							sPartRight[ii+1]='\0';
+							ii++;
+						}
+					}
+				}
+			}
+		}
+		i++;
+	} while (!eol);
+	if (eqfound)
+	{
+		// Assign the potentiometer
+		if (strcmp(sPartLeft, "POT") == 0)
+		{
+			return CONFIG_ConfigurePot(index, sPartRight);
+		}
+		// Set the parameter
+		else
+		{
+			return CONFIG_ConfigureParameter(sPartLeft, index, atoi(sPartRight));
 		}
 	}
 
 
+	return CFG_ERROR;
 }
+

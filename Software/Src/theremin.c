@@ -283,14 +283,9 @@ void (*taskTable[96]) () = {0};
 
 extern TIM_HandleTypeDef htim1;	// Handle of timer for input capture
 
-#ifdef DEBUG
 uint32_t ulStopwatch = 0;
 #define STOPWATCH_START() DWT->CYCCNT = 0;
 #define STOPWATCH_STOP() ulStopwatch = DWT->CYCCNT;
-#else
-#define STOPWATCH_START() ;
-#define STOPWATCH_STOP() ;
-#endif
 
 /**
  * @brief Initialize the module
@@ -320,11 +315,10 @@ void THEREMIN_Init(void)
 	}
 	taskTable[94] = THEREMIN_Task_Calculate_VOL2;
 
-#ifdef DEBUG
+
 	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 	DWT->CYCCNT = 0;
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-#endif
 
 	// Read auto-tune values from virtual EEPRom
 	slPitchOffset = CONFIG_Read_SLong(EEPROM_ADDR_PITCH_AUTOTUNE_H);
@@ -1223,9 +1217,7 @@ void THEREMIN_1msTask(void)
 			slPitchOffset = slMinPitchPeriode;
 			slVolTim1Offset = slMinVol1Periode;	// + 16384 * 128;
 			slVolTim2Offset = slMinVol2Periode;	// + 16384 * 128;
-#ifdef XDEBUG
-		printf("%d %d\n", usPitchPeriod, usVolTim1Period);
-#endif
+
 		//	CONFIG_Write_SLong(EEPROM_ADDR_PITCH_AUTOTUNE_H, slPitchOffset);
 		//	CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H, slVolTim1Offset);
 		//	CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM2_AUTOTUNE_H, slVolTim2Offset);
@@ -1337,7 +1329,6 @@ void THEREMIN_1msTask(void)
  */
 void THEREMIN_1sTask(void)
 {
-#ifdef DEBUG
 
 	if (siAutotune == 0)
 	{
@@ -1375,7 +1366,6 @@ void THEREMIN_1sTask(void)
 		*/
 		//printf("Stopwatch %d\n", ulStopwatch);
 	}
-#endif
 }
 
 

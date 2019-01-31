@@ -60,6 +60,9 @@
 #include "config.h"
 #include "beep.h"
 #include "volume.h"
+#include "effect.h"
+#include "usartl1.h"
+#include "printf.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -103,7 +106,7 @@ void MX_USB_HOST_Process(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-extern void initialise_monitor_handles(void);
+//extern void initialise_monitor_handles(void);
 int siFlag1ms = 0;
 int siTaskCnt = 0;
 
@@ -149,9 +152,6 @@ int main(void)
   MX_RNG_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-#ifdef DEBUG
-  initialise_monitor_handles();
-#endif
   CONFIG_Init();
   POTS_Init();
   BEEP_Init();
@@ -159,6 +159,7 @@ int main(void)
   THEREMIN_Init();
   AUDIO_OUT_Init();
   EFFECT_Init();
+  USARTL1_Init();
 
   HAL_TIM_Base_Start(&htim1);
   HAL_TIM_IC_Start(&htim1,TIM_CHANNEL_1);
@@ -182,6 +183,7 @@ int main(void)
 	    THEREMIN_1msTask();
 	    POTS_1msTask();
 	    AUDIO_OUT_1msTask();
+	    USARTL1_RxBufferTask();
 
 		siTaskCnt++;
 		if (siTaskCnt >= 1000)

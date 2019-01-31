@@ -81,6 +81,11 @@ typedef enum
 
 #define CFG_E_NONE CFG_E_ENTRIES
 
+#define CFG_INDEX_OUT_OF_RANGE 	0x7FFFFFFD
+#define CFG_UNKNOWN_PARAMETER 	0x7FFFFFFE
+#define CFG_ERROR 				0x7FFFFFFF
+#define CFG_OK 					0
+
 typedef struct
 {
   int32_t   Version;
@@ -163,10 +168,11 @@ void CONFIG_Init(void);
 void CONFIG_FillWithDefault(void);
 void CONFIG_Select_Set(int set);
 void CONFIG_Assign_All_Pots(void);
-void CONFIG_ConfigurePot(int index, char* cfgname);
-void CONFIG_ConfigureParameter(char* cfgname, int index, int val);
+int CONFIG_ConfigurePot(int index, char* cfgname);
+int CONFIG_ConfigureParameter(char* cfgname, int index, int val);
 void CONFIG_Update_Set(void);
 CONFIG_eConfigEntry CONFIG_NameToEnum(char* name);
+int CONFIG_DecodeLine(char* sLine);
 
 void CONFIG_Write_SLong(int addr, int32_t value);
 int32_t CONFIG_Read_SLong(int addr);
