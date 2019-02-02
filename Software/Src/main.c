@@ -184,6 +184,7 @@ int main(void)
 	    POTS_1msTask();
 	    AUDIO_OUT_1msTask();
 	    CONSOLE_RxBufferTask();
+	    EFFECT_SlowTask();
 
 		siTaskCnt++;
 		if (siTaskCnt >= 1000)

@@ -31,6 +31,7 @@ extern RNG_HandleTypeDef hrng;
 
 /* Function prototypes ----------------------------------------------------- */
 void EFFECT_Init(void);
+void EFFECT_SlowTask(void);
 void EFFECT_Task(void);
 
 #endif /* EFFECT_H_ */

@@ -29,6 +29,10 @@
 
 
 /* global variables  ------------------------------------------------------- */
+
+/* local functions  ------------------------------------------------------- */
+static void CONFIG_UseParameter(int ii);
+
 /* local variables  ------------------------------------------------------- */
 volatile const CONFIG_TypeDef __attribute__((section (".myConfigSection"))) CONFIG =
 { (VERSION_MAJOR << 16 | VERSION_MINOR << 8 | VERSION_BUILD), // Version
@@ -141,10 +145,9 @@ void CONFIG_FillWithDefault(void)
 		aConfigValues[i][CFG_E_ADDSYNTH_3] = 200;
 		aConfigValues[i][CFG_E_ADDSYNTH_4] = 500;
 		aConfigValues[i][CFG_E_ADDSYNTH_5] = 300;
-
-
-
-
+		aConfigValues[i][CFG_E_ECHO_DELAY] = 0;
+		aConfigValues[i][CFG_E_ECHO_FEEDBACK] = 0;
+		aConfigValues[i][CFG_E_ECHO_INTENSITY] = 0;
 	}
 }
 /**
@@ -175,6 +178,31 @@ void CONFIG_Update_Set(void)
 	CONFIG_Select_Set(iCurrentSet);
 }
 
+
+/**
+ * @brief copies the parameter to the working set
+ *
+ * @param ii index of the parameter
+ */
+static void CONFIG_UseParameter(int ii)
+{
+	int32_t iSourceVal;
+	if (aConfigWorkingSet[ii].bIsGlobal)
+	{
+		iSourceVal = aConfigValues[0][ii];
+	}
+	else
+	{
+		iSourceVal = aConfigValues[iCurrentSet][ii];
+	}
+
+	if (aConfigWorkingSet[ii].iVal != iSourceVal)
+	{
+		aConfigWorkingSet[ii].iVal = iSourceVal*aConfigWorkingSet[ii].iFactor;
+		aConfigWorkingSet[ii].bHasChanged = 1;
+	}
+}
+
 /**
  * @brief Selects an new configuration set and copies the data into the working variable
  *
@@ -186,21 +214,7 @@ void CONFIG_Select_Set(int set)
 	// Default values for all entries
 	for (int ii=1;ii<CFG_E_ENTRIES; ii++)
 	{
-		int32_t iSourceVal;
-		if (aConfigWorkingSet[ii].bIsGlobal)
-		{
-			iSourceVal = aConfigValues[0][ii];
-		}
-		else
-		{
-			iSourceVal = aConfigValues[set][ii];
-		}
-
-		if (aConfigWorkingSet[ii].iVal != iSourceVal)
-		{
-			aConfigWorkingSet[ii].iVal = iSourceVal*aConfigWorkingSet[ii].iFactor;
-			aConfigWorkingSet[ii].bHasChanged = 1;
-		}
+		CONFIG_UseParameter(ii);
 	}
 }
 
@@ -275,7 +289,10 @@ CONFIG_eConfigEntry CONFIG_NameToEnum(char* name)
 	if (strcmp(name, "ADDSYNTH_3") == 0) return CFG_E_ADDSYNTH_3;
 	if (strcmp(name, "ADDSYNTH_4") == 0) return CFG_E_ADDSYNTH_4;
 	if (strcmp(name, "ADDSYNTH_5") == 0) return CFG_E_ADDSYNTH_5;
-
+	if (strcmp(name, "ECHO_DELAY") == 0) return CFG_E_ECHO_DELAY;
+	if (strcmp(name, "ECHO_FEEDBACK") == 0) return CFG_E_ECHO_FEEDBACK;
+	if (strcmp(name, "ECHO_FORWARD") == 0) return CFG_E_ECHO_FORWARD;
+	if (strcmp(name, "ECHO_INTENSITY") == 0) return CFG_E_ECHO_INTENSITY;
 
 
 	return CFG_E_NONE;
@@ -312,6 +329,10 @@ char* CONFIG_EnumToName(CONFIG_eConfigEntry enumName)
 	if (enumName == CFG_E_ADDSYNTH_3) return "ADDSYNTH_3";
 	if (enumName == CFG_E_ADDSYNTH_4) return "ADDSYNTH_4";
 	if (enumName == CFG_E_ADDSYNTH_5) return "ADDSYNTH_5";
+	if (enumName == CFG_E_ECHO_DELAY) return "ECHO_DELAY";
+	if (enumName == CFG_E_ECHO_FEEDBACK) return "ECHO_FEEDBACK";
+	if (enumName == CFG_E_ECHO_FORWARD) return "ECHO_FORWARD";
+	if (enumName == CFG_E_ECHO_INTENSITY) return "ECHO_INTENSITY";
 
 	return "unknown parameter";
 }
@@ -366,6 +387,8 @@ char* CONFIG_ConfigurePot(int index, char* cfgname, int set)
  */
 char* CONFIG_ConfigureParameter(char* cfgname, int index, int val, int set)
 {
+	int startIndex = 0;
+	int endIndex = 0;
 	index--; //we count internally from 0..7 instead of 1..8
 
 	CONFIG_eConfigEntry eConfigEntry;
@@ -375,20 +398,38 @@ char* CONFIG_ConfigureParameter(char* cfgname, int index, int val, int set)
 	if (eConfigEntry != CFG_E_NONE)
 	{
 
-		if (aConfigWorkingSet[eConfigEntry].bIsGlobal)
+		if (aConfigWorkingSet[eConfigEntry].bIsGlobal
+				|| (index <0 && !set))
 		{
 			index = 0;
 		}
-		if ((index >= 0 && index < SETS) )
+		if (index < SETS )
 		{
+			// Set value of one SET
+			if (index >= 0)
+			{
+				startIndex = index;
+				endIndex = index;
+			}
+			// Or all, if there is no index
+			else
+			{
+				startIndex = 0;
+				endIndex = SETS-1;
+			}
+
 			if (set)
 			{
-				aConfigValues[index][eConfigEntry] = val;
+				for (int i=startIndex; i<=endIndex; i++)
+				{
+					aConfigValues[i][eConfigEntry] = val;
+				}
+				CONFIG_UseParameter(eConfigEntry);
 				return "OK";
 			}
 			else
 			{
-				sprintf(sResult, "%d", (int)aConfigValues[index][eConfigEntry]);
+				sprintf(sResult, "%d", (int)aConfigValues[startIndex][eConfigEntry]);
 				return sResult;
 			}
 		}

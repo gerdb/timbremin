@@ -2,7 +2,7 @@
  *  Project     timbremin
  *  @file		effect.c
  *  @author		Gerd Bartelt - www.sebulli.com
- *  @brief		Chorus and Reverb effect
+ *  @brief		Echo and Reverb effect
  *
  *  @copyright	GPL3
  *
@@ -30,37 +30,23 @@
 #include "beep.h"
 #include "theremin.h"
 #include "effect.h"
+#include "config.h"
 
 /* local variables  ------------------------------------------------------- */
 
-// LFO for chorus effect
-float fLFO = 0.0f;
-float fLFO_old = 0.0f;
-float fLP = 0.0f;
-float fLP_old = 0.0f;
-
-
-float fLFOSin1 = 0.0f;
-float fLFOCos1 = 1.0f;
-float fLFOFrq1 = 6.0f * (2.0f * M_PI / 48000.0f) ;
-float fLFOCorr1;
-float fLFOSin2 = 0.0f;
-float fLFOCos2 = 1.0f;
-float fLFOFrq2 = 2.9f * (2.0f * M_PI / 48000.0f) ;
-float fLFOCorr2;
-
-int32_t slChorusDelay[2048];
-int iChDelW = 0;
-int iChDelR1 = 0;
-int iChDelRnext1 = 0;
-int iChDelLength1 = 100;
-int iChDelR2 = 0;
-int iChDelRnext2 = 0;
-int iChDelLength2 = 100;
-int32_t slChorusDelayIn;
-int32_t slChorusDelayed1;
-int32_t slChorusDelayed2;
-int32_t slChorusOut;
+// Echo effect
+int32_t slEchoDelay[4096];
+int iEchoDelW = 0;
+int iEchoDelR = 0;
+int iEchoDelLength = 0;
+int32_t slEchoIn;
+int32_t slEchoDelayed;
+int32_t slEchoOut;
+int32_t slEchoFB = 0;
+int32_t slEchoFW = 0;
+int32_t slEchoNFW = 0;
+int32_t slEchoIN = 0;
+int32_t slEchoNIN = 0;
 
 
 
@@ -143,7 +129,21 @@ void EFFECT_Init(void)
 }
 
 /**
- * @brief calculate the chorus and reverb effect
+ * @brief slow task
+ *
+ */
+void EFFECT_SlowTask(void)
+{
+	iEchoDelLength = 4 * aConfigWorkingSet[CFG_E_ECHO_DELAY].iVal;
+	slEchoFB = (950 * aConfigWorkingSet[CFG_E_ECHO_FEEDBACK].iVal) / 1000;
+	slEchoNFW = 1024 - (1024 * aConfigWorkingSet[CFG_E_ECHO_FORWARD].iVal) / 1000;
+	slEchoFW =         (1024 * aConfigWorkingSet[CFG_E_ECHO_FORWARD].iVal) / 1000;
+	slEchoNIN = 1024 - (1024 * aConfigWorkingSet[CFG_E_ECHO_INTENSITY].iVal) / 1000;
+	slEchoIN =         (1024 * aConfigWorkingSet[CFG_E_ECHO_INTENSITY].iVal) / 1000;
+}
+
+/**
+ * @brief calculate the Echo and reverb effect
  *
  */
 inline void EFFECT_Task(void)
@@ -155,46 +155,17 @@ inline void EFFECT_Task(void)
 		slThereminOut = 0;
 	}
 
-	// LFO
-/*
-	fLFOSin1 += fLFOFrq1 * fLFOCos1;
-	fLFOCos1 -= fLFOFrq1 * fLFOSin1;
-	fLFOCorr1 = 1.0f +((1.0f - (fLFOSin1 * fLFOSin1 + fLFOCos1 * fLFOCos1))*0.0001f);
-	fLFOSin1 *= fLFOCorr1;
-	fLFOCos1 *= fLFOCorr1;
-	fLFOSin2 += fLFOFrq2 * fLFOCos2;
-	fLFOCos2 -= fLFOFrq2 * fLFOSin2;
-	fLFOCorr2 = 1.0f +((1.0f - (fLFOSin2 * fLFOSin2 + fLFOCos2 * fLFOCos2))*0.0001f);
-	fLFOSin2 *= fLFOCorr2;
-	fLFOCos2 *= fLFOCorr2;
+	// Echo effect
+	iEchoDelW++;
+	iEchoDelW &= 0x00000FFF;
+	iEchoDelR = (iEchoDelW - iEchoDelLength) & 0x00000FFF;
 
+	slEchoIn = slThereminOut - (slEchoDelayed * slEchoFB) / 1024;
+	slEchoDelay[iEchoDelW] = slEchoIn;
+	slEchoDelayed = slEchoDelay[iEchoDelR];
 
-	fLP = fLFO_old * 0.0015f + fLP_old;
-	fLFO = fLFO_old + 0.0015f*(((hrng.Instance->DR & 0x0000FFFF) * 0.00004f) - 1.0f * fLFO_old - fLP);
-	fLP_old = fLP;
-	fLFO_old = fLFO;
-*/
-	//fLFO = fLFOSin1;
-
-
-	iChDelW++;
-	iChDelW &= 0x000003FF;
-	iChDelLength1 = 1024 * 256;
-	iChDelLength2 = 800 * 256;
-	//iChDelLength1 = (fLFO + 8.0f) * 100.0f * 256;
-	//iChDelLength2 = (fLFO + 8.0f) * 80.0f * 256;
-
-
-	iChDelR1 = (iChDelW - (iChDelLength1 / 256)) & 0x000003FF;
-	iChDelRnext1 = (iChDelW - (iChDelLength1 / 256) - 1) & 0x000003FF;
-	slChorusDelayed1 = (slChorusDelay[iChDelR1]* (255 - (iChDelLength1 & 0x00FF)) + slChorusDelay[iChDelRnext1] * (iChDelLength1 & 0x00FF))/256;
-	iChDelR2 = (iChDelW - (iChDelLength2 / 256)) & 0x000003FF;
-	iChDelRnext2 = (iChDelW - (iChDelLength2 / 256) - 1) & 0x000003FF;
-	slChorusDelayed2 = (slChorusDelay[iChDelR2]* (255 - (iChDelLength2 & 0x00FF)) + slChorusDelay[iChDelRnext2] * (iChDelLength2 & 0x00FF))/256;
-
-	slChorusDelayIn = (256 * slThereminOut + slChorusDelayed1 * 0+ slChorusDelayed2 * 0)/ 256;
-	slChorusDelay[iChDelW] = slChorusDelayIn;
-	slChorusOut = (128 * slThereminOut + slChorusDelayed1 * 64 + slChorusDelayed2 * 64)/ 256;
+	slEchoOut = (slEchoIN * ((slEchoNFW * slEchoIn + slEchoFW * slEchoDelayed)/1024) +
+				 slEchoNIN * slThereminOut) / 1024;
 
 
 
@@ -286,7 +257,7 @@ inline void EFFECT_Task(void)
 				slD3[iDcEarly4] * 8 +
 				slD3[iDcEarly5] * 5 ) / 256;
 
-		slVal = slChorusOut;
+		slVal = slEchoOut;
 		// Limit to 16 bit signed for DAC
 		if (slVal > 32767)
 		{
