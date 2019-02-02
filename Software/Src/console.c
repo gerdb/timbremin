@@ -1,8 +1,8 @@
 /**
  *  Project     timbremin
- *  @file		CONSOLE.c
+ *  @file		console.c
  *  @author		Gerd Bartelt - www.sebulli.com
- *  @brief		communication layer 1
+ *  @brief		Console to access the configuration parameters
  *
  *  @copyright	GPL3
  *
@@ -48,24 +48,31 @@ uint8_t CONSOLE_rx_buffer[CONSOLE_RX_SIZE];
 int CONSOLE_rx_wr_pointer = 0;
 int CONSOLE_rx_rd_pointer = 0;
 
+// Line buffer
 char CONSOLE_LineBuffer[100];
 int CONSOLE_LineCnt = 0;
+// Line buffer with the previous line (recall with TAB key)
 char CONSOLE_LineBufferLast[100];
 int CONSOLE_LineCntLast = 0;
 
 /**
- * @brief  Initialize the USART
+ * @brief  Initialize the console
  * @param  None
  * @retval None
  */
-void CONSOLE_Init(void) {
+void CONSOLE_Init(UART_HandleTypeDef huart) {
 
-	UartHandle = huart3;
+	// Use the USARTx
+	UartHandle = huart;
+
+	//Rset buffer
 	CONSOLE_rx_wr_pointer = 0;
 	CONSOLE_rx_rd_pointer = 0;
 	CONSOLE_txen = 0;
 
 	HAL_UART_Receive_IT(&UartHandle, (uint8_t *) CONSOLE_rx_buffer,	CONSOLE_RX_SIZE);
+
+	// Start console
 	my_printf("\r\nTimbremin v1.0.0 - www.sebulli.com\r\n>");
 }
 
@@ -77,33 +84,43 @@ void CONSOLE_Init(void) {
 void CONSOLE_RxBufferTask(void) {
 
 	char c;
-	//Increment the read pointer of the RX buffer
+
+	// Check if there are characters in the receive buffe
 	if (CONSOLE_RxBufferNotEmpty()) {
+
+		// Get the next character from the RX buffer
 		CONSOLE_rx_rd_pointer++;
 		CONSOLE_rx_rd_pointer &= CONSOLE_RX_MASK;
 		c = CONSOLE_rx_buffer[CONSOLE_rx_rd_pointer];
-		// echo
 
+
+		// It was the TAB key
 		if (c == '\t')
 		{
+			// clear the current line
 			for (int i=0; i<CONSOLE_LineCnt;i++)
 			{
 				CONSOLE_PutByte(&UartHandle, 127);
 			}
+
+			// And fill it with the last line
 			for (int i=0; i<CONSOLE_LineCntLast;i++)
 			{
 				CONSOLE_LineBuffer[i] = CONSOLE_LineBufferLast[i];
-
 				CONSOLE_PutByte(&UartHandle, CONSOLE_LineBuffer[i]);
 			}
 			CONSOLE_LineCnt = CONSOLE_LineCntLast;
 		}
+		// It was the ENTER key
 		else if (c == 0x0d)
 		{
-			int endFound = 0;
 			CONSOLE_LineCntLast = 0;
+
+			// Copy all characters of this line into the buffer to recall them with TAB
+			int endFound = 0;
 			for (int i=0; i<CONSOLE_LineCnt && !endFound ;i++)
 			{
+				// Do it up to the '=' or '?'
 				if ((CONSOLE_LineBuffer[i] == '=') || (CONSOLE_LineBuffer[i] == '?'))
 				{
 					endFound = 1;
@@ -111,10 +128,13 @@ void CONSOLE_RxBufferTask(void) {
 				CONSOLE_LineBufferLast[i] = CONSOLE_LineBuffer[i];
 				CONSOLE_LineCntLast = i+1;
 			}
+
+			// Decode the line and outpu the result
 			CONSOLE_LineBuffer[CONSOLE_LineCnt] = '\0';
 			CONSOLE_PutByte(&UartHandle, ' ');
 			my_printf(CONFIG_DecodeLine(CONSOLE_LineBuffer));
 
+			// Next line of the console
 			CONSOLE_PutByte(&UartHandle, '\r');
 			CONSOLE_PutByte(&UartHandle, '\n');
 			CONSOLE_PutByte(&UartHandle, '>');
@@ -122,20 +142,21 @@ void CONSOLE_RxBufferTask(void) {
 		}
 		else
 		{
+			// It was a normal character
 			if (CONSOLE_LineCnt < 80 && c >=32 && c <127)
 			{
+				// Store it and output it
 				CONSOLE_LineBuffer[CONSOLE_LineCnt] = c;
 				CONSOLE_PutByte(&UartHandle, c);
 				CONSOLE_LineCnt ++;
 			}
+			// It was a "BACKSPACE", delete the last character
 			else if (CONSOLE_LineCnt > 0 && c == 127)
 			{
 				CONSOLE_PutByte(&UartHandle, c);
 				CONSOLE_LineCnt --;
 			}
 		}
-		//Decode the received byte
-		//USARTL2_Decode(c);
 	}
 }
 

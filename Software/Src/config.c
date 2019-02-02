@@ -24,7 +24,6 @@
 #include "config.h"
 #include "eeprom.h"
 #include "pots.h"
-#include "printf.h"
 #include <string.h>
 #include <stdlib.h>
 

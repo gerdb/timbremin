@@ -1,8 +1,8 @@
 /**
  *  Project     timbremin
- *  @file		CONSOLE.h
+ *  @file		console.h
  *  @author		Gerd Bartelt - www.sebulli.com
- *  @brief		Header file for CONSOLE.c
+ *  @brief		Header file for console.c
  *
  *  @copyright	GPL3
  *
@@ -26,19 +26,15 @@
 #define CONSOLE_H_
 
 /* Typedefs ------------------------------------------------------------------*/
-typedef struct {
-	uint16_t pause;
-	uint16_t data;
-} rxType;
 
 /* Global variables  ---------------------------------------------------------*/
 extern UART_HandleTypeDef UartHandle;
-extern UART_HandleTypeDef huart3;
+
 
 /* Defines -------------------------------------------------------------------*/
 
 /* Exported macro ------------------------------------------------------------*/
-#define COUNTOF(__BUFFER__)   (sizeof(__BUFFER__) / sizeof(*(__BUFFER__)))
+
 /* Exported functions ------------------------------------------------------- */
 
 // Transmit buffer with read and write pointer
@@ -51,7 +47,7 @@ extern UART_HandleTypeDef huart3;
 
 
 /* Function Prototypes --------------------------------------------------------*/
-void CONSOLE_Init(void);
+void CONSOLE_Init(UART_HandleTypeDef huart);
 void CONSOLE_RxBufferTask(void);
 int CONSOLE_RxBufferNotEmpty(void);
 void CONSOLE_PutByte(UART_HandleTypeDef *huart, uint8_t b);

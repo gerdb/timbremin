@@ -159,7 +159,7 @@ int main(void)
   THEREMIN_Init();
   AUDIO_OUT_Init();
   EFFECT_Init();
-  CONSOLE_Init();
+  CONSOLE_Init(huart3);
 
   HAL_TIM_Base_Start(&htim1);
   HAL_TIM_IC_Start(&htim1,TIM_CHANNEL_1);

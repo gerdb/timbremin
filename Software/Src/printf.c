@@ -1,5 +1,5 @@
 /*
- *  Project:      Campos
+ *  Project:      timbremin
  *  File:         printf.c
  *  Author:       Gerd Bartelt - www.sebulli.com
  *
@@ -194,9 +194,4 @@ int my_printf(const char *format, ...)
 	return print(varg);
 }
 
-int sprintf(char *out, const char *format, ...)
-{
-	register int *varg = (int *)(&format);
-	return print(varg);
-}
 
