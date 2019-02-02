@@ -1,8 +1,8 @@
 /**
  *  Project     timbremin
- *  @file		usartl1.h
+ *  @file		CONSOLE.h
  *  @author		Gerd Bartelt - www.sebulli.com
- *  @brief		Header file for usartl1.c
+ *  @brief		Header file for CONSOLE.c
  *
  *  @copyright	GPL3
  *
@@ -22,8 +22,8 @@
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef USARTL1_H_
-#define USARTL1_H_
+#ifndef CONSOLE_H_
+#define CONSOLE_H_
 
 /* Typedefs ------------------------------------------------------------------*/
 typedef struct {
@@ -42,19 +42,19 @@ extern UART_HandleTypeDef huart3;
 /* Exported functions ------------------------------------------------------- */
 
 // Transmit buffer with read and write pointer
-#define USARTL1_TX_SIZE 1024
-#define USARTL1_TX_MASK (USARTL1_TX_SIZE-1)
+#define CONSOLE_TX_SIZE 1024
+#define CONSOLE_TX_MASK (CONSOLE_TX_SIZE-1)
 
 // Receive buffer with read and write pointer
-#define USARTL1_RX_SIZE 1024
-#define USARTL1_RX_MASK (USARTL1_RX_SIZE-1)
+#define CONSOLE_RX_SIZE 1024
+#define CONSOLE_RX_MASK (CONSOLE_RX_SIZE-1)
 
 
 /* Function Prototypes --------------------------------------------------------*/
-void USARTL1_Init(void);
-void USARTL1_RxBufferTask(void);
-int USARTL1_RxBufferNotEmpty(void);
-void USARTL1_PutByte(UART_HandleTypeDef *huart, uint8_t b);
-void USARTL1_IRQHandler(UART_HandleTypeDef *huart);
+void CONSOLE_Init(void);
+void CONSOLE_RxBufferTask(void);
+int CONSOLE_RxBufferNotEmpty(void);
+void CONSOLE_PutByte(UART_HandleTypeDef *huart, uint8_t b);
+void CONSOLE_IRQHandler(UART_HandleTypeDef *huart);
 
 #endif /* USART_H_ */

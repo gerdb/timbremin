@@ -41,7 +41,7 @@
  */
 static void printchar(int c)
 {
-	USARTL1_PutByte(& UartHandle, c);
+	CONSOLE_PutByte(& UartHandle, c);
 }
 
 #define PAD_RIGHT 1
@@ -194,4 +194,9 @@ int my_printf(const char *format, ...)
 	return print(varg);
 }
 
+int sprintf(char *out, const char *format, ...)
+{
+	register int *varg = (int *)(&format);
+	return print(varg);
+}
 

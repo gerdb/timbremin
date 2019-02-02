@@ -25,12 +25,14 @@
 
 
 /* Includes ------------------------------------------------------------------*/
+
+
 #include "../Drivers/BSP/STM32F4-Discovery/stm32f4_discovery.h"
 #include "stm32f4xx_hal.h"
-#include "usartl1.h"
-
+#include "console.h"
 
 /* Function prototypes -------------------------------------------------------*/
 int my_printf(const char *format, ...);
+int sprintf(char *out, const char *format, ...);
 
 #endif /* __PRINTF_H */

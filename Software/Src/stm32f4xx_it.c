@@ -37,7 +37,7 @@
 
 /* USER CODE BEGIN 0 */
 #include "audio_out.h"
-#include "usartl1.h"
+#include "console.h"
 extern int siFlag1ms;
 /* USER CODE END 0 */
 
@@ -79,7 +79,7 @@ void SysTick_Handler(void)
 void USART3_IRQHandler(void)
 {
   /* USER CODE BEGIN USART3_IRQn 0 */
-  USARTL1_IRQHandler(&huart3);
+  CONSOLE_IRQHandler(&huart3);
   return;
   /* USER CODE END USART3_IRQn 0 */
   HAL_UART_IRQHandler(&huart3);

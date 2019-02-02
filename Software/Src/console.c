@@ -1,6 +1,6 @@
 /**
  *  Project     timbremin
- *  @file		usartl1.c
+ *  @file		CONSOLE.c
  *  @author		Gerd Bartelt - www.sebulli.com
  *  @brief		communication layer 1
  *
@@ -22,47 +22,50 @@
  */
 
 /* Includes -----------------------------------------------------------------*/
+
 #include "../Drivers/BSP/STM32F4-Discovery/stm32f4_discovery.h"
 #include "stm32f4xx_hal.h"
-#include "usartl1.h"
+#include "console.h"
 #include "config.h"
 #include "printf.h"
 
 
 /* local functions ----------------------------------------------------------*/
-static void USARTL1_Transmit(UART_HandleTypeDef *huart);
-static void USARTL1_Receive(UART_HandleTypeDef *huart);
+static void CONSOLE_Transmit(UART_HandleTypeDef *huart);
+static void CONSOLE_Receive(UART_HandleTypeDef *huart);
 
 /* local variables ----------------------------------------------------------*/
 UART_HandleTypeDef UartHandle;
 
 // Transmit buffer with read and write pointer
-uint8_t USARTL1_tx_buffer[USARTL1_TX_SIZE];
-uint8_t USARTL1_txen = 0;
-uint16_t USARTL1_tx_wr_pointer = 0;
-uint16_t USARTL1_tx_rd_pointer = 0;
+uint8_t CONSOLE_tx_buffer[CONSOLE_TX_SIZE];
+uint8_t CONSOLE_txen = 0;
+uint16_t CONSOLE_tx_wr_pointer = 0;
+uint16_t CONSOLE_tx_rd_pointer = 0;
 
 // Receive buffer with read and write pointer
-uint8_t USARTL1_rx_buffer[USARTL1_RX_SIZE];
-int USARTL1_rx_wr_pointer = 0;
-int USARTL1_rx_rd_pointer = 0;
+uint8_t CONSOLE_rx_buffer[CONSOLE_RX_SIZE];
+int CONSOLE_rx_wr_pointer = 0;
+int CONSOLE_rx_rd_pointer = 0;
 
-char USARTL1_LineBuffer[100];
-int USARTL1_LineCnt = 0;
+char CONSOLE_LineBuffer[100];
+int CONSOLE_LineCnt = 0;
+char CONSOLE_LineBufferLast[100];
+int CONSOLE_LineCntLast = 0;
 
 /**
  * @brief  Initialize the USART
  * @param  None
  * @retval None
  */
-void USARTL1_Init(void) {
+void CONSOLE_Init(void) {
 
 	UartHandle = huart3;
-	USARTL1_rx_wr_pointer = 0;
-	USARTL1_rx_rd_pointer = 0;
-	USARTL1_txen = 0;
+	CONSOLE_rx_wr_pointer = 0;
+	CONSOLE_rx_rd_pointer = 0;
+	CONSOLE_txen = 0;
 
-	HAL_UART_Receive_IT(&UartHandle, (uint8_t *) USARTL1_rx_buffer,	USARTL1_RX_SIZE);
+	HAL_UART_Receive_IT(&UartHandle, (uint8_t *) CONSOLE_rx_buffer,	CONSOLE_RX_SIZE);
 	my_printf("\r\nTimbremin v1.0.0 - www.sebulli.com\r\n>");
 }
 
@@ -71,44 +74,64 @@ void USARTL1_Init(void) {
  * @param  None
  * @retval None
  */
-void USARTL1_RxBufferTask(void) {
+void CONSOLE_RxBufferTask(void) {
 
 	char c;
-	int result;
 	//Increment the read pointer of the RX buffer
-	if (USARTL1_RxBufferNotEmpty()) {
-		USARTL1_rx_rd_pointer++;
-		USARTL1_rx_rd_pointer &= USARTL1_RX_MASK;
-		c = USARTL1_rx_buffer[USARTL1_rx_rd_pointer];
+	if (CONSOLE_RxBufferNotEmpty()) {
+		CONSOLE_rx_rd_pointer++;
+		CONSOLE_rx_rd_pointer &= CONSOLE_RX_MASK;
+		c = CONSOLE_rx_buffer[CONSOLE_rx_rd_pointer];
 		// echo
-		if (c == 0x0d)
+
+		if (c == '\t')
 		{
-			USARTL1_LineBuffer[USARTL1_LineCnt] = '\0';
-			USARTL1_PutByte(&UartHandle, ' ');
-			result = CONFIG_DecodeLine(USARTL1_LineBuffer);
+			for (int i=0; i<CONSOLE_LineCnt;i++)
+			{
+				CONSOLE_PutByte(&UartHandle, 127);
+			}
+			for (int i=0; i<CONSOLE_LineCntLast;i++)
+			{
+				CONSOLE_LineBuffer[i] = CONSOLE_LineBufferLast[i];
 
-			if (result == CFG_OK) my_printf("OK");
-			if (result == CFG_ERROR) my_printf("Error");
-			if (result == CFG_UNKNOWN_PARAMETER) my_printf("Unknown Parameter");
-			if (result == CFG_INDEX_OUT_OF_RANGE) my_printf("Index out of range");
+				CONSOLE_PutByte(&UartHandle, CONSOLE_LineBuffer[i]);
+			}
+			CONSOLE_LineCnt = CONSOLE_LineCntLast;
+		}
+		else if (c == 0x0d)
+		{
+			int endFound = 0;
+			CONSOLE_LineCntLast = 0;
+			for (int i=0; i<CONSOLE_LineCnt && !endFound ;i++)
+			{
+				if ((CONSOLE_LineBuffer[i] == '=') || (CONSOLE_LineBuffer[i] == '?'))
+				{
+					endFound = 1;
+				}
+				CONSOLE_LineBufferLast[i] = CONSOLE_LineBuffer[i];
+				CONSOLE_LineCntLast = i+1;
+			}
+			CONSOLE_LineBuffer[CONSOLE_LineCnt] = '\0';
+			CONSOLE_PutByte(&UartHandle, ' ');
+			my_printf(CONFIG_DecodeLine(CONSOLE_LineBuffer));
 
-			USARTL1_PutByte(&UartHandle, '\r');
-			USARTL1_PutByte(&UartHandle, '\n');
-			USARTL1_PutByte(&UartHandle, '>');
-			USARTL1_LineCnt = 0;
+			CONSOLE_PutByte(&UartHandle, '\r');
+			CONSOLE_PutByte(&UartHandle, '\n');
+			CONSOLE_PutByte(&UartHandle, '>');
+			CONSOLE_LineCnt = 0;
 		}
 		else
 		{
-			if (USARTL1_LineCnt < 80 && c >=32 && c <127)
+			if (CONSOLE_LineCnt < 80 && c >=32 && c <127)
 			{
-				USARTL1_LineBuffer[USARTL1_LineCnt] = c;
-				USARTL1_PutByte(&UartHandle, c);
-				USARTL1_LineCnt ++;
+				CONSOLE_LineBuffer[CONSOLE_LineCnt] = c;
+				CONSOLE_PutByte(&UartHandle, c);
+				CONSOLE_LineCnt ++;
 			}
-			else if (USARTL1_LineCnt > 0 && c == 127)
+			else if (CONSOLE_LineCnt > 0 && c == 127)
 			{
-				USARTL1_PutByte(&UartHandle, c);
-				USARTL1_LineCnt --;
+				CONSOLE_PutByte(&UartHandle, c);
+				CONSOLE_LineCnt --;
 			}
 		}
 		//Decode the received byte
@@ -123,9 +146,9 @@ void USARTL1_RxBufferTask(void) {
  * @return =0: there was no byte in the receive buffer
  *         >0: there was at least one byte in the receive buffer.
  */
-int USARTL1_RxBufferNotEmpty(void) {
+int CONSOLE_RxBufferNotEmpty(void) {
 
-	return USARTL1_rx_wr_pointer != USARTL1_rx_rd_pointer;
+	return CONSOLE_rx_wr_pointer != CONSOLE_rx_rd_pointer;
 }
 
 /**
@@ -135,31 +158,31 @@ int USARTL1_RxBufferNotEmpty(void) {
  * @param  huart handle to uart driver
  * @param  b character to send
  */
-void USARTL1_PutByte(UART_HandleTypeDef *huart, uint8_t b) {
+void CONSOLE_PutByte(UART_HandleTypeDef *huart, uint8_t b) {
 
 	// Send the byte
-	if (!USARTL1_txen) {
+	if (!CONSOLE_txen) {
 		// Write the first byte directly into the USART
-		USARTL1_txen = 1;
+		CONSOLE_txen = 1;
 
 		huart->Instance->DR = b;
 		__HAL_UART_ENABLE_IT(huart, UART_IT_TXE);
 	} else {
 
-		while (((USARTL1_tx_wr_pointer + 1) & USARTL1_TX_MASK)
-				== USARTL1_tx_rd_pointer)
+		while (((CONSOLE_tx_wr_pointer + 1) & CONSOLE_TX_MASK)
+				== CONSOLE_tx_rd_pointer)
 			;
 		__HAL_UART_DISABLE_IT(huart, UART_IT_TXE);
 
 		// Write the next character into the buffer
-		USARTL1_tx_wr_pointer++;
-		USARTL1_tx_wr_pointer &= USARTL1_TX_MASK;
-		if (USARTL1_tx_wr_pointer == USARTL1_tx_rd_pointer) {
-			USARTL1_tx_wr_pointer--;
-			USARTL1_tx_wr_pointer &= USARTL1_TX_MASK;
+		CONSOLE_tx_wr_pointer++;
+		CONSOLE_tx_wr_pointer &= CONSOLE_TX_MASK;
+		if (CONSOLE_tx_wr_pointer == CONSOLE_tx_rd_pointer) {
+			CONSOLE_tx_wr_pointer--;
+			CONSOLE_tx_wr_pointer &= CONSOLE_TX_MASK;
 		}
 
-		USARTL1_tx_buffer[USARTL1_tx_wr_pointer] = b;
+		CONSOLE_tx_buffer[CONSOLE_tx_wr_pointer] = b;
 		__HAL_UART_ENABLE_IT(huart, UART_IT_TXE);
 	}
 }
@@ -169,7 +192,7 @@ void USARTL1_PutByte(UART_HandleTypeDef *huart, uint8_t b) {
  * @param  huart: UART handle
  * @retval None
  */
-void USARTL1_IRQHandler(UART_HandleTypeDef *huart) {
+void CONSOLE_IRQHandler(UART_HandleTypeDef *huart) {
 	uint32_t tmp1 = 0, tmp2 = 0;
 
 	tmp1 = __HAL_UART_GET_FLAG(huart, UART_FLAG_PE);
@@ -212,7 +235,7 @@ void USARTL1_IRQHandler(UART_HandleTypeDef *huart) {
 	tmp2 = __HAL_UART_GET_IT_SOURCE(huart, UART_IT_RXNE);
 	/* UART in mode Receiver ---------------------------------------------------*/
 	if ((tmp1 != RESET) && (tmp2 != RESET)) {
-		USARTL1_Receive(huart);
+		CONSOLE_Receive(huart);
 		__HAL_UART_CLEAR_FLAG(huart, UART_FLAG_RXNE);
 	}
 
@@ -220,7 +243,7 @@ void USARTL1_IRQHandler(UART_HandleTypeDef *huart) {
 	tmp2 = __HAL_UART_GET_IT_SOURCE(huart, UART_IT_TXE);
 	/* UART in mode Transmitter ------------------------------------------------*/
 	if ((tmp1 != RESET) && (tmp2 != RESET)) {
-		USARTL1_Transmit(huart);
+		CONSOLE_Transmit(huart);
 		__HAL_UART_CLEAR_FLAG(huart, UART_FLAG_TXE);
 	}
 
@@ -237,17 +260,17 @@ void USARTL1_IRQHandler(UART_HandleTypeDef *huart) {
  * @param  huart: UART handle
  * @retval None
  */
-static void USARTL1_Transmit(UART_HandleTypeDef *huart) {
+static void CONSOLE_Transmit(UART_HandleTypeDef *huart) {
 	//Increment the read pointer of the TX buffer
-	if (USARTL1_tx_wr_pointer != USARTL1_tx_rd_pointer) {
-		USARTL1_tx_rd_pointer++;
-		USARTL1_tx_rd_pointer &= USARTL1_TX_MASK;
+	if (CONSOLE_tx_wr_pointer != CONSOLE_tx_rd_pointer) {
+		CONSOLE_tx_rd_pointer++;
+		CONSOLE_tx_rd_pointer &= CONSOLE_TX_MASK;
 
 		//send the next byte
-		huart->Instance->DR = USARTL1_tx_buffer[USARTL1_tx_rd_pointer];
+		huart->Instance->DR = CONSOLE_tx_buffer[CONSOLE_tx_rd_pointer];
 	} else {
 		// This was the last byte to send, disable the transmission.
-		USARTL1_txen = 0;
+		CONSOLE_txen = 0;
 		/* Disable the UART Transmit Complete Interrupt */
 		__HAL_UART_DISABLE_IT(huart, UART_IT_TXE);
 	}
@@ -258,20 +281,20 @@ static void USARTL1_Transmit(UART_HandleTypeDef *huart) {
  * @param  huart: UART handle
  * @retval HAL status
  */
-static void USARTL1_Receive(UART_HandleTypeDef *huart) {
+static void CONSOLE_Receive(UART_HandleTypeDef *huart) {
 	uint8_t c;
 
 	// Increment the buffer pointer, if it's possible
-	USARTL1_rx_wr_pointer++;
-	USARTL1_rx_wr_pointer &= USARTL1_RX_MASK;
-	if (USARTL1_rx_wr_pointer == USARTL1_rx_rd_pointer) {
-		USARTL1_rx_wr_pointer--;
-		USARTL1_rx_wr_pointer &= USARTL1_RX_MASK;
+	CONSOLE_rx_wr_pointer++;
+	CONSOLE_rx_wr_pointer &= CONSOLE_RX_MASK;
+	if (CONSOLE_rx_wr_pointer == CONSOLE_rx_rd_pointer) {
+		CONSOLE_rx_wr_pointer--;
+		CONSOLE_rx_wr_pointer &= CONSOLE_RX_MASK;
 	}
 
 	// Write the received byte
 	c = (uint8_t) (huart->Instance->DR & (uint8_t) 0x00FF);
-	USARTL1_rx_buffer[USARTL1_rx_wr_pointer] = c;
+	CONSOLE_rx_buffer[CONSOLE_rx_wr_pointer] = c;
 }
 
 /**

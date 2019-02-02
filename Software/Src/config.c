@@ -24,6 +24,7 @@
 #include "config.h"
 #include "eeprom.h"
 #include "pots.h"
+#include "printf.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -45,6 +46,7 @@ uint16_t VirtAddVarTab[NB_OF_VAR] = {
 };
 
 int iCurrentSet = 0;
+char sResult[32];
 
 int32_t aConfigValues[SETS][CFG_E_ENTRIES];
 CONFIG_sConfigEntry aConfigWorkingSet[CFG_E_ENTRIES];
@@ -281,12 +283,47 @@ CONFIG_eConfigEntry CONFIG_NameToEnum(char* name)
 }
 
 /**
+ * @brief Gets the name from its enum value
+ *
+ * @param enumName The enum
+ * @return name of the parameter
+ */
+char* CONFIG_EnumToName(CONFIG_eConfigEntry enumName)
+{
+	if (enumName == CFG_E_SEL_SET) return "SEL_SET";
+	if (enumName == CFG_E_VOL1_NUMERATOR) return "VOL1_NUMERATOR";
+	if (enumName == CFG_E_VOL1_OFFSET_A) return "VOL1_OFFSET_A";
+	if (enumName == CFG_E_VOL1_OFFSET_B) return "VOL1_OFFSET_B";
+	if (enumName == CFG_E_VOL2_NUMERATOR) return "VOL2_NUMERATOR";
+	if (enumName == CFG_E_VOL2_OFFSET_A) return "VOL2_OFFSET_A";
+	if (enumName == CFG_E_VOL2_OFFSET_B) return "VOL2_OFFSET_B";
+	if (enumName == CFG_E_VOL12_NUMERATOR) return "VOL12_NUMERATOR";
+	if (enumName == CFG_E_VOL12_OFFSET_A) return "VOL12_OFFSET_A";
+	if (enumName == CFG_E_VOL12_OFFSET_B) return "VOL12_OFFSET_B";
+	if (enumName == CFG_E_VOLUME_OUT) return "VOLUME_OUT";
+	if (enumName == CFG_E_PITCH_SHIFT) return "PITCH_SHIFT";
+	if (enumName == CFG_E_PITCH_SCALE) return "PITCH_SCALE";
+	if (enumName == CFG_E_VOLUME_SHIFT) return "VOLUME_SHIFT";
+	if (enumName == CFG_E_VOLUME_SCALE) return "VOLUME_SCALE";
+	if (enumName == CFG_E_LOUDER_DOWN) return "LOUDER_DOWN";
+	if (enumName == CFG_E_STARTUP_AUTOTUNE) return "STARTUP_AUTOTUNE";
+	if (enumName == CFG_E_DISTORTION) return "DISTORTION";
+	if (enumName == CFG_E_IMPEDANCE) return "IMPEDANCE";
+	if (enumName == CFG_E_ADDSYNTH_2) return "ADDSYNTH_2";
+	if (enumName == CFG_E_ADDSYNTH_3) return "ADDSYNTH_3";
+	if (enumName == CFG_E_ADDSYNTH_4) return "ADDSYNTH_4";
+	if (enumName == CFG_E_ADDSYNTH_5) return "ADDSYNTH_5";
+
+	return "unknown parameter";
+}
+
+/**
  * @brief Assigns a potentiometer to a parameter
  *
  * @param index: index of the potentiometer
  * @param cfgname: name of the parameter
  */
-int CONFIG_ConfigurePot(int index, char* cfgname)
+char* CONFIG_ConfigurePot(int index, char* cfgname, int set)
 {
 	index--; //we count internally from 0..8 instead of 1..9
 
@@ -294,14 +331,30 @@ int CONFIG_ConfigurePot(int index, char* cfgname)
 	eConfigEntry = CONFIG_NameToEnum(cfgname);
 
 	// Is all valid?
-	if (index >= 0 && index <ADC_CHANNELS && eConfigEntry != CFG_E_NONE)
+	if (index >= 0 && index <ADC_CHANNELS)
 	{
-		aPotsAssignedToConfigEntry[index] = eConfigEntry;
-		POTS_Assign(index, eConfigEntry);
-		return CFG_OK;
+		if (set)
+		{
+			if (eConfigEntry != CFG_E_NONE)
+			{
+				aPotsAssignedToConfigEntry[index] = eConfigEntry;
+				POTS_Assign(index, eConfigEntry);
+				return "OK";
+			}
+			else
+			{
+				return "Unknown entry";
+			}
+		}
+		else
+		{
+			return CONFIG_EnumToName(aPotsAssignedToConfigEntry[index]);
+		}
 	}
-	return CFG_INDEX_OUT_OF_RANGE;
+	return "Index out of range";
 }
+
+
 
 
 /**
@@ -310,8 +363,9 @@ int CONFIG_ConfigurePot(int index, char* cfgname)
  * @param cfgname: name of the parameter
  * @param index: index of the set
  * @param val: value of the parameter
+ * @param set: 1: set, 0:get
  */
-int CONFIG_ConfigureParameter(char* cfgname, int index, int val)
+char* CONFIG_ConfigureParameter(char* cfgname, int index, int val, int set)
 {
 	index--; //we count internally from 0..7 instead of 1..8
 
@@ -328,34 +382,42 @@ int CONFIG_ConfigureParameter(char* cfgname, int index, int val)
 		}
 		if ((index >= 0 && index < SETS) )
 		{
-			aConfigValues[index][eConfigEntry] = val;
-			return CFG_OK;
+			if (set)
+			{
+				aConfigValues[index][eConfigEntry] = val;
+				return "OK";
+			}
+			else
+			{
+				sprintf(sResult, "%d", (int)aConfigValues[index][eConfigEntry]);
+				return sResult;
+			}
 		}
-		return CFG_INDEX_OUT_OF_RANGE;
+		return "Index out of range";
 	}
-	return CFG_UNKNOWN_PARAMETER;
+	return "Unknown Parameter";
 
 }
-
 
 /**
  * @brief Decodes a configuration line
  *
  * @param sLine: the line
  */
-int CONFIG_DecodeLine(char* sLine)
+char* CONFIG_DecodeLine(char* sLine)
 {
-	int eqfound;
+	int eqfound, qmfound;
 	char c;
 	int i,ii;
 	int eol;
-	char sPartLeft[32];
-	char sPartRight[32];
+	char sPartLeft[32]="";
+	char sPartRight[32]="";
 	int index = 0;
 
 
 	// Count the "=" signs
 	eqfound = 0;
+	qmfound = 0;
 	i = 0;
 	ii= 0;
 	eol = 0;
@@ -376,6 +438,11 @@ int CONFIG_DecodeLine(char* sLine)
 				eqfound++;
 				ii= 0;
 			}
+			if(c== '?')
+			{
+				qmfound++;
+				ii= 0;
+			}
 			else
 			{
 				// Value with index in brackets
@@ -391,6 +458,7 @@ int CONFIG_DecodeLine(char* sLine)
 						eol = 1;
 						// mark it as invalid
 						eqfound = 0;
+						qmfound = 0;
 					}
 				}
 				else
@@ -399,13 +467,13 @@ int CONFIG_DecodeLine(char* sLine)
 					if (c!= ' ')
 					{
 						// On the left or right side of the "="?
-						if (eqfound == 0)
+						if (eqfound == 0 && qmfound == 0)
 						{
 							sPartLeft[ii]=c;
 							sPartLeft[ii+1]='\0';
 							ii++;
 						}
-						if (eqfound == 1)
+						if ((eqfound == 1 || qmfound == 1) && c!= '=')
 						{
 							sPartRight[ii]=c;
 							sPartRight[ii+1]='\0';
@@ -417,21 +485,44 @@ int CONFIG_DecodeLine(char* sLine)
 		}
 		i++;
 	} while (!eol);
-	if (eqfound)
+	if (eqfound || qmfound)
 	{
 		// Assign the potentiometer
 		if (strcmp(sPartLeft, "POT") == 0)
 		{
-			return CONFIG_ConfigurePot(index, sPartRight);
+			if (eqfound)
+			{
+				return CONFIG_ConfigurePot(index, sPartRight, 1);
+			}
+			else if (qmfound)
+			{
+				return CONFIG_ConfigurePot(index, "" ,0 );
+			}
+			else
+			{
+				return "Error";
+			}
 		}
 		// Set the parameter
 		else
 		{
-			return CONFIG_ConfigureParameter(sPartLeft, index, atoi(sPartRight));
+			if (eqfound)
+			{
+				return CONFIG_ConfigureParameter(sPartLeft, index, atoi(sPartRight), 1);
+			}
+			else if (qmfound)
+			{
+				return CONFIG_ConfigureParameter(sPartLeft, index, 0, 0);
+			}
+			else
+			{
+				return "Error";
+			}
+
 		}
 	}
 
 
-	return CFG_ERROR;
+	return "Error";
 }
 

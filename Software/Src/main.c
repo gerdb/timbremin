@@ -61,8 +61,8 @@
 #include "beep.h"
 #include "volume.h"
 #include "effect.h"
-#include "usartl1.h"
 #include "printf.h"
+#include "console.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -159,7 +159,7 @@ int main(void)
   THEREMIN_Init();
   AUDIO_OUT_Init();
   EFFECT_Init();
-  USARTL1_Init();
+  CONSOLE_Init();
 
   HAL_TIM_Base_Start(&htim1);
   HAL_TIM_IC_Start(&htim1,TIM_CHANNEL_1);
@@ -183,7 +183,7 @@ int main(void)
 	    THEREMIN_1msTask();
 	    POTS_1msTask();
 	    AUDIO_OUT_1msTask();
-	    USARTL1_RxBufferTask();
+	    CONSOLE_RxBufferTask();
 
 		siTaskCnt++;
 		if (siTaskCnt >= 1000)
