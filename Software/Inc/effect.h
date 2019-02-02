@@ -24,8 +24,9 @@
 #ifndef EFFECT_H_
 #define EFFECT_H_
 
-/* Global variables  ------------------------------------------------------- */
 
+/* Global variables  ------------------------------------------------------- */
+extern RNG_HandleTypeDef hrng;
 
 
 /* Function prototypes ----------------------------------------------------- */

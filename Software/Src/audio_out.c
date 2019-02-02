@@ -21,7 +21,7 @@
  *
  */
 
-#include <effect.h>
+
 
 #include "../Drivers/BSP/Components/cs43l22/cs43l22.h"
 #include "../Drivers/BSP/STM32F4-Discovery/stm32f4_discovery.h"
@@ -30,6 +30,7 @@
 #include "audio_out.h"
 #include "theremin.h"
 #include "pots.h"
+#include "effect.h"
 #include <math.h>
 
 

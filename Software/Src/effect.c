@@ -34,16 +34,22 @@
 /* local variables  ------------------------------------------------------- */
 
 // LFO for chorus effect
+float fLFO = 0.0f;
+float fLFO_old = 0.0f;
+float fLP = 0.0f;
+float fLP_old = 0.0f;
+
+
 float fLFOSin1 = 0.0f;
 float fLFOCos1 = 1.0f;
-float fLFOFrq1 = 2.0f * (2.0f * M_PI / 48000.0f) ;
+float fLFOFrq1 = 6.0f * (2.0f * M_PI / 48000.0f) ;
 float fLFOCorr1;
 float fLFOSin2 = 0.0f;
 float fLFOCos2 = 1.0f;
 float fLFOFrq2 = 2.9f * (2.0f * M_PI / 48000.0f) ;
 float fLFOCorr2;
 
-int32_t slChorusDelay[1024];
+int32_t slChorusDelay[2048];
 int iChDelW = 0;
 int iChDelR1 = 0;
 int iChDelRnext1 = 0;
@@ -134,7 +140,6 @@ int iKRT = 150;
  */
 void EFFECT_Init(void)
 {
-
 }
 
 /**
@@ -151,6 +156,7 @@ inline void EFFECT_Task(void)
 	}
 
 	// LFO
+/*
 	fLFOSin1 += fLFOFrq1 * fLFOCos1;
 	fLFOCos1 -= fLFOFrq1 * fLFOSin1;
 	fLFOCorr1 = 1.0f +((1.0f - (fLFOSin1 * fLFOSin1 + fLFOCos1 * fLFOCos1))*0.0001f);
@@ -162,10 +168,21 @@ inline void EFFECT_Task(void)
 	fLFOSin2 *= fLFOCorr2;
 	fLFOCos2 *= fLFOCorr2;
 
+
+	fLP = fLFO_old * 0.0015f + fLP_old;
+	fLFO = fLFO_old + 0.0015f*(((hrng.Instance->DR & 0x0000FFFF) * 0.00004f) - 1.0f * fLFO_old - fLP);
+	fLP_old = fLP;
+	fLFO_old = fLFO;
+*/
+	//fLFO = fLFOSin1;
+
+
 	iChDelW++;
 	iChDelW &= 0x000003FF;
-	iChDelLength1 = (fLFOSin1 + 8.0f) * 256 * 50.0f;
-	iChDelLength2 = (fLFOSin2 + 8.0f) * 256 * 40.0f;
+	iChDelLength1 = 1024 * 256;
+	iChDelLength2 = 800 * 256;
+	//iChDelLength1 = (fLFO + 8.0f) * 100.0f * 256;
+	//iChDelLength2 = (fLFO + 8.0f) * 80.0f * 256;
 
 
 	iChDelR1 = (iChDelW - (iChDelLength1 / 256)) & 0x000003FF;
@@ -175,9 +192,9 @@ inline void EFFECT_Task(void)
 	iChDelRnext2 = (iChDelW - (iChDelLength2 / 256) - 1) & 0x000003FF;
 	slChorusDelayed2 = (slChorusDelay[iChDelR2]* (255 - (iChDelLength2 & 0x00FF)) + slChorusDelay[iChDelRnext2] * (iChDelLength2 & 0x00FF))/256;
 
-	slChorusDelayIn = (180 * slThereminOut + slChorusDelayed1 * 40+ slChorusDelayed2 * 40)/ 256;
+	slChorusDelayIn = (256 * slThereminOut + slChorusDelayed1 * 0+ slChorusDelayed2 * 0)/ 256;
 	slChorusDelay[iChDelW] = slChorusDelayIn;
-	slChorusOut = (160 * slThereminOut + slChorusDelayed1 * 50 + slChorusDelayed2 * 50)/ 256;
+	slChorusOut = (128 * slThereminOut + slChorusDelayed1 * 64 + slChorusDelayed2 * 64)/ 256;
 
 
 
@@ -282,7 +299,7 @@ inline void EFFECT_Task(void)
 		// Output it to the headphone (right channel)
 		ssDACValueR = slVal;
 		// and also to the speaker (left channel)
-		ssDACValueL = slVal;
+		ssDACValueL = slVal; //fLFO * 30000;
 	}
 
 }
