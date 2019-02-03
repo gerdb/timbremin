@@ -34,20 +34,27 @@
 
 /* local variables  ------------------------------------------------------- */
 
-// Echo effect
-int32_t slEchoDelay[4096];
-int iEchoDelW = 0;
-int iEchoDelR = 0;
-int iEchoDelLength = 0;
-int32_t slEchoIn;
-int32_t slEchoDelayed;
-int32_t slEchoOut;
-int32_t slEchoFB = 0;
-int32_t slEchoFW = 0;
-int32_t slEchoNFW = 0;
-int32_t slEchoIN = 0;
-int32_t slEchoNIN = 0;
+// Chorus effect
+int32_t slChorusDelay[4096];
+int iChorusDelW = 0;
+int iChorusDelR1 = 0;
+int iChorusDelR2 = 0;
+int iChorusDelR2n = 0;
+int iChorusDelLength1 = 0;
+int iChorusDelLength2 = 0;
 
+int32_t slChorusIn;
+int32_t slChorusDelayed2;
+int32_t slChorusOut;
+int32_t slChorusFB = 0;
+int32_t slChorusINT = 0;
+int32_t slChorusNINT = 0;
+float fLFOSin = 0.0f;
+float fLFOCos = 1.0f;
+float fLFOFrq = 0.0f;
+float fLFOCorr;
+float fLFOModulationGain = 0.0f;
+int32_t slLFOModulationOffset = 0;
 
 
 
@@ -134,12 +141,24 @@ void EFFECT_Init(void)
  */
 void EFFECT_SlowTask(void)
 {
-	iEchoDelLength = 4 * aConfigWorkingSet[CFG_E_ECHO_DELAY].iVal;
-	slEchoFB = (950 * aConfigWorkingSet[CFG_E_ECHO_FEEDBACK].iVal) / 1000;
-	slEchoNFW = 1024 - (1024 * aConfigWorkingSet[CFG_E_ECHO_FORWARD].iVal) / 1000;
-	slEchoFW =         (1024 * aConfigWorkingSet[CFG_E_ECHO_FORWARD].iVal) / 1000;
-	slEchoNIN = 1024 - (1024 * aConfigWorkingSet[CFG_E_ECHO_INTENSITY].iVal) / 1000;
-	slEchoIN =         (1024 * aConfigWorkingSet[CFG_E_ECHO_INTENSITY].iVal) / 1000;
+	// Delay length from 0..4000 = 0..41ms
+	iChorusDelLength1 = 2 * aConfigWorkingSet[CFG_E_CHORUS_DELAY].iVal;
+	// Feedback max 0.7
+	slChorusFB = (700 * aConfigWorkingSet[CFG_E_CHORUS_FEEDBACK].iVal) / 1000;
+
+	slChorusNINT = 1024 - (1024 * aConfigWorkingSet[CFG_E_CHORUS_INTENSITY].iVal) / 1000;
+	slChorusINT =         (1024 * aConfigWorkingSet[CFG_E_CHORUS_INTENSITY].iVal) / 1000;
+
+	// Frequency from 0 .. 20.0Hz
+	fLFOFrq = aConfigWorkingSet[CFG_E_CHORUS_FREQUENCY].iVal * 0.02 * (2.0f * M_PI / 48000.0f) ;
+
+	//iChorusDelLength2 = fLFOSin * fLFOModulationGain + fLFOModulationOffset;
+
+	// Modulation gain: Sin from ±0 to ±20%
+	// *0.05f = 0.2 /1024f * 256.0f (Scaled by factor 256)
+	fLFOModulationGain = iChorusDelLength1 * aConfigWorkingSet[CFG_E_CHORUS_MODULATION].iVal * 0.05f;
+	// Scaled by factor 256
+	slLFOModulationOffset = iChorusDelLength1 * 256;
 }
 
 /**
@@ -155,19 +174,44 @@ inline void EFFECT_Task(void)
 		slThereminOut = 0;
 	}
 
-	// Echo effect
-	iEchoDelW++;
-	iEchoDelW &= 0x00000FFF;
-	iEchoDelR = (iEchoDelW - iEchoDelLength) & 0x00000FFF;
+	// ******************** Chorus effect ********************
 
-	slEchoIn = slThereminOut - (slEchoDelayed * slEchoFB) / 1024;
-	slEchoDelay[iEchoDelW] = slEchoIn;
-	slEchoDelayed = slEchoDelay[iEchoDelR];
+	// The LFO, a sine generator with amplitude ±1.0
+	fLFOSin += fLFOFrq * fLFOCos;
+	fLFOCos -= fLFOFrq * fLFOSin;
+	fLFOCorr = 1.0f +((1.0f - (fLFOSin * fLFOSin + fLFOCos * fLFOCos))*0.0001f);
+	fLFOSin *= fLFOCorr;
+	fLFOCos *= fLFOCorr;
 
-	slEchoOut = (slEchoIN * ((slEchoNFW * slEchoIn + slEchoFW * slEchoDelayed)/1024) +
-				 slEchoNIN * slThereminOut) / 1024;
+	// Modulate the delay
+	iChorusDelLength2 = (int32_t)(fLFOSin * fLFOModulationGain) + slLFOModulationOffset;
+
+	// Write index of delay ring buffer
+	iChorusDelW++;
+	iChorusDelW &= 0x00000FFF;
+	// Read index of delay ring buffer for first, fix delay
+	iChorusDelR1 = (iChorusDelW - iChorusDelLength1) & 0x00000FFF;
+	// Read the fix delayed signal
+
+	slChorusIn = slThereminOut - (slChorusDelay[iChorusDelR1] * slChorusFB) / 1024;
+	slChorusDelay[iChorusDelW] = slChorusIn;
 
 
+	// Read index of delay ring buffer for second, modulated delay
+	iChorusDelR2  = (iChorusDelW - (iChorusDelLength2 / 256) - 0) & 0x00000FFF;
+	iChorusDelR2n = (iChorusDelW - (iChorusDelLength2 / 256) - 1) & 0x00000FFF;
+	// Read the delayed entry and interpolate between 2 points for less aliasing distortion
+	slChorusDelayed2 = (
+					   slChorusDelay[iChorusDelR2]  * (255 - (iChorusDelLength2 & 0x00FF))
+					 + slChorusDelay[iChorusDelR2n] * (      (iChorusDelLength2 & 0x00FF))
+					 ) / 256;
+
+	slChorusOut = (slChorusNINT * slChorusIn + slChorusINT * slChorusDelayed2) / 1024;
+
+
+
+
+	// ******************** Reverb effect ********************
 
 	// https://valhalladsp.com/2010/08/25/rip-keith-barr/
 	// http://www.spinsemi.com/knowledge_base/effects.html#Reverberation
@@ -257,7 +301,7 @@ inline void EFFECT_Task(void)
 				slD3[iDcEarly4] * 8 +
 				slD3[iDcEarly5] * 5 ) / 256;
 
-		slVal = slEchoOut;
+		slVal = slChorusOut;
 		// Limit to 16 bit signed for DAC
 		if (slVal > 32767)
 		{

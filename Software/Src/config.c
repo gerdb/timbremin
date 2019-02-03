@@ -49,7 +49,7 @@ uint16_t VirtAddVarTab[NB_OF_VAR] = {
 };
 
 int iCurrentSet = 0;
-char sResult[32];
+char sResult[100];
 
 int32_t aConfigValues[SETS][CFG_E_ENTRIES];
 CONFIG_sConfigEntry aConfigWorkingSet[CFG_E_ENTRIES];
@@ -145,9 +145,11 @@ void CONFIG_FillWithDefault(void)
 		aConfigValues[i][CFG_E_ADDSYNTH_3] = 200;
 		aConfigValues[i][CFG_E_ADDSYNTH_4] = 500;
 		aConfigValues[i][CFG_E_ADDSYNTH_5] = 300;
-		aConfigValues[i][CFG_E_ECHO_DELAY] = 0;
-		aConfigValues[i][CFG_E_ECHO_FEEDBACK] = 0;
-		aConfigValues[i][CFG_E_ECHO_INTENSITY] = 0;
+		aConfigValues[i][CFG_E_CHORUS_DELAY] = 400;
+		aConfigValues[i][CFG_E_CHORUS_FEEDBACK] = 0;
+		aConfigValues[i][CFG_E_CHORUS_MODULATION] = 200;
+		aConfigValues[i][CFG_E_CHORUS_FREQUENCY] = 300;
+		aConfigValues[i][CFG_E_CHORUS_INTENSITY] = 0;
 	}
 }
 /**
@@ -289,10 +291,11 @@ CONFIG_eConfigEntry CONFIG_NameToEnum(char* name)
 	if (strcmp(name, "ADDSYNTH_3") == 0) return CFG_E_ADDSYNTH_3;
 	if (strcmp(name, "ADDSYNTH_4") == 0) return CFG_E_ADDSYNTH_4;
 	if (strcmp(name, "ADDSYNTH_5") == 0) return CFG_E_ADDSYNTH_5;
-	if (strcmp(name, "ECHO_DELAY") == 0) return CFG_E_ECHO_DELAY;
-	if (strcmp(name, "ECHO_FEEDBACK") == 0) return CFG_E_ECHO_FEEDBACK;
-	if (strcmp(name, "ECHO_FORWARD") == 0) return CFG_E_ECHO_FORWARD;
-	if (strcmp(name, "ECHO_INTENSITY") == 0) return CFG_E_ECHO_INTENSITY;
+	if (strcmp(name, "CHORUS_DELAY") == 0) return CFG_E_CHORUS_DELAY;
+	if (strcmp(name, "CHORUS_FEEDBACK") == 0) return CFG_E_CHORUS_FEEDBACK;
+	if (strcmp(name, "CHORUS_MODULATION") == 0) return CFG_E_CHORUS_MODULATION;
+	if (strcmp(name, "CHORUS_FREQUENCY") == 0) return CFG_E_CHORUS_FREQUENCY;
+	if (strcmp(name, "CHORUS_INTENSITY") == 0) return CFG_E_CHORUS_INTENSITY;
 
 
 	return CFG_E_NONE;
@@ -329,10 +332,11 @@ char* CONFIG_EnumToName(CONFIG_eConfigEntry enumName)
 	if (enumName == CFG_E_ADDSYNTH_3) return "ADDSYNTH_3";
 	if (enumName == CFG_E_ADDSYNTH_4) return "ADDSYNTH_4";
 	if (enumName == CFG_E_ADDSYNTH_5) return "ADDSYNTH_5";
-	if (enumName == CFG_E_ECHO_DELAY) return "ECHO_DELAY";
-	if (enumName == CFG_E_ECHO_FEEDBACK) return "ECHO_FEEDBACK";
-	if (enumName == CFG_E_ECHO_FORWARD) return "ECHO_FORWARD";
-	if (enumName == CFG_E_ECHO_INTENSITY) return "ECHO_INTENSITY";
+	if (enumName == CFG_E_CHORUS_DELAY) return "CHORUS_DELAY";
+	if (enumName == CFG_E_CHORUS_FEEDBACK) return "CHORUS_FEEDBACK";
+	if (enumName == CFG_E_CHORUS_MODULATION) return "CHORUS_MODULATION";
+	if (enumName == CFG_E_CHORUS_FREQUENCY) return "CHORUS_FREQUENCY";
+	if (enumName == CFG_E_CHORUS_INTENSITY) return "CHORUS_INTENSITY";
 
 	return "unknown parameter";
 }
@@ -450,8 +454,8 @@ char* CONFIG_DecodeLine(char* sLine)
 	char c;
 	int i,ii;
 	int eol;
-	char sPartLeft[32]="";
-	char sPartRight[32]="";
+	char sPartLeft[100]="";
+	char sPartRight[100]="";
 	int index = 0;
 
 
@@ -467,7 +471,7 @@ char* CONFIG_DecodeLine(char* sLine)
 	{
 		c=sLine[i];
 		// End of line?
-		if (c== '\0' || c== '\''|| c== '/' || c== '\r' || c== '\n' || ii >=30 )
+		if (c== '\0' || c== '\''|| c== '/' || c== '\r' || c== '\n' || ii >=80 )
 		{
 			eol = 1;
 		}
