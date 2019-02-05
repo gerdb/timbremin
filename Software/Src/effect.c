@@ -45,7 +45,7 @@ int iChorusDelLength2 = 0;
 
 int32_t slChorusIn;
 int32_t slChorusDelayed2;
-int32_t slChorusOut;
+float fChorusOut;
 int32_t slChorusFB = 0;
 int32_t slChorusINT = 0;
 int32_t slChorusNINT = 0;
@@ -56,75 +56,82 @@ float fLFOCorr;
 float fLFOModulationGain = 0.0f;
 int32_t slLFOModulationOffset = 0;
 
+float fLPout = 0.0f;
+float fLPfeedback = 0.0f;
+float fLPdamp2 = 0.0f;
+float fLPdamp1 = 0.0f;
 
+float fLBCF1 = 0.0f;
+float fLBCF2 = 0.0f;
+float fLBCF3 = 0.0f;
+float fLBCF4 = 0.0f;
+float fLBCF5 = 0.0f;
+float fLBCF6 = 0.0f;
+float fLBCF7 = 0.0f;
+float fLBCF8 = 0.0f;
+
+float fLP1 = 0.0f;
+float fLP2 = 0.0f;
+float fLP3 = 0.0f;
+float fLP4 = 0.0f;
+float fLP5 = 0.0f;
+float fLP6 = 0.0f;
+float fLP7 = 0.0f;
+float fLP8 = 0.0f;
+
+float fAP1out = 0.0f;
+float fAP2out = 0.0f;
+float fAP3out = 0.0f;
+float fAP4out = 0.0f;
+
+float fReverb_out = 0.0f;
 
 // The length of each delay block
-#define DELAY1_LENGTH 12
-#define DELAY2_LENGTH 42
-#define DELAY3_LENGTH 902
-#define DELAY4_LENGTH 17
-#define DELAY5_LENGTH 59
-#define DELAY6_LENGTH 1003
-#define DELAY7_LENGTH 21
-#define DELAY8_LENGTH 77
-#define DELAY9_LENGTH 1272
-#define DELAY10_LENGTH 39
-#define DELAY11_LENGTH 101
-#define DELAY12_LENGTH 1323
+#define DELAY1_LENGTH 1557
+#define DELAY2_LENGTH 1617
+#define DELAY3_LENGTH 1491
+#define DELAY4_LENGTH 1422
+#define DELAY5_LENGTH 1277
+#define DELAY6_LENGTH 1356
+#define DELAY7_LENGTH 1188
+#define DELAY8_LENGTH 1116
 
-int32_t slD1[DELAY1_LENGTH];
-int32_t slD2[DELAY2_LENGTH];
-int32_t slD3[DELAY3_LENGTH];
-int32_t slD4[DELAY4_LENGTH];
-int32_t slD5[DELAY5_LENGTH];
-int32_t slD6[DELAY6_LENGTH];
-int32_t slD7[DELAY7_LENGTH];
-int32_t slD8[DELAY8_LENGTH];
-int32_t slD9[DELAY9_LENGTH];
-int32_t slD10[DELAY10_LENGTH];
-int32_t slD11[DELAY11_LENGTH];
-int32_t slD12[DELAY12_LENGTH];
+#define ALLPASS1_LENGTH 225
+#define ALLPASS2_LENGTH 556
+#define ALLPASS3_LENGTH 441
+#define ALLPASS4_LENGTH 341
+
+
+float fD1[DELAY1_LENGTH];
+float fD2[DELAY2_LENGTH];
+float fD3[DELAY3_LENGTH];
+float fD4[DELAY4_LENGTH];
+float fD5[DELAY5_LENGTH];
+float fD6[DELAY6_LENGTH];
+float fD7[DELAY7_LENGTH];
+float fD8[DELAY8_LENGTH];
+
+float fAP1[ALLPASS1_LENGTH];
+float fAP2[ALLPASS2_LENGTH];
+float fAP3[ALLPASS3_LENGTH];
+float fAP4[ALLPASS4_LENGTH];
+
 
 // Delay counter
-uint32_t iDc1_in = 0;
-uint32_t iDc2_in = 0;
-uint32_t iDc3_in = 0;
-uint32_t iDc4_in = 0;
-uint32_t iDc5_in = 0;
-uint32_t iDc6_in = 0;
-uint32_t iDc7_in = 0;
-uint32_t iDc8_in = 0;
-uint32_t iDc9_in = 0;
-uint32_t iDc10_in = 0;
-uint32_t iDc11_in = 0;
-uint32_t iDc12_in = 0;
 // Initialize all output counter with +1, so it becomes a ring buffer
-uint32_t iDc1_out = 1;
-uint32_t iDc2_out = 1;
-uint32_t iDc3_out = 1;
-uint32_t iDc4_out = 1;
-uint32_t iDc5_out = 1;
-uint32_t iDc6_out = 1;
-uint32_t iDc7_out = 1;
-uint32_t iDc8_out = 1;
-uint32_t iDc9_out = 1;
-uint32_t iDc10_out = 1;
-uint32_t iDc11_out = 1;
-uint32_t iDc12_out = 1;
-// Delays of the early reflections
-uint32_t iDcEarly1 = 0;
-uint32_t iDcEarly2 = 607;
-uint32_t iDcEarly3 = 699;
-uint32_t iDcEarly4 = 813;
-uint32_t iDcEarly5 = 900;
+uint32_t iDc1 = 0;
+uint32_t iDc2 = 0;
+uint32_t iDc3 = 0;
+uint32_t iDc4 = 0;
+uint32_t iDc5 = 0;
+uint32_t iDc6 = 0;
+uint32_t iDc7 = 0;
+uint32_t iDc8 = 0;
 
-// High pass filter
-int32_t slReverbLP = 0;
-int32_t slReverbHP = 0;
-
-// Loop gain
-int iKRT = 150;
-
+uint32_t iAPc1 = 0;
+uint32_t iAPc2 = 0;
+uint32_t iAPc3 = 0;
+uint32_t iAPc4 = 0;
 
 
 /**
@@ -159,6 +166,13 @@ void EFFECT_SlowTask(void)
 	fLFOModulationGain = iChorusDelLength1 * aConfigWorkingSet[CFG_E_CHORUS_MODULATION].iVal * 0.05f;
 	// Scaled by factor 256
 	slLFOModulationOffset = iChorusDelLength1 * 256;
+
+
+	// https://ccrma.stanford.edu/~jos/pasp/Freeverb.html
+	// Freeverb parameter
+	fLPfeedback = 0.84f;
+	fLPdamp2 = 0.2f;
+	fLPdamp1 = 1.0f - fLPdamp2;
 }
 
 /**
@@ -206,102 +220,99 @@ inline void EFFECT_Task(void)
 					 + slChorusDelay[iChorusDelR2n] * (      (iChorusDelLength2 & 0x00FF))
 					 ) / 256;
 
-	slChorusOut = (slChorusNINT * slChorusIn + slChorusINT * slChorusDelayed2) / 1024;
+	fChorusOut = (slChorusNINT * slChorusIn + slChorusINT * slChorusDelayed2) * 0.000976562f;
 
 
 
 
 	// ******************** Reverb effect ********************
 
-	// https://valhalladsp.com/2010/08/25/rip-keith-barr/
-	// http://www.spinsemi.com/knowledge_base/effects.html#Reverberation
-	slD1[iDc1_in] =  slThereminOut - slD1[iDc1_out] / 2 + (iKRT * slD12[iDc12_out]) / 256;
-	slD2[iDc2_in] = - slD2[iDc2_out] / 2 + slD1[iDc1_out] + slD1[iDc1_in] / 2;
-	slD3[iDc3_in] =  slD2[iDc2_out] + slD2[iDc2_in] / 2;
+	// Reverb algorithm: Freeverb https://ccrma.stanford.edu/~jos/pasp/Freeverb.html
 
-	slD4[iDc4_in] =   slThereminOut - slD4[iDc4_out] / 2 + (iKRT * slD3[iDc3_out]) / 256;
-	slD5[iDc5_in] = - slD5[iDc5_out] / 2 + slD4[iDc4_out] + slD4[iDc4_in] / 2;
-	slD6[iDc6_in] =  slD5[iDc5_out] + slD5[iDc5_in] / 2;
+	// 8 lowpass-feedback-comb-filter
+	fLBCF1 = fD1[iDc1];
+	fLP1 =  fLBCF1 * fLPdamp2 + fLP1 * fLPdamp1;
+	fD1[iDc1] = fChorusOut + fLP1 * fLPfeedback;
 
-	slD7[iDc7_in] =  slThereminOut - slD7[iDc7_out] / 2 + (iKRT * slD6[iDc6_out]) / 256;
-	slD8[iDc8_in] = - slD8[iDc8_out] / 2 + slD7[iDc7_out] + slD7[iDc7_in] / 2;
-	slD9[iDc9_in] =  slD8[iDc8_out] + slD8[iDc8_in] / 2;
+	fLBCF2 = fD2[iDc2];
+	fLP2 =  fLBCF2 * fLPdamp2 + fLP2 * fLPdamp1;
+	fD2[iDc2] = fChorusOut + fLP2 * fLPfeedback;
 
-	slD10[iDc10_in] =   slThereminOut - slD10[iDc10_out] / 2 + (iKRT * slD9[iDc9_out]) / 256;
-	slD11[iDc11_in] = - slD11[iDc11_out] / 2 + slD10[iDc10_out] + slD10[iDc10_in] / 2;
-	slD12[iDc12_in] =  slD11[iDc11_out] + slD11[iDc11_in] / 2;
+	fLBCF3 = fD3[iDc3];
+	fLP3 =  fLBCF3 * fLPdamp2 + fLP3 * fLPdamp1;
+	fD3[iDc3] = fChorusOut + fLP3 * fLPfeedback;
 
-	//slReverbLP += ( slD12[iDc12_out] * 256 - slReverbLP) / 512;
-	//slReverbHP = slD12[iDc12_out] - slReverbLP / 256;
+	fLBCF4 = fD4[iDc4];
+	fLP4 =  fLBCF4 * fLPdamp2 + fLP4 * fLPdamp1;
+	fD4[iDc4] = fChorusOut + fLP4 * fLPfeedback;
 
-	// Shift all delays
-	iDc1_in = iDc1_out;
-	iDc2_in = iDc2_out;
-	iDc3_in = iDc3_out;
-	iDc4_in = iDc4_out;
-	iDc5_in = iDc5_out;
-	iDc6_in = iDc6_out;
-	iDc7_in = iDc7_out;
-	iDc8_in = iDc8_out;
-	iDc9_in = iDc9_out;
-	iDc10_in = iDc10_out;
-	iDc11_in = iDc11_out;
-	iDc12_in = iDc12_out;
+	fLBCF5 = fD5[iDc5];
+	fLP5 =  fLBCF5 * fLPdamp2 + fLP5 * fLPdamp1;
+	fD5[iDc5] = fChorusOut + fLP5 * fLPfeedback;
+
+	fLBCF6 = fD6[iDc6];
+	fLP6 =  fLBCF6 * fLPdamp2 + fLP6 * fLPdamp1;
+	fD6[iDc6] = fChorusOut + fLP6 * fLPfeedback;
+
+	fLBCF7 = fD7[iDc7];
+	fLP7 =  fLBCF7 * fLPdamp2 + fLP7 * fLPdamp1;
+	fD7[iDc7] = fChorusOut + fLP7 * fLPfeedback;
+
+	// Sum of all 8 lowpass-feedback-comb-filters
+	float fLBCFsum = (fLBCF1 + fLBCF2 + fLBCF3 + fLBCF4 + fLBCF5 + fLBCF6 + fLBCF7 + fLBCF8) * 0.125f;
+
+	// 4 allpass filter
+	fAP1out = fAP1[iAPc1] - 0.5f * fLBCFsum;
+	fAP1[iAPc1] = 0.5f * fAP1out + fLBCFsum;
+
+	fAP2out = fAP2[iAPc2] - 0.5f * fAP1out;
+	fAP2[iAPc2] = 0.5f * fAP2out + fAP1out;
+
+	fAP3out = fAP3[iAPc3] - 0.5f * fAP2out;
+	fAP3[iAPc3] = 0.5f * fAP3out + fAP2out;
+
+	fAP4out = fAP4[iAPc4] - 0.5f * fAP3out;
+	fAP4[iAPc4] = 0.5f * fAP4out + fAP3out;
+
+	fLPout += (fAP4out - fLPout) * 0.001f;
+	fReverb_out = fAP4out - fLPout;
+
 
 	// Increment delay counter
-	iDc1_out ++;
-	iDc2_out ++;
-	iDc3_out ++;
-	iDc4_out ++;
-	iDc5_out ++;
-	iDc6_out ++;
-	iDc7_out ++;
-	iDc8_out ++;
-	iDc9_out ++;
-	iDc10_out ++;
-	iDc11_out ++;
-	iDc12_out ++;
+	iDc1 ++;
+	iDc2 ++;
+	iDc3 ++;
+	iDc4 ++;
+	iDc5 ++;
+	iDc6 ++;
+	iDc7 ++;
+	iDc8 ++;
 
-	iDcEarly1 ++;
-	iDcEarly2 ++;
-	iDcEarly3 ++;
-	iDcEarly4 ++;
-	iDcEarly5 ++;
+	iAPc1 ++;
+	iAPc2 ++;
+	iAPc3 ++;
+	iAPc4 ++;
 
-	if (iDc1_out == DELAY1_LENGTH) iDc1_out = 0;
-	if (iDc2_out == DELAY2_LENGTH) iDc2_out = 0;
-	if (iDc3_out == DELAY3_LENGTH) iDc3_out = 0;
-	if (iDc4_out == DELAY4_LENGTH) iDc4_out = 0;
-	if (iDc5_out == DELAY5_LENGTH) iDc5_out = 0;
-	if (iDc6_out == DELAY6_LENGTH) iDc6_out = 0;
-	if (iDc7_out == DELAY7_LENGTH) iDc7_out = 0;
-	if (iDc8_out == DELAY8_LENGTH) iDc8_out = 0;
-	if (iDc9_out == DELAY9_LENGTH) iDc9_out = 0;
-	if (iDc10_out == DELAY10_LENGTH) iDc10_out = 0;
-	if (iDc11_out == DELAY11_LENGTH) iDc11_out = 0;
-	if (iDc12_out == DELAY11_LENGTH) iDc12_out = 0;
+	if (iDc1 == DELAY1_LENGTH) iDc1 = 0;
+	if (iDc2 == DELAY2_LENGTH) iDc2 = 0;
+	if (iDc3 == DELAY3_LENGTH) iDc3 = 0;
+	if (iDc4 == DELAY4_LENGTH) iDc4 = 0;
+	if (iDc5 == DELAY5_LENGTH) iDc5 = 0;
+	if (iDc6 == DELAY6_LENGTH) iDc6 = 0;
+	if (iDc7 == DELAY7_LENGTH) iDc7 = 0;
+	if (iDc8 == DELAY8_LENGTH) iDc8 = 0;
 
-	if (iDcEarly1 == DELAY3_LENGTH) iDcEarly1 = 0;
-	if (iDcEarly2 == DELAY3_LENGTH) iDcEarly2 = 0;
-	if (iDcEarly3 == DELAY3_LENGTH) iDcEarly3 = 0;
-	if (iDcEarly4 == DELAY3_LENGTH) iDcEarly4 = 0;
-	if (iDcEarly5 == DELAY3_LENGTH) iDcEarly5 = 0;
+	if (iAPc1 == ALLPASS1_LENGTH) iAPc1 = 0;
+	if (iAPc2 == ALLPASS2_LENGTH) iAPc2 = 0;
+	if (iAPc3 == ALLPASS3_LENGTH) iAPc3 = 0;
+	if (iAPc4 == ALLPASS4_LENGTH) iAPc4 = 0;
 
 	// Get the early reflections
 	if (bMute == 0 && !bBeepActive )
 	{
-		//ssDACValueR =slD3[iDcEarly1];
 		// Limit the output to 16bit
 		int32_t slVal;
-
-		slVal = (slThereminOut * 200 +
-				slD3[iDcEarly1] * 50 +
-				slD3[iDcEarly2] * 30 +
-				slD3[iDcEarly3] * 20 +
-				slD3[iDcEarly4] * 8 +
-				slD3[iDcEarly5] * 5 ) / 256;
-
-		slVal = slChorusOut;
+		slVal = fReverb_out;
 		// Limit to 16 bit signed for DAC
 		if (slVal > 32767)
 		{
