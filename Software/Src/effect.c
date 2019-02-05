@@ -85,6 +85,8 @@ float fAP3out = 0.0f;
 float fAP4out = 0.0f;
 
 float fReverb_out = 0.0f;
+float fReverbINT = 0.0f;
+float fReverbNINT = 0.0f;
 
 // The length of each delay block
 #define DELAY1_LENGTH 1557
@@ -170,9 +172,12 @@ void EFFECT_SlowTask(void)
 
 	// https://ccrma.stanford.edu/~jos/pasp/Freeverb.html
 	// Freeverb parameter
-	fLPfeedback = 0.84f;
-	fLPdamp2 = 0.2f;
+	fLPfeedback = aConfigWorkingSet[CFG_E_REVERB_ROOMSIZE].iVal * 0.00028f + 0.7f;
+	fLPdamp2 = aConfigWorkingSet[CFG_E_REVERB_DAMPING].iVal * 0.0004f;
 	fLPdamp1 = 1.0f - fLPdamp2;
+
+	fReverbINT = aConfigWorkingSet[CFG_E_REVERB_INTENSITY].iVal * 0.001f;
+	fReverbNINT = 1.0f - fReverbINT;
 }
 
 /**
@@ -275,7 +280,7 @@ inline void EFFECT_Task(void)
 	fAP4[iAPc4] = 0.5f * fAP4out + fAP3out;
 
 	fLPout += (fAP4out - fLPout) * 0.001f;
-	fReverb_out = fAP4out - fLPout;
+	fReverb_out = fReverbINT * (fAP4out - fLPout) + fReverbNINT * fChorusOut;
 
 
 	// Increment delay counter

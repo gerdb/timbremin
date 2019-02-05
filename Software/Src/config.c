@@ -147,9 +147,12 @@ void CONFIG_FillWithDefault(void)
 		aConfigValues[i][CFG_E_ADDSYNTH_5] = 300;
 		aConfigValues[i][CFG_E_CHORUS_DELAY] = 400;
 		aConfigValues[i][CFG_E_CHORUS_FEEDBACK] = 0;
-		aConfigValues[i][CFG_E_CHORUS_MODULATION] = 200;
+		aConfigValues[i][CFG_E_CHORUS_MODULATION] = 0;
 		aConfigValues[i][CFG_E_CHORUS_FREQUENCY] = 300;
 		aConfigValues[i][CFG_E_CHORUS_INTENSITY] = 0;
+		aConfigValues[i][CFG_E_REVERB_ROOMSIZE] = 500;
+		aConfigValues[i][CFG_E_REVERB_DAMPING] = 500;
+		aConfigValues[i][CFG_E_REVERB_INTENSITY] = 0;
 	}
 }
 /**
@@ -296,7 +299,9 @@ CONFIG_eConfigEntry CONFIG_NameToEnum(char* name)
 	if (strcmp(name, "CHORUS_MODULATION") == 0) return CFG_E_CHORUS_MODULATION;
 	if (strcmp(name, "CHORUS_FREQUENCY") == 0) return CFG_E_CHORUS_FREQUENCY;
 	if (strcmp(name, "CHORUS_INTENSITY") == 0) return CFG_E_CHORUS_INTENSITY;
-
+	if (strcmp(name, "REVERB_ROOMSIZE") == 0) return CFG_E_REVERB_ROOMSIZE;
+	if (strcmp(name, "REVERB_DAMPING") == 0) return CFG_E_REVERB_DAMPING;
+	if (strcmp(name, "REVERB_INTENSITY") == 0) return CFG_E_REVERB_INTENSITY;
 
 	return CFG_E_NONE;
 }
@@ -337,6 +342,9 @@ char* CONFIG_EnumToName(CONFIG_eConfigEntry enumName)
 	if (enumName == CFG_E_CHORUS_MODULATION) return "CHORUS_MODULATION";
 	if (enumName == CFG_E_CHORUS_FREQUENCY) return "CHORUS_FREQUENCY";
 	if (enumName == CFG_E_CHORUS_INTENSITY) return "CHORUS_INTENSITY";
+	if (enumName == CFG_E_REVERB_ROOMSIZE) return "REVERB_ROOMSIZE";
+	if (enumName == CFG_E_REVERB_DAMPING) return "REVERB_DAMPING";
+	if (enumName == CFG_E_REVERB_INTENSITY) return "REVERB_INTENSITY";
 
 	return "unknown parameter";
 }
