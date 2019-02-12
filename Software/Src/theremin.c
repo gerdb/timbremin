@@ -93,6 +93,12 @@ float fTimbre = 0.0f;
 float fOscSin = 0.0f;
 float fOscCos = 1.0f;
 float fOscCorr = 1.0f;
+volatile float fOscOut = 0.0f;
+volatile float fOscPhase = 0.0f;
+int iOscSign = 0;
+int iOscSignLast = 0;
+
+
 float fOscSin2 = 0.0f;
 float fOscCos2 = 1.0f;
 float fOscCorr2 = 1.0f;
@@ -519,6 +525,31 @@ void THEREMIN_Calc_ImpedanceTable(void)
 	usImpedanceTable[2048] = 65535;
 }
 
+float THEREMIN_PolyBLEP(float t, float dt)
+{
+    // t-t^2/2 +1/2
+    // 0 < t <= 1
+    // discontinuities between 0 & 1
+    if (t < dt)
+    {
+        t /= dt;
+        return t + t - t * t - 1.0f;
+    }
+
+    // t^2/2 +t +1/2
+    // -1 <= t <= 0
+    // discontinuities between -1 & 0
+    else if (t > 1.0 - dt)
+    {
+        t = (t - 1.0) / dt;
+        return t * t + t + t + 1.0f;
+    }
+
+    // no discontinuities
+    // 0 otherwise
+    else return 0.0f;
+}
+
 
 /**
  * @brief 96kHz DAC task called in interrupt
@@ -598,6 +629,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	{
 		fPitchFrq = 0.0f;
 	}
+
 	/*
 	fPitchFrq1 = fPitchFrq * 0.5f;
 
@@ -606,8 +638,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	fPitchFrq5 = fPitchFrq * 5.0f;
 	//fPitchFrq = 0.1f;
 */
-	fPitchFrq2 = fPitchFrq * 2.0f;
-
+	//fPitchFrq2 += (fPitchFrq - fPitchFrq2) * 0.01f;
 	fOscSin += fPitchFrq * fOscCos;
 	fOscCos -= fPitchFrq * fOscSin;
 	fOscSin += fPitchFrq * fOscCos;
@@ -615,16 +646,61 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	fOscCorr = 1.0f +((1.0f - (fOscSin * fOscSin + fOscCos * fOscCos))*0.01f);
 	fOscCos *= fOscCorr;
 	fOscSin *= fOscCorr;
+/*
+	fOscPhase += fPitchFrq;
+	iOscSign = (fOscSin >= 0.0f);
+	if (iOscSign && !iOscSignLast)
+	{
+		fOscPhase = fOscSin;
+	}
+	iOscSignLast = iOscSign;
+*/
 
 
-	fOscSin2 += fPitchFrq * fOscCos2;
-	fOscCos2 -= fPitchFrq * fOscSin2;
-	fOscSin2 += fPitchFrq * fOscCos2;
-	fOscCos2 -= fPitchFrq * fOscSin2;
-	fOscSin2 += fPitchFrq * fOscCos2;
-	fOscCos2 -= fPitchFrq * fOscSin2;
-	fOscSin2 += fPitchFrq * fOscCos2;
-	fOscCos2 -= fPitchFrq * fOscSin2;
+	fOscOut = fOscPhase * 0.318309886f - 1.0f;
+	fOscOut -= THEREMIN_PolyBLEP(fOscPhase  * 0.159154943f, fPitchFrq * 0.159154943f);
+	fOscPhase += fPitchFrq;
+    while (fOscPhase >= 6.283185307f) {
+    	fOscPhase -= 6.283185307f;
+    }
+
+/*
+	fOscOut = 0.0f;
+	if (fOscSin > 0.0f)
+	{
+		if (fOscCos < fVollAddSynth_3 && fOscCos > -fVollAddSynth_3)
+		{
+			if (fOscCos >= 0.0f)
+			{
+				fOscOut = fVollAddSynth_3 - fOscCos;
+			}
+			else
+			{
+				fOscOut = fVollAddSynth_3 + fOscCos;
+			}
+		}
+	}
+
+	float fOscDamp = 0.025f / fPitchFrq ;
+	if (fOscDamp > 1.0f)
+	{
+		fOscDamp = 1.0f;
+	}
+
+	fOscOut *= fVollAddSynth_2 * fOscDamp;
+	fOscOut += fOscSin * (1.0f - fVollAddSynth_2);
+*/
+
+	/*
+
+	fOscSin2 += fPitchFrq2 * fOscCos2;
+	fOscCos2 -= fPitchFrq2 * fOscSin2;
+	fOscSin2 += fPitchFrq2 * fOscCos2;
+	fOscCos2 -= fPitchFrq2 * fOscSin2;
+	fOscSin2 += fPitchFrq2 * fOscCos2;
+	fOscCos2 -= fPitchFrq2 * fOscSin2;
+	fOscSin2 += fPitchFrq2 * fOscCos2;
+	fOscCos2 -= fPitchFrq2 * fOscSin2;
 	fOscCorr2 = 1.0f +((1.0f - (fOscSin2 * fOscSin2 + fOscCos2 * fOscCos2))*0.01f);
 	fOscCos2 *= fOscCorr2;
 	fOscSin2 *= fOscCorr2;
@@ -689,7 +765,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	fOscCorr5 = 1.0f +((1.0f - (fOscSin5 * fOscSin5 + fOscCos5 * fOscCos5))*0.01f);
 	fOscCos5 *= fOscCorr5;
 	fOscSin5 *= fOscCorr5;
-
+*/
 	/*
 	if (fOscSin > 1.0f)
 	{
@@ -738,12 +814,14 @@ inline void THEREMIN_96kHzDACTask_A(void)
 		ssResult = ( - slVolFilt * 32) ;
 	}
 */
+	/*
 	f = (float)slVolFilt;
 	f = f * f * 0.000976562f;
 	fVollAddSynth_l2 = fVollAddSynth_2 * f;
 	fVollAddSynth_l3 = fVollAddSynth_3 * f;
 	fVollAddSynth_l4 = fVollAddSynth_4 * f;
 	fVollAddSynth_l5 = fVollAddSynth_5 * f;
+	*/
 	/*
 	fVollAddSynth_l2 = fVollAddSynth_2 * (f-300.0f);
 	fVollAddSynth_l3 = fVollAddSynth_3 * (f-300.0f);
@@ -760,13 +838,21 @@ inline void THEREMIN_96kHzDACTask_A(void)
 		ssResult *= -1;
 	}*/
 
-	ssResult =
+	/*ssResult =
 			 - fOscSin2 * fVollAddSynth_l2 * 12.0f +
 			fOscSin3 * fVollAddSynth_l3 * 20.0f +
 			fOscSin4 * fVollAddSynth_l4 * 20.0f +
 			fOscSin5 * fVollAddSynth_l5 * 20.0f +
 
-			fOscSin * 20.0f * (float)slVolFilt;
+			fOscSin * 20.0f * (float)slVolFilt;*/
+/*
+	if (fOscOut < (fVollAddSynth_4 * 2.0f- 1.0f))
+	{
+		fOscOut = (fVollAddSynth_4 * 2.0f- 1.0f);
+	}
+*/
+
+	slThereminOut = fOscOut * 30.0f * (float)slVolFilt;
 
 	/*if (ssResult < 0)
 	{
@@ -796,7 +882,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 		usDACValueR = (int16_t)result;
 	}
 */
-
+/*
 	tabix = (ssResult+32768) / 32;
 	tabsub = ssResult & 0x001F;
 	p1 = usDistortionTable[tabix];
@@ -813,15 +899,9 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	usImpedance = (p1 + (((p2 - p1) * tabsub) / 32));
 	slOutCapacitor += ((ssResult-slOutCapacitor) * usImpedance) / 65536;
 
-	//fFilterIn = slOutCapacitor;
-//	fFilterIn = (slTimbre * (usDistorted-32768) + (256-slTimbre) * ssResult ) / 256 ;
+//	slThereminOut = (slTimbre * (usDistorted-32768) + (256-slTimbre) * ssResult ) / 256 ;
 	slThereminOut = (slTimbre * slOutCapacitor + (256-slTimbre) * ssResult ) / 256 ;
-
-
-	//result = (float)iWavOut;
-
-
-
+*/
 
 
 
@@ -1097,13 +1177,13 @@ void THEREMIN_Task_Timbre(void)
 	fTimbre = (float)slTimbre * 0.00390625f;
 
 	f = ((float)aConfigWorkingSet[CFG_E_ADDSYNTH_2].iVal * 0.001f);
-	fVollAddSynth_2 = f*f;
+	fVollAddSynth_2 = f;
 	f = ((float)aConfigWorkingSet[CFG_E_ADDSYNTH_3].iVal * 0.001f);
-	fVollAddSynth_3 = f*f;
+	fVollAddSynth_3 = f;
 	f = ((float)aConfigWorkingSet[CFG_E_ADDSYNTH_4].iVal * 0.001f);
-	fVollAddSynth_4 = f*f;
+	fVollAddSynth_4 = f;
 	f = ((float)aConfigWorkingSet[CFG_E_ADDSYNTH_5].iVal * 0.001f);
-	fVollAddSynth_5 = f*f;
+	fVollAddSynth_5 = f;
 
 					;
 }
