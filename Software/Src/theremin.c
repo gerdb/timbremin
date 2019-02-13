@@ -93,8 +93,10 @@ float fTimbre = 0.0f;
 float fOscSin = 0.0f;
 float fOscCos = 1.0f;
 float fOscCorr = 1.0f;
-volatile float fOscOut = 0.0f;
-volatile float fOscPhase = 0.0f;
+float fFrqCorr = 0.0f;
+float fFrq = 0.0f;
+float fOscOut = 0.0f;
+float fOscPhase = 0.0f;
 int iOscSign = 0;
 int iOscSignLast = 0;
 
@@ -639,10 +641,11 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	//fPitchFrq = 0.1f;
 */
 	//fPitchFrq2 += (fPitchFrq - fPitchFrq2) * 0.01f;
-	fOscSin += fPitchFrq * fOscCos;
-	fOscCos -= fPitchFrq * fOscSin;
-	fOscSin += fPitchFrq * fOscCos;
-	fOscCos -= fPitchFrq * fOscSin;
+	fFrq = (fPitchFrq + fFrqCorr) * 0.5f;
+	fOscSin += fFrq * fOscCos;
+	fOscCos -= fFrq * fOscSin;
+	fOscSin += fFrq * fOscCos;
+	fOscCos -= fFrq * fOscSin;
 	fOscCorr = 1.0f +((1.0f - (fOscSin * fOscSin + fOscCos * fOscCos))*0.01f);
 	fOscCos *= fOscCorr;
 	fOscSin *= fOscCorr;
@@ -662,7 +665,14 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	fOscPhase += fPitchFrq;
     while (fOscPhase >= 6.283185307f) {
     	fOscPhase -= 6.283185307f;
+    	fFrqCorr = -(fOscSin - fOscPhase) * 0.159154943f * 0.1f * fPitchFrq;
+    	//float f=-(fOscSin - fOscPhase);
+    	//fOscSin+=  f * fOscCos;
+    	//fOscCos-=  f * fOscSin;
+
     }
+
+    fOscOut = fOscOut * (fVollAddSynth_2 * 2.0f -1.0f) - fOscSin;
 
 /*
 	fOscOut = 0.0f;
@@ -852,7 +862,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	}
 */
 
-	slThereminOut = fOscOut * 30.0f * (float)slVolFilt;
+	slThereminOut = fOscOut * 15.0f * (float)slVolFilt;
 
 	/*if (ssResult < 0)
 	{
