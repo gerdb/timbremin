@@ -98,17 +98,19 @@ float fFrqCorr = 0.0f;
 float fFrq = 0.0f;
 float fOscOut = 0.0f;
 float fOscPhase = 0.0f;
-float fOscRectanglePhase = 0.2f;
+float fOscRectanglePhase = 3.141592654f;
 float fOscSaw = 0.0f;
 float fOscRect = 0.0f;
 float fBlep = 0.0f;
 
+float fOscLP1 = 0.0f;
 
 float fSVF1z1 = 0.0f;
 float fSVF1z2 = 0.0f;
 float fSVF1LP = 0.0f;
 float fSVF1HP = 0.0f;
 float fSVF1BR = 0.0f;
+
 
 
 int iOscSign = 0;
@@ -721,9 +723,13 @@ inline void THEREMIN_96kHzDACTask_A(void)
     	fFrqCorr = -(fOscSin - fOscPhase) * 0.159154943f * 0.1f * fPitchFrq;
     }
 
+    fOscOut =   fVollAddSynth_3 * fOscSin
+			 + (1.0f-fVollAddSynth_3) * (fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw);
 
-    fOscOut = fSVF1LP * 1.0f;//fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw;
-    //fOscOut = fOscSin;
+
+    fOscLP1 += (fOscOut - fOscLP1) * fPitchFrq;
+    fOscOut = fOscLP1;
+    //fOscOut = fSVF1LP * 1.0f;  //fOscOut = fOscSin;
 /*
 	fOscOut = 0.0f;
 	if (fOscSin > 0.0f)
