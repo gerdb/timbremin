@@ -69,6 +69,10 @@ extern int32_t slPitchPeriodeFilt;	// low pass filtered period
 extern int32_t slVolTim1MeanPeriode;	// low pass filtered period
 extern int32_t slVolTim2MeanPeriode;	// low pass filtered period
 extern int32_t slThereminOut;	// Output sound from theremin into reverb
+extern uint16_t usPitchPeriod;		// period of oscillator
+extern uint16_t usVolTim1Period;		// period of oscillator
+extern uint16_t usVolTim2Period;		// period of oscillator
+
 
 /* Function prototypes ----------------------------------------------------- */
 void THEREMIN_Init(void);

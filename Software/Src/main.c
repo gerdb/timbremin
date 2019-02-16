@@ -183,8 +183,8 @@ int main(void)
 	    THEREMIN_1msTask();
 	    POTS_1msTask();
 	    AUDIO_OUT_1msTask();
-	    CONSOLE_RxBufferTask();
-	    EFFECT_SlowTask();
+	    CONSOLE_1msTask();
+	    EFFECT_1msTask();
 
 		siTaskCnt++;
 		if (siTaskCnt >= 1000)

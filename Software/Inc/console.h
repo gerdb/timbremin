@@ -26,12 +26,21 @@
 #define CONSOLE_H_
 
 /* Typedefs ------------------------------------------------------------------*/
+typedef enum
+{
+	CONSOLE_MODE_NONE,
+	CONSOLE_MODE_OSCILLATORS
 
+}CONSOLE_eMode;
 /* Global variables  ---------------------------------------------------------*/
 extern UART_HandleTypeDef UartHandle;
 
 
 /* Defines -------------------------------------------------------------------*/
+
+/* Global variables -------------------------------------------------------------------*/
+extern CONSOLE_eMode eDebugMode;
+
 
 /* Exported macro ------------------------------------------------------------*/
 
@@ -48,9 +57,10 @@ extern UART_HandleTypeDef UartHandle;
 
 /* Function Prototypes --------------------------------------------------------*/
 void CONSOLE_Init(UART_HandleTypeDef huart);
-void CONSOLE_RxBufferTask(void);
+void CONSOLE_1msTask(void);
 int CONSOLE_RxBufferNotEmpty(void);
 void CONSOLE_PutByte(UART_HandleTypeDef *huart, uint8_t b);
 void CONSOLE_IRQHandler(UART_HandleTypeDef *huart);
+void CONSOLE_SetMode(CONSOLE_eMode mode);
 
 #endif /* USART_H_ */

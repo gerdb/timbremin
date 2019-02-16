@@ -73,9 +73,20 @@ int32_t slVolTim1Offset;		// offset value (result of auto-tune)
 int32_t slVolTim2Offset;		// offset value (result of auto-tune)
 int slVolTim1PeriodeFilt_cnt;	// low pass filtered period
 int slVolTim2PeriodeFilt_cnt;	// low pass filtered period
+
+volatile int slVolTim1PeriodeFilt_cntX;	// low pass filtered period
+volatile int slVolTim2PeriodeFilt_cntX;	// low pass filtered period
+
+
 int32_t slVolTimPeriodeFiltDiff;	// low pass filtered period
+
 int32_t slVolTim1PeriodeFilt;	// low pass filtered period
 int32_t slVolTim2PeriodeFilt;	// low pass filtered period
+
+volatile int slVolTim1PeriodeFiltX;	// low pass filtered period
+volatile int slVolTim2PeriodeFiltX;	// low pass filtered period
+
+
 int32_t slVolTim1MeanPeriode;	// low pass filtered period
 int32_t slVolTim2MeanPeriode;	// low pass filtered period
 int32_t slVol1;					// volume value
@@ -97,6 +108,11 @@ float fFrqCorr = 0.0f;
 float fFrq = 0.0f;
 float fOscOut = 0.0f;
 float fOscPhase = 0.0f;
+float fOscRectanglePhase = 0.2f;
+float fOscSaw = 0.0f;
+float fOscRect = 0.0f;
+float fBlep = 0.0f;
+
 int iOscSign = 0;
 int iOscSignLast = 0;
 
@@ -529,6 +545,11 @@ void THEREMIN_Calc_ImpedanceTable(void)
 
 float THEREMIN_PolyBLEP(float t, float dt)
 {
+	if (t < 0.0f)
+	{
+		t += 1.0f;
+	}
+
     // t-t^2/2 +1/2
     // 0 < t <= 1
     // discontinuities between 0 & 1
@@ -632,6 +653,8 @@ inline void THEREMIN_96kHzDACTask_A(void)
 		fPitchFrq = 0.0f;
 	}
 
+
+	//fPitchFrq = 0.1;
 	/*
 	fPitchFrq1 = fPitchFrq * 0.5f;
 
@@ -641,6 +664,10 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	//fPitchFrq = 0.1f;
 */
 	//fPitchFrq2 += (fPitchFrq - fPitchFrq2) * 0.01f;
+
+	// ************* Sine oscillator *************
+	//
+	// Sine oscillator, phase synchron to sawtooth
 	fFrq = (fPitchFrq + fFrqCorr) * 0.5f;
 	fOscSin += fFrq * fOscCos;
 	fOscCos -= fFrq * fOscSin;
@@ -649,30 +676,59 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	fOscCorr = 1.0f +((1.0f - (fOscSin * fOscSin + fOscCos * fOscCos))*0.01f);
 	fOscCos *= fOscCorr;
 	fOscSin *= fOscCorr;
-/*
-	fOscPhase += fPitchFrq;
-	iOscSign = (fOscSin >= 0.0f);
-	if (iOscSign && !iOscSignLast)
-	{
-		fOscPhase = fOscSin;
-	}
-	iOscSignLast = iOscSign;
-*/
 
 
-	fOscOut = fOscPhase * 0.318309886f - 1.0f;
-	fOscOut -= THEREMIN_PolyBLEP(fOscPhase  * 0.159154943f, fPitchFrq * 0.159154943f);
+	fBlep = THEREMIN_PolyBLEP(fOscPhase  * 0.159154943f, fPitchFrq * 0.159154943f);
+	// ************* PolyBLEP Sawtooth oscillator *************
+	//
+	// See http://metafunction.co.uk/all-about-digital-oscillators-part-2-blits-bleps/
+	// See http://www.martin-finke.de/blog/articles/audio-plugins-018-polyblep-oscillator/
+	fOscSaw = fOscPhase * 0.318309886f - 1.0f;
+	fOscSaw -= fBlep;
+
+
+	// ************* PolyBLEP rectangle oscillator *************
+	//
+	// See http://metafunction.co.uk/all-about-digital-oscillators-part-2-blits-bleps/
+	// See http://www.martin-finke.de/blog/articles/audio-plugins-018-polyblep-oscillator/
+    if (fOscPhase < fOscRectanglePhase)
+    {
+    	fOscRect = 1.0f;
+    }
+    else
+    {
+    	fOscRect = -1.0f;
+    }
+    fOscRect += fBlep;
+    fOscRect -= THEREMIN_PolyBLEP((fOscPhase - fOscRectanglePhase /*- 6.283185307f*/)  * 0.159154943f , fPitchFrq * 0.159154943f);
+
+    //poly_blep(fmod(t + 0.5, 1.0)); // Layer output of Poly BLEP on top (flop)
+
+
+	// Phase increment for rectangle and sawtooth oscillator
 	fOscPhase += fPitchFrq;
-    while (fOscPhase >= 6.283185307f) {
+    if (fOscPhase >= 6.283185307f)
+    {
     	fOscPhase -= 6.283185307f;
     	fFrqCorr = -(fOscSin - fOscPhase) * 0.159154943f * 0.1f * fPitchFrq;
-    	//float f=-(fOscSin - fOscPhase);
-    	//fOscSin+=  f * fOscCos;
-    	//fOscCos-=  f * fOscSin;
-
     }
 
-    fOscOut = fOscOut * (fVollAddSynth_2 * 2.0f -1.0f) - fOscSin;
+
+    fOscOut = fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw;
+
+
+    if (fOscOut > 1.5f || fOscOut < - 1.5f)
+    {
+    	fOscOut = 0.1f;
+    }
+
+    fOscOut = 0.8f;//fOscSin;
+
+
+
+
+
+
 
 /*
 	fOscOut = 0.0f;
@@ -991,6 +1047,7 @@ void THEREMIN_Task_Select_VOL2(void)
 void THEREMIN_Task_Activate_VOL1(void)
 {
 	usVolTim1LastCC = htim1.Instance->CCR2; // Read capture compare to be prepared
+	slVolTim1PeriodeFilt = 0;	// Reset mean filter counter
 	slVolTim1PeriodeFilt_cnt = 0;	// Reset mean filter counter
 }
 
@@ -1000,6 +1057,7 @@ void THEREMIN_Task_Activate_VOL1(void)
 void THEREMIN_Task_Activate_VOL2(void)
 {
 	usVolTim2LastCC = htim1.Instance->CCR3; // Read capture compare to be prepared
+	slVolTim2PeriodeFilt = 0;	// Reset mean filter counter
 	slVolTim2PeriodeFilt_cnt = 0;	// Reset mean filter counter
 }
 
@@ -1086,6 +1144,9 @@ void THEREMIN_Task_Calculate_VOL1(void)
 				- aConfigWorkingSet[CFG_E_VOL1_OFFSET_B].iVal;
 
 		// Prepare for next filter interval
+		slVolTim1PeriodeFilt_cntX = slVolTim1PeriodeFilt_cnt;
+		slVolTim1PeriodeFiltX = slVolTim1PeriodeFilt;
+
 		slVolTim1PeriodeFilt_cnt = 0;
 		slVolTim1PeriodeFilt = 0;
 	}
@@ -1114,6 +1175,10 @@ void THEREMIN_Task_Calculate_VOL2(void)
 				- aConfigWorkingSet[CFG_E_VOL2_OFFSET_B].iVal;
 
 		// Prepare for next filter interval
+		slVolTim2PeriodeFilt_cntX = slVolTim2PeriodeFilt_cnt;
+		slVolTim2PeriodeFiltX = slVolTim2PeriodeFilt;
+
+
 		slVolTim2PeriodeFilt_cnt = 0;
 		slVolTim2PeriodeFilt = 0;
 	}
@@ -1149,6 +1214,11 @@ void THEREMIN_Task_Volume(void)
 	if (slVolumeRaw > 1023)
 	{
 		slVolumeRaw = 1023;
+	}
+
+	if (slVolume > 100)
+	{
+		slVolume --;
 	}
 
 	// change the direction

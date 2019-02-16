@@ -25,6 +25,7 @@
 
 #include "../Drivers/BSP/STM32F4-Discovery/stm32f4_discovery.h"
 #include "stm32f4xx_hal.h"
+#include "theremin.h"
 #include "console.h"
 #include "config.h"
 #include "printf.h"
@@ -33,6 +34,7 @@
 /* local functions ----------------------------------------------------------*/
 static void CONSOLE_Transmit(UART_HandleTypeDef *huart);
 static void CONSOLE_Receive(UART_HandleTypeDef *huart);
+static void CONSOLE_RxCheckBuffer(void);
 
 /* local variables ----------------------------------------------------------*/
 UART_HandleTypeDef UartHandle;
@@ -54,6 +56,10 @@ int CONSOLE_LineCnt = 0;
 // Line buffer with the previous line (recall with TAB key)
 char CONSOLE_LineBufferLast[100];
 int CONSOLE_LineCntLast = 0;
+
+
+// Console mode
+CONSOLE_eMode eDebugMode = CONSOLE_MODE_NONE;
 
 /**
  * @brief  Initialize the console
@@ -81,7 +87,7 @@ void CONSOLE_Init(UART_HandleTypeDef huart) {
  * @param  None
  * @retval None
  */
-void CONSOLE_RxBufferTask(void) {
+static void CONSOLE_RxCheckBuffer(void) {
 
 	char c;
 
@@ -159,6 +165,39 @@ void CONSOLE_RxBufferTask(void) {
 		}
 	}
 }
+
+
+/**
+ * @brief  1ms Task
+ *
+ * @param  None
+ * @return  None
+ */
+void CONSOLE_1msTask(void)
+{
+	static int consoleTastCnt = 0;
+
+	CONSOLE_RxCheckBuffer();
+
+	// Generate 200ms Task for debug information
+	consoleTastCnt++;
+	if (consoleTastCnt > 200)
+	{
+		consoleTastCnt = 0;
+
+		switch (eDebugMode)
+		{
+		case CONSOLE_MODE_OSCILLATORS:
+
+			my_printf("%4d %4d %4d\r\n", usPitchPeriod, usVolTim1Period, usVolTim2Period);
+
+			break;
+		default: ;
+		}
+	}
+
+}
+
 
 /**
  * @brief  Returns, whether the receive buffer is empty or not

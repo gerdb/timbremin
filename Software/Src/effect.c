@@ -148,7 +148,7 @@ void EFFECT_Init(void)
  * @brief slow task
  *
  */
-void EFFECT_SlowTask(void)
+void EFFECT_1msTask(void)
 {
 	// Delay length from 0..4000 = 0..41ms
 	iChorusDelLength1 = 2 * aConfigWorkingSet[CFG_E_CHORUS_DELAY].iVal;
@@ -184,7 +184,7 @@ void EFFECT_SlowTask(void)
  * @brief calculate the Echo and reverb effect
  *
  */
-inline void EFFECT_Task(void)
+inline void EFFECT_48kHzTask(void)
 {
 	// Mute the input of the reverb effect, but calculate the reverb
 	// to prevents clicks after / before a beep
@@ -317,7 +317,7 @@ inline void EFFECT_Task(void)
 	{
 		// Limit the output to 16bit
 		int32_t slVal;
-		slVal = fReverb_out;
+		slVal = slThereminOut;//fReverb_out;
 		// Limit to 16 bit signed for DAC
 		if (slVal > 32767)
 		{

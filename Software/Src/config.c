@@ -22,6 +22,7 @@
  */
 #include "stm32f4xx_hal.h"
 #include "config.h"
+#include "console.h"
 #include "eeprom.h"
 #include "pots.h"
 #include <string.h>
@@ -555,6 +556,24 @@ char* CONFIG_DecodeLine(char* sLine)
 				return "Error";
 			}
 		}
+		// select a debug mode
+		else if (strcmp(sPartLeft, "DEBUG") == 0)
+		{
+			if (eqfound)
+			{
+				eDebugMode = atoi(sPartRight);
+				return "OK";
+			}
+			else if (qmfound)
+			{
+				sprintf(sResult, "%d", eDebugMode);
+				return sResult;
+			}
+			else
+			{
+				return "Error";
+			}
+		}
 		// Set the parameter
 		else
 		{
@@ -573,6 +592,7 @@ char* CONFIG_DecodeLine(char* sLine)
 
 		}
 	}
+
 
 
 	return "Error";
