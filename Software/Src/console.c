@@ -176,7 +176,6 @@ static void CONSOLE_RxCheckBuffer(void) {
 void CONSOLE_1msTask(void)
 {
 	static int consoleTastCnt = 0;
-
 	CONSOLE_RxCheckBuffer();
 
 	// Generate 200ms Task for debug information
@@ -190,7 +189,6 @@ void CONSOLE_1msTask(void)
 		case CONSOLE_MODE_OSCILLATORS:
 
 			my_printf("%4d %4d %4d\r\n", usPitchPeriod, usVolTim1Period, usVolTim2Period);
-
 			break;
 		default: ;
 		}
@@ -219,20 +217,22 @@ int CONSOLE_RxBufferNotEmpty(void) {
  * @param  b character to send
  */
 void CONSOLE_PutByte(UART_HandleTypeDef *huart, uint8_t b) {
+	__HAL_UART_DISABLE_IT(huart, UART_IT_TXE);
 
 	// Send the byte
 	if (!CONSOLE_txen) {
 		// Write the first byte directly into the USART
 		CONSOLE_txen = 1;
-
 		huart->Instance->DR = b;
-		__HAL_UART_ENABLE_IT(huart, UART_IT_TXE);
 	} else {
+
 
 		while (((CONSOLE_tx_wr_pointer + 1) & CONSOLE_TX_MASK)
 				== CONSOLE_tx_rd_pointer)
-			;
-		__HAL_UART_DISABLE_IT(huart, UART_IT_TXE);
+		{
+			__HAL_UART_ENABLE_IT(huart, UART_IT_TXE);
+			__HAL_UART_DISABLE_IT(huart, UART_IT_TXE);
+		}
 
 		// Write the next character into the buffer
 		CONSOLE_tx_wr_pointer++;
@@ -243,8 +243,10 @@ void CONSOLE_PutByte(UART_HandleTypeDef *huart, uint8_t b) {
 		}
 
 		CONSOLE_tx_buffer[CONSOLE_tx_wr_pointer] = b;
-		__HAL_UART_ENABLE_IT(huart, UART_IT_TXE);
+		//__HAL_UART_ENABLE_IT(huart, UART_IT_TXE);
 	}
+
+	__HAL_UART_ENABLE_IT(huart, UART_IT_TXE);
 }
 
 /**
@@ -295,16 +297,16 @@ void CONSOLE_IRQHandler(UART_HandleTypeDef *huart) {
 	tmp2 = __HAL_UART_GET_IT_SOURCE(huart, UART_IT_RXNE);
 	/* UART in mode Receiver ---------------------------------------------------*/
 	if ((tmp1 != RESET) && (tmp2 != RESET)) {
-		CONSOLE_Receive(huart);
 		__HAL_UART_CLEAR_FLAG(huart, UART_FLAG_RXNE);
+		CONSOLE_Receive(huart);
 	}
 
 	tmp1 = __HAL_UART_GET_FLAG(huart, UART_FLAG_TXE);
 	tmp2 = __HAL_UART_GET_IT_SOURCE(huart, UART_IT_TXE);
 	/* UART in mode Transmitter ------------------------------------------------*/
 	if ((tmp1 != RESET) && (tmp2 != RESET)) {
-		CONSOLE_Transmit(huart);
 		__HAL_UART_CLEAR_FLAG(huart, UART_FLAG_TXE);
+		CONSOLE_Transmit(huart);
 	}
 
 	if (huart->ErrorCode != HAL_UART_ERROR_NONE) {
@@ -325,14 +327,13 @@ static void CONSOLE_Transmit(UART_HandleTypeDef *huart) {
 	if (CONSOLE_tx_wr_pointer != CONSOLE_tx_rd_pointer) {
 		CONSOLE_tx_rd_pointer++;
 		CONSOLE_tx_rd_pointer &= CONSOLE_TX_MASK;
-
-		//send the next byte
 		huart->Instance->DR = CONSOLE_tx_buffer[CONSOLE_tx_rd_pointer];
+
 	} else {
-		// This was the last byte to send, disable the transmission.
-		CONSOLE_txen = 0;
 		/* Disable the UART Transmit Complete Interrupt */
 		__HAL_UART_DISABLE_IT(huart, UART_IT_TXE);
+		// This was the last byte to send, disable the transmission.
+		CONSOLE_txen = 0;
 	}
 }
 
