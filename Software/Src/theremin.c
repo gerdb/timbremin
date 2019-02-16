@@ -103,6 +103,14 @@ float fOscSaw = 0.0f;
 float fOscRect = 0.0f;
 float fBlep = 0.0f;
 
+
+float fSVF1z1 = 0.0f;
+float fSVF1z2 = 0.0f;
+float fSVF1LP = 0.0f;
+float fSVF1HP = 0.0f;
+float fSVF1BR = 0.0f;
+
+
 int iOscSign = 0;
 int iOscSignLast = 0;
 
@@ -551,9 +559,9 @@ float THEREMIN_PolyBLEP(float t, float dt)
     // t^2/2 +t +1/2
     // -1 <= t <= 0
     // discontinuities between -1 & 0
-    else if (t > 1.0 - dt)
+    else if (t > 1.0f - dt)
     {
-        t = (t - 1.0) / dt;
+        t = (t - 1.0f) / dt;
         return t * t + t + t + 1.0f;
     }
 
@@ -656,7 +664,8 @@ inline void THEREMIN_96kHzDACTask_A(void)
 
 	// ************* Sine oscillator *************
 	//
-	// Sine oscillator, phase synchron to sawtooth
+	// Sine oscillator, phase in synch with sawtooth
+	// TIME: 56
 	fFrq = (fPitchFrq + fFrqCorr) * 0.5f;
 	fOscSin += fFrq * fOscCos;
 	fOscCos -= fFrq * fOscSin;
@@ -665,7 +674,9 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	fOscCorr = 1.0f +((1.0f - (fOscSin * fOscSin + fOscCos * fOscCos))*0.01f);
 	fOscCos *= fOscCorr;
 	fOscSin *= fOscCorr;
+	// TIME
 
+	STOPWATCH_START();
 
 	fBlep = THEREMIN_PolyBLEP(fOscPhase  * 0.159154943f, fPitchFrq * 0.159154943f);
 	// ************* PolyBLEP Sawtooth oscillator *************
@@ -674,7 +685,15 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	// See http://www.martin-finke.de/blog/articles/audio-plugins-018-polyblep-oscillator/
 	fOscSaw = fOscPhase * 0.318309886f - 1.0f;
 	fOscSaw -= fBlep;
+    STOPWATCH_STOP();
 
+	// Increase the fundamental
+	// TIME: 24
+    fSVF1LP = fSVF1z2 + fPitchFrq * fSVF1z1;
+    fSVF1z2 = fSVF1LP;
+    fSVF1HP = fOscSaw - 0.25f * fSVF1z1 - fSVF1LP;
+    fSVF1z1 = fSVF1z1 + fPitchFrq * fSVF1HP;
+	// TIME
 
 	// ************* PolyBLEP rectangle oscillator *************
 	//
@@ -703,8 +722,8 @@ inline void THEREMIN_96kHzDACTask_A(void)
     }
 
 
-    fOscOut = fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw;
-
+    fOscOut = fSVF1LP * 1.0f;//fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw;
+    //fOscOut = fOscSin;
 /*
 	fOscOut = 0.0f;
 	if (fOscSin > 0.0f)
@@ -893,7 +912,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	}
 */
 
-	slThereminOut = fOscOut * 15.0f * (float)slVolFilt;
+	slThereminOut = fOscOut * 32.0f * (float)slVolFilt;
 
 	/*if (ssResult < 0)
 	{

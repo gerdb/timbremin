@@ -135,13 +135,12 @@ void AUDIO_OUT_I2S_IRQHandler(void)
 	}
 	else
 	{
-		STOPWATCH_START();
 
 		// Fill the audio DAC with the RIGHT value = ear phone
 		hi2s3.Instance->DR = ssDACValueR;
 		toggle = 1;
 		EFFECT_48kHzTask();
-		STOPWATCH_STOP();
+
 	}
 	// Get the new value for the next task
 	THEREMIN_96kHzDACTask_Common();
