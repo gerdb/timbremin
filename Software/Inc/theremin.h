@@ -24,6 +24,12 @@
 #ifndef THEREMIN_H_
 #define THEREMIN_H_
 
+
+/* Defines  ------------------------------------------------------------------ */
+#define STOPWATCH_START() DWT->CYCCNT = 0;
+#define STOPWATCH_STOP() ulStopwatch = DWT->CYCCNT;
+
+
 /* Types  ------------------------------------------------------------------ */
 // Union to convert between float and int
 typedef union
@@ -69,10 +75,12 @@ extern int32_t slPitchPeriodeFilt;	// low pass filtered period
 extern int32_t slVolTim1MeanPeriode;	// low pass filtered period
 extern int32_t slVolTim2MeanPeriode;	// low pass filtered period
 extern int32_t slThereminOut;	// Output sound from theremin into reverb
+
+// global variables for debug output
 extern uint16_t usPitchPeriod;		// period of oscillator
 extern uint16_t usVolTim1Period;		// period of oscillator
 extern uint16_t usVolTim2Period;		// period of oscillator
-
+extern uint32_t ulStopwatch;
 
 /* Function prototypes ----------------------------------------------------- */
 void THEREMIN_Init(void);

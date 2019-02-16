@@ -31,6 +31,7 @@
 #include "usb_stick.h"
 #include "beep.h"
 #include "volume.h"
+#include "console.h"
 #include <math.h>
 #include <stdlib.h>
 
@@ -73,20 +74,9 @@ int32_t slVolTim1Offset;		// offset value (result of auto-tune)
 int32_t slVolTim2Offset;		// offset value (result of auto-tune)
 int slVolTim1PeriodeFilt_cnt;	// low pass filtered period
 int slVolTim2PeriodeFilt_cnt;	// low pass filtered period
-
-volatile int slVolTim1PeriodeFilt_cntX;	// low pass filtered period
-volatile int slVolTim2PeriodeFilt_cntX;	// low pass filtered period
-
-
 int32_t slVolTimPeriodeFiltDiff;	// low pass filtered period
-
 int32_t slVolTim1PeriodeFilt;	// low pass filtered period
 int32_t slVolTim2PeriodeFilt;	// low pass filtered period
-
-volatile int slVolTim1PeriodeFiltX;	// low pass filtered period
-volatile int slVolTim2PeriodeFiltX;	// low pass filtered period
-
-
 int32_t slVolTim1MeanPeriode;	// low pass filtered period
 int32_t slVolTim2MeanPeriode;	// low pass filtered period
 int32_t slVol1;					// volume value
@@ -308,8 +298,7 @@ void (*taskTable[96]) () = {0};
 extern TIM_HandleTypeDef htim1;	// Handle of timer for input capture
 
 uint32_t ulStopwatch = 0;
-#define STOPWATCH_START() DWT->CYCCNT = 0;
-#define STOPWATCH_STOP() ulStopwatch = DWT->CYCCNT;
+
 
 /**
  * @brief Initialize the module
@@ -716,20 +705,6 @@ inline void THEREMIN_96kHzDACTask_A(void)
 
     fOscOut = fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw;
 
-
-    if (fOscOut > 1.5f || fOscOut < - 1.5f)
-    {
-    	fOscOut = 0.1f;
-    }
-
-    fOscOut = 0.8f;//fOscSin;
-
-
-
-
-
-
-
 /*
 	fOscOut = 0.0f;
 	if (fOscSin > 0.0f)
@@ -1072,16 +1047,25 @@ void THEREMIN_Task_Capture_VOL1(void)
 	usVolTim1LastCC = usVolTim1CC;
 
 
+
 	// Low pass filter it with a mean filter
 	if (usVolTim1Period != 0)
 	{
+
 		// Accumulate the period values
 		slVolTimPeriodeFiltDiff = 256 * usVolTim1Period - slVolTim1Offset;
 
 		// Count the amount of periods
 		slVolTim1PeriodeFilt_cnt ++;
+
+		// Was it a triple period?
+		if (usVolTim1Period > 6000)
+		{
+			slVolTim1PeriodeFilt_cnt +=2;
+			slVolTimPeriodeFiltDiff -= 2*slVolTim1Offset;
+		}
 		// Was it a double period?
-		if (usVolTim1Period > 4000)
+		else if (usVolTim1Period > 4000)
 		{
 			slVolTim1PeriodeFilt_cnt ++;
 			slVolTimPeriodeFiltDiff -= slVolTim1Offset;
@@ -1115,8 +1099,14 @@ void THEREMIN_Task_Capture_VOL2(void)
 
 		// Count the amount of periods
 		slVolTim2PeriodeFilt_cnt ++;
+		// Was it a triple period?
+		if (usVolTim2Period > 6000)
+		{
+			slVolTim2PeriodeFilt_cnt +=2;
+			slVolTimPeriodeFiltDiff -= 2*slVolTim2Offset;
+		}
 		// Was it a double period?
-		if (usVolTim2Period > 4000)
+		else if (usVolTim2Period > 4000)
 		{
 			slVolTim2PeriodeFilt_cnt ++;
 			slVolTimPeriodeFiltDiff -= slVolTim2Offset;
@@ -1144,9 +1134,6 @@ void THEREMIN_Task_Calculate_VOL1(void)
 				- aConfigWorkingSet[CFG_E_VOL1_OFFSET_B].iVal;
 
 		// Prepare for next filter interval
-		slVolTim1PeriodeFilt_cntX = slVolTim1PeriodeFilt_cnt;
-		slVolTim1PeriodeFiltX = slVolTim1PeriodeFilt;
-
 		slVolTim1PeriodeFilt_cnt = 0;
 		slVolTim1PeriodeFilt = 0;
 	}
@@ -1175,10 +1162,6 @@ void THEREMIN_Task_Calculate_VOL2(void)
 				- aConfigWorkingSet[CFG_E_VOL2_OFFSET_B].iVal;
 
 		// Prepare for next filter interval
-		slVolTim2PeriodeFilt_cntX = slVolTim2PeriodeFilt_cnt;
-		slVolTim2PeriodeFiltX = slVolTim2PeriodeFilt;
-
-
 		slVolTim2PeriodeFilt_cnt = 0;
 		slVolTim2PeriodeFilt = 0;
 	}
@@ -1214,11 +1197,6 @@ void THEREMIN_Task_Volume(void)
 	if (slVolumeRaw > 1023)
 	{
 		slVolumeRaw = 1023;
-	}
-
-	if (slVolume > 100)
-	{
-		slVolume --;
 	}
 
 	// change the direction

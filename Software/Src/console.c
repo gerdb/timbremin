@@ -187,9 +187,12 @@ void CONSOLE_1msTask(void)
 		switch (eDebugMode)
 		{
 		case CONSOLE_MODE_OSCILLATORS:
-
 			my_printf("%4d %4d %4d\r\n", usPitchPeriod, usVolTim1Period, usVolTim2Period);
 			break;
+		case CONSOLE_MODE_STOPWATCH:
+			my_printf("%4d\r\n",ulStopwatch);
+			break;
+
 		default: ;
 		}
 	}
