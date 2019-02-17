@@ -106,6 +106,8 @@ float fBlep = 0.0f;
 float fOscHp1 = 0.0f;
 float fOscLP1 = 0.0f;
 float fOscLP2 = 0.0f;
+float fOscLP3 = 0.0f;
+float fOscLP4 = 0.0f;
 
 float fSVF1z1 = 0.0f;
 float fSVF1z2 = 0.0f;
@@ -680,62 +682,80 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	fOscSin *= fOscCorr;
 	// TIME
 
-	STOPWATCH_START();
+	if (fVollAddSynth_3 < 0.99f)
+	{
+		STOPWATCH_START();
 
-	fBlep = THEREMIN_PolyBLEP(fOscPhase  * 0.159154943f, fPitchFrq * 0.159154943f);
-	// ************* PolyBLEP Sawtooth oscillator *************
-	//
-	// See http://metafunction.co.uk/all-about-digital-oscillators-part-2-blits-bleps/
-	// See http://www.martin-finke.de/blog/articles/audio-plugins-018-polyblep-oscillator/
-	fOscSaw = fOscPhase * 0.318309886f - 1.0f;
-	fOscSaw -= fBlep;
-    STOPWATCH_STOP();
+		fBlep = THEREMIN_PolyBLEP(fOscPhase  * 0.159154943f, fPitchFrq * 0.159154943f);
+		// ************* PolyBLEP Sawtooth oscillator *************
+		//
+		// See http://metafunction.co.uk/all-about-digital-oscillators-part-2-blits-bleps/
+		// See http://www.martin-finke.de/blog/articles/audio-plugins-018-polyblep-oscillator/
+		fOscSaw = fOscPhase * 0.318309886f - 1.0f;
+		fOscSaw -= fBlep;
+	    STOPWATCH_STOP();
 
-	// Increase the fundamental
-	// TIME: 24
-    fSVF1LP = fSVF1z2 + fPitchFrq * fSVF1z1;
-    fSVF1z2 = fSVF1LP;
-    fSVF1HP = fOscSaw - 0.25f * fSVF1z1 - fSVF1LP;
-    fSVF1z1 = fSVF1z1 + fPitchFrq * fSVF1HP;
-	// TIME
+		// Increase the fundamental
+		// TIME: 24
+	    fSVF1LP = fSVF1z2 + fPitchFrq * fSVF1z1;
+	    fSVF1z2 = fSVF1LP;
+	    fSVF1HP = fOscSaw - 0.25f * fSVF1z1 - fSVF1LP;
+	    fSVF1z1 = fSVF1z1 + fPitchFrq * fSVF1HP;
+		// TIME
 
-    fOscRectanglePhase = fVollAddSynth_4 * 6.2f;
-	// ************* PolyBLEP rectangle oscillator *************
-	//
-	// See http://metafunction.co.uk/all-about-digital-oscillators-part-2-blits-bleps/
-	// See http://www.martin-finke.de/blog/articles/audio-plugins-018-polyblep-oscillator/
-    if (fOscPhase < fOscRectanglePhase)
-    {
-    	fOscRect = 1.0f;
-    }
-    else
-    {
-    	fOscRect = -1.0f;
-    }
-    fOscRect += fBlep;
-    fOscRect -= THEREMIN_PolyBLEP((fOscPhase - fOscRectanglePhase /*- 6.283185307f*/)  * 0.159154943f , fPitchFrq * 0.159154943f);
+	    fOscRectanglePhase = fVollAddSynth_4 * 6.2f;
+		// ************* PolyBLEP rectangle oscillator *************
+		//
+		// See http://metafunction.co.uk/all-about-digital-oscillators-part-2-blits-bleps/
+		// See http://www.martin-finke.de/blog/articles/audio-plugins-018-polyblep-oscillator/
+	    if (fOscPhase < fOscRectanglePhase)
+	    {
+	    	fOscRect = 1.0f;
+	    }
+	    else
+	    {
+	    	fOscRect = -1.0f;
+	    }
+	    fOscRect += fBlep;
+	    fOscRect -= THEREMIN_PolyBLEP((fOscPhase - fOscRectanglePhase /*- 6.283185307f*/)  * 0.159154943f , fPitchFrq * 0.159154943f);
 
-    //poly_blep(fmod(t + 0.5, 1.0)); // Layer output of Poly BLEP on top (flop)
-
-
-	// Phase increment for rectangle and sawtooth oscillator
-	fOscPhase += fPitchFrq;
-    if (fOscPhase >= 6.283185307f)
-    {
-    	fOscPhase -= 6.283185307f;
-    	fFrqCorr = -(fOscSin - fOscPhase) * 0.159154943f * 0.1f * fPitchFrq;
-    }
-
-    fOscOut =   fVollAddSynth_3 * fSVF1LP * 0.4f
-			 + (1.0f-fVollAddSynth_3) * (fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw);
+	    //poly_blep(fmod(t + 0.5, 1.0)); // Layer output of Poly BLEP on top (flop)
 
 
-    //fOscLP1 += (fOscOut - fOscLP1) * fPitchFrq;
-    fOscLP1 += (fOscOut - fOscLP1) * (fVollAddSynth_5 + 0.2f); //fPitchFrq;
-    fOscLP2 += (fOscLP1 - fOscLP2) * (fVollAddSynth_5 + 0.2f); //fPitchFrq;
+		// Phase increment for rectangle and sawtooth oscillator
+		fOscPhase += fPitchFrq;
+	    if (fOscPhase >= 6.283185307f)
+	    {
+	    	fOscPhase -= 6.283185307f;
+	    	fFrqCorr = -(fOscSin - fOscPhase) * 0.159154943f * 0.1f * fPitchFrq;
+	    }
 
-    fOscHp1 += (fOscLP2 - fOscHp1) * 0.00390625f; // 30Hz HighPass
-    fOscOut = fOscLP2-fOscHp1;
+	    fOscOut =   fVollAddSynth_3 * fSVF1LP * 0.4f
+				 + (1.0f-fVollAddSynth_3) * (fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw);
+
+
+	    //fOscLP1 += (fOscOut - fOscLP1) * fPitchFrq;
+	    f = (fVollAddSynth_5 * 32.0f  + 2.0f) * fPitchFrq;
+	    if (f > 1.0f)
+	    {
+	    	f = 1.0f;
+	    }
+	    fOscLP1 += (fOscOut - fOscLP1) * f; //fPitchFrq;
+	    fOscLP2 += (fOscLP1 - fOscLP2) * f; //fPitchFrq;
+	    fOscLP3 += (fOscLP2 - fOscLP3) * f; //fPitchFrq;
+	    //fOscLP2 = fOscLP1;
+
+	//    fOscLP3 += (fOscLP2 - fOscLP3) * (0.5f); //fPitchFrq;
+	    fOscLP4 += (fOscLP3 - fOscLP4) * (0.25f); //fPitchFrq;
+
+	}
+	else
+	{
+		fOscLP4 = fOscSin;
+	}
+
+    fOscHp1 += (fOscLP4 - fOscHp1) * 0.00390625f; // 30Hz HighPass
+    fOscOut = fOscLP4-fOscHp1;
 
 
     //fOscOut = fSVF1LP * 1.0f;  //fOscOut = fOscSin;
