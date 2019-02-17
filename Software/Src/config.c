@@ -50,7 +50,7 @@ uint16_t VirtAddVarTab[NB_OF_VAR] = {
 };
 
 int iCurrentSet = 0;
-char sResult[100];
+char sResult[1000];
 
 int32_t aConfigValues[SETS][CFG_E_ENTRIES];
 CONFIG_sConfigEntry aConfigWorkingSet[CFG_E_ENTRIES];
@@ -391,7 +391,7 @@ char* CONFIG_ConfigurePot(int index, char* cfgname, int set)
 
 
 /**
- * @brief Sets a parameter by its name and index
+ * @brief Sets/gets a parameter by its name and index
  *
  * @param cfgname: name of the parameter
  * @param index: index of the set
@@ -451,6 +451,51 @@ char* CONFIG_ConfigureParameter(char* cfgname, int index, int val, int set)
 	return "Unknown Parameter";
 
 }
+
+/**
+ * @brief Gets all parameter by its index
+ *
+ * @param index: index of the set
+ */
+char*  CONFIG_GetAllParameters(int index)
+{
+	char sTemp[80];
+	int iIndex;
+	index--; //we count internally from 0..7 instead of 1..8
+
+	// Empty the return string
+	sResult[0] = '\0';
+	CONFIG_eConfigEntry eConfigEntry;
+	strcat(sResult, "\r\n");
+	// Is all valid?
+	if (index < SETS )
+	{
+		for (eConfigEntry = 0;eConfigEntry < CFG_E_ENTRIES; eConfigEntry++)
+		{
+			iIndex = index;
+			strcat(sResult, CONFIG_EnumToName(eConfigEntry));
+			if (aConfigWorkingSet[eConfigEntry].bIsGlobal
+					|| (index < 0))
+			{
+				iIndex = 0;
+			}
+			else
+			{
+				strcat(sResult, "(");
+				sprintf(sTemp, "%d", iIndex + 1);
+				strcat(sResult, sTemp);
+				strcat(sResult, ")");
+			}
+			strcat(sResult, "=");
+			sprintf(sTemp, "%d", (int)aConfigValues[iIndex][eConfigEntry]);
+			strcat(sResult, sTemp);
+			strcat(sResult, "\r\n");
+		}
+		return sResult;
+	}
+	return "Index out of range";
+}
+
 
 /**
  * @brief Decodes a configuration line
@@ -556,6 +601,22 @@ char* CONFIG_DecodeLine(char* sLine)
 				return "Error";
 			}
 		}
+		// Get all parameters
+		else if (strncmp(sPartLeft, "ALL",3) == 0)
+			{
+				if (eqfound)
+				{
+					return "Error";
+				}
+				else if (qmfound)
+				{
+					return CONFIG_GetAllParameters(index);
+				}
+				else
+				{
+					return "Error";
+				}
+			}
 		// select a debug mode
 		else if (strcmp(sPartLeft, "DEBUG") == 0)
 		{
@@ -574,7 +635,7 @@ char* CONFIG_DecodeLine(char* sLine)
 				return "Error";
 			}
 		}
-		// Set the parameter
+		// Set/Get the parameter
 		else
 		{
 			if (eqfound)

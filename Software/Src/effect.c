@@ -35,7 +35,7 @@
 /* local variables  ------------------------------------------------------- */
 
 // Chorus effect
-int32_t slChorusDelay[4096];
+int32_t slChorusDelay[8192];
 int iChorusDelW = 0;
 int iChorusDelR1 = 0;
 int iChorusDelR2 = 0;
@@ -150,8 +150,8 @@ void EFFECT_Init(void)
  */
 void EFFECT_1msTask(void)
 {
-	// Delay length from 0..4000 = 0..41ms
-	iChorusDelLength1 = 2 * aConfigWorkingSet[CFG_E_CHORUS_DELAY].iVal;
+	// Delay length from 0..8000 = 0..166ms
+	iChorusDelLength1 = 8 * aConfigWorkingSet[CFG_E_CHORUS_DELAY].iVal;
 	// Feedback max 0.7
 	slChorusFB = (700 * aConfigWorkingSet[CFG_E_CHORUS_FEEDBACK].iVal) / 1000;
 
@@ -209,7 +209,7 @@ inline void EFFECT_48kHzTask(void)
 	iChorusDelW++;
 	iChorusDelW &= 0x00000FFF;
 	// Read index of delay ring buffer for first, fix delay
-	iChorusDelR1 = (iChorusDelW - iChorusDelLength1) & 0x00000FFF;
+	iChorusDelR1 = (iChorusDelW - iChorusDelLength1) & 0x00001FFF;
 	// Read the fix delayed signal
 
 	slChorusIn = slThereminOut - (slChorusDelay[iChorusDelR1] * slChorusFB) / 1024;
@@ -317,7 +317,7 @@ inline void EFFECT_48kHzTask(void)
 	{
 		// Limit the output to 16bit
 		int32_t slVal;
-		slVal = slThereminOut;//fReverb_out;
+		slVal = fReverb_out;
 		// Limit to 16 bit signed for DAC
 		if (slVal > 32767)
 		{

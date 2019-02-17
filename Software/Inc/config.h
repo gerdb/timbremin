@@ -173,6 +173,7 @@ void CONFIG_Select_Set(int set);
 void CONFIG_Assign_All_Pots(void);
 char*  CONFIG_ConfigurePot(int index, char* cfgname, int set);
 char*  CONFIG_ConfigureParameter(char* cfgname, int index, int val, int set);
+char*  CONFIG_GetAllParameters(int index);
 void CONFIG_Update_Set(void);
 CONFIG_eConfigEntry CONFIG_NameToEnum(char* name);
 char* CONFIG_EnumToName(CONFIG_eConfigEntry enumName);
