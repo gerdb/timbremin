@@ -103,6 +103,7 @@ float fOscSaw = 0.0f;
 float fOscRect = 0.0f;
 float fBlep = 0.0f;
 
+float fOscHp1 = 0.0f;
 float fOscLP1 = 0.0f;
 float fOscLP2 = 0.0f;
 
@@ -732,7 +733,11 @@ inline void THEREMIN_96kHzDACTask_A(void)
     //fOscLP1 += (fOscOut - fOscLP1) * fPitchFrq;
     fOscLP1 += (fOscOut - fOscLP1) * (fVollAddSynth_5 + 0.2f); //fPitchFrq;
     fOscLP2 += (fOscLP1 - fOscLP2) * (fVollAddSynth_5 + 0.2f); //fPitchFrq;
-    fOscOut = fOscLP2;
+
+    fOscHp1 += (fOscLP2 - fOscHp1) * 0.00390625f; // 30Hz HighPass
+    fOscOut = fOscLP2-fOscHp1;
+
+
     //fOscOut = fSVF1LP * 1.0f;  //fOscOut = fOscSin;
 /*
 	fOscOut = 0.0f;
