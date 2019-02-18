@@ -115,6 +115,11 @@ float fSVF1LP = 0.0f;
 float fSVF1HP = 0.0f;
 float fSVF1BR = 0.0f;
 
+float fSVF2z1 = 0.0f;
+float fSVF2z2 = 0.0f;
+float fSVF2LP = 0.0f;
+float fSVF2HP = 0.0f;
+float fSVF2BR = 0.0f;
 
 
 int iOscSign = 0;
@@ -699,8 +704,13 @@ inline void THEREMIN_96kHzDACTask_A(void)
 		// TIME: 24
 	    fSVF1LP = fSVF1z2 + fPitchFrq * fSVF1z1;
 	    fSVF1z2 = fSVF1LP;
-	    fSVF1HP = fOscSaw - 0.25f * fSVF1z1 - fSVF1LP;
+	    fSVF1HP = fOscSaw - 0.03125f * fSVF1z1 - fSVF1LP;
 	    fSVF1z1 = fSVF1z1 + fPitchFrq * fSVF1HP;
+
+	    fSVF2LP = fSVF2z2 + fPitchFrq * fSVF2z1 * 2.0f;
+	    fSVF2z2 = fSVF2LP;
+	    fSVF2HP = fOscSaw - 0.03125f * fSVF2z1 - fSVF2LP;
+	    fSVF2z1 = fSVF2z1 + fPitchFrq * fSVF2HP  * 2.0f;
 		// TIME
 
 	    fOscRectanglePhase = fVollAddSynth_4 * 6.2f;
@@ -730,8 +740,12 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	    	fFrqCorr = -(fOscSin - fOscPhase) * 0.159154943f * 0.1f * fPitchFrq;
 	    }
 
-	    fOscOut =   fVollAddSynth_3 * fSVF1LP * 0.4f
-				 + (1.0f-fVollAddSynth_3) * (fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw);
+//	    fOscOut =   fVollAddSynth_3 * fSVF1LP * 0.4f
+//				 + (1.0f-fVollAddSynth_3) * (fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw);
+//	    fOscOut =   fVollAddSynth_3 * fSVF1z1 * 0.05f
+//				 + (1.0f-fVollAddSynth_3) * fSVF2z1 * 0.09f;
+	    fOscOut =   fVollAddSynth_3 * (fSVF1z1 * 0.05f * 0.5f + fSVF2z1 * 0.09f * 0.5f)
+	        		 + (1.0f-fVollAddSynth_3) * (fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw);
 
 
 	    //fOscLP1 += (fOscOut - fOscLP1) * fPitchFrq;
