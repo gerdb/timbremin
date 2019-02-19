@@ -136,7 +136,7 @@ footer:
   links:
     - label: "Theremin World"
       icon: "fab fa-fw fa-twitter-square"
-      # url: "http://www.thereminworld.com/"
+      url: "http://www.thereminworld.com/"
     - label: "Twitter"
       icon: "fab fa-fw fa-twitter-square"
       # url:
