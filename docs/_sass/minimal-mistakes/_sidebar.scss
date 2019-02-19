@@ -132,7 +132,8 @@
 
     @include breakpoint($large) {
       padding: 5px;
-      border: none;/*1px solid $border-color;*/
+      opacity: 1;
+      border: none; /*1px solid $border-color;*/
     }
   }
 }
