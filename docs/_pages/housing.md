@@ -1,3 +1,9 @@
+---
+title: Case and front panel
+layout: single
+permalink: /housing/
+---
+
 # Case and front panel
 A wooden wine box or a bamboo box for the kitchen (both about 10$) can be used as a case for the timbremin.
 
