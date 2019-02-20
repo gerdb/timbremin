@@ -1,6 +1,6 @@
 ---
 title: Case and front panel
-layout: default
+layout: single
 permalink: /housing/
 ---
 A wooden wine box or a bamboo box for the kitchen (both about 10$) can be used as a housing for the timbremin.
