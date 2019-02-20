@@ -25,7 +25,7 @@ baseurl                  : "/timbremin/"
 repository               : "gerdb/timbremin"
 teaser                   : "/assets/images/cat_theremin.png"
 logo                     : "/assets/images/timbremin_logo.png"
-masthead_title           : "timbremin"
+masthead_title           : " "
 # breadcrumbs            : false # true, false (default)
 words_per_minute         : 200
 comments:
@@ -112,7 +112,7 @@ author:
   location         : "South Germany"
   email            :
   links:
-    - label: "Theremin World Forum"
+    - label: "Theremin World"
       icon: "fas fa-fw fa-users"
       url: "http://www.thereminworld.com/"  
     - label: "Email"
@@ -235,7 +235,7 @@ plugins:
   - jekyll-paginate
   - jekyll-sitemap
   - jekyll-gist
-  - jekyll-feed
+  #- jekyll-feed
   - jemoji
   - jekyll-include-cache
 
@@ -244,7 +244,7 @@ whitelist:
   - jekyll-paginate
   - jekyll-sitemap
   - jekyll-gist
-  - jekyll-feed
+  #- jekyll-feed
   - jemoji
   - jekyll-include-cache
 
