@@ -25,7 +25,7 @@ baseurl                  : "/timbremin/"
 repository               : "gerdb/timbremin"
 teaser                   : "/assets/images/cat_theremin.png"
 logo                     : "/assets/images/timbremin_logo.png"
-masthead_title           : "masterhead"
+masthead_title           : "timbremin"
 # breadcrumbs            : false # true, false (default)
 words_per_minute         : 200
 comments:
@@ -64,7 +64,7 @@ reCaptcha:
   secret                 :
 atom_feed:
   path                   : # blank (default) uses feed.xml
-search                   : # true, false (default)
+search                   : true
 search_full_content      : # true, false (default)
 search_provider          : # lunr (default), algolia, google
 algolia:
@@ -106,10 +106,10 @@ analytics:
 
 # Site Author
 author:
-  name             : "GerdB"
+  name             : "gerd:b"
   avatar           : "/assets/images/theremin_avatar.png"
-  bio              : "A theremin builder"
-  location         : "Germany/Black Forest"
+  bio              : "Theremin builder"
+  location         : "South Germany"
   email            :
   links:
     - label: "Theremin World Forum"
@@ -129,7 +129,7 @@ author:
       # url: "https://facebook.com/"
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
-      # url: "https://github.com/"
+      url: "https://github.com/gerdb/timbremin"
     - label: "Instagram"
       icon: "fab fa-fw fa-instagram"
       # url: "https://instagram.com/"
@@ -148,7 +148,7 @@ footer:
       # url:
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
-      # url:
+      url: "https://github.com/gerdb/timbremin"
     - label: "GitLab"
       icon: "fab fa-fw fa-gitlab"
       # url:
