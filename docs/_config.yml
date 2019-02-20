@@ -108,16 +108,19 @@ analytics:
 author:
   name             : "GerdB"
   avatar           : "/assets/images/theremin_avatar.png"
-  bio              : "A theremin designer."
+  bio              : "A theremin builder"
   location         : "Germany/Black Forest"
   email            :
   links:
+    - label: "Theremin World Forum"
+      icon: "fas fa-fw fa-users"
+      url: "http://www.thereminworld.com/"  
     - label: "Email"
       icon: "fas fa-fw fa-envelope-square"
       # url: mailto:your.name@email.com
     - label: "Website"
       icon: "fas fa-fw fa-link"
-      # url: "https://your-website.com"
+      url: "http://sebulli.com"
     - label: "Twitter"
       icon: "fab fa-fw fa-twitter-square"
       # url: "https://twitter.com/"
