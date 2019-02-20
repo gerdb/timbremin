@@ -6,12 +6,15 @@ main:
     url: /housing/
   - title: "Firmware"
     url: /firmware/
-
+  - title: "Sound samples"
+    url: /soundsamples/ 
 # sidebar
 docs:
-  - title: Getting Started
+  - title: Build the timbremin
     children:
       - title: "Housing"
         url: /housing/
       - title: "Firmware"
-        url: /firmware/        
+        url: /firmware/  
+      - title: "Sound samples"
+        url: /soundsamples/         
