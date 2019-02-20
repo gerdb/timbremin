@@ -4,10 +4,8 @@ main:
     url: https://mmistakes.github.io/minimal-mistakes/docs/quick-start-guide/
   - title: "Housing"
     url: /housing/
-  - title: "docs Housing"
-    url: /docs/housing/
   - title: "Firmware"
-    url: /pages/firmware/
+    url: /firmware/
 
 # sidebar
 docs:
@@ -15,7 +13,5 @@ docs:
     children:
       - title: "Housing"
         url: /housing/
-      - title: "docs Housing"
-        url: /docs/housing/
       - title: "Firmware"
-        url: /pages/firmware/
+        url: /firmware/        
