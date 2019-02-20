@@ -14,5 +14,5 @@ Price of a 380x110mm front panel: 5$
 
 You can use the template under hardware/Frontpanel, but you have to adapt the size of the front panel file to your case. Use eg. https://inkscape.org
 
-![Front panel]({{ site.url }}{{ site.baseurl }}/assets/images/frontpanel.png "Front panel")
+![Front panel]({{ site.baseurl }}/assets/images/frontpanel.png "Front panel")
 
