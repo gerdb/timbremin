@@ -64,8 +64,8 @@ reCaptcha:
   secret                 :
 atom_feed:
   path                   : # blank (default) uses feed.xml
-search                   : true
-search_full_content      : # true, false (default)
+search                   : false
+search_full_content      : false # true, false (default)
 search_provider          : # lunr (default), algolia, google
 algolia:
   application_id         : # YOUR_APPLICATION_ID
@@ -235,7 +235,7 @@ plugins:
   - jekyll-paginate
   - jekyll-sitemap
   - jekyll-gist
-  #- jekyll-feed
+  - jekyll-feed
   - jemoji
   - jekyll-include-cache
 
@@ -244,7 +244,7 @@ whitelist:
   - jekyll-paginate
   - jekyll-sitemap
   - jekyll-gist
-  #- jekyll-feed
+  - jekyll-feed
   - jemoji
   - jekyll-include-cache
 
