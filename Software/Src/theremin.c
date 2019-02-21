@@ -46,6 +46,7 @@ uint16_t usImpedanceTable[2048+1];
 uint16_t usPitchCC;			// value of capture compare register
 uint16_t usPitchLastCC; 	// last value (last task)
 uint16_t usPitchPeriod;		// period of oscillator
+uint16_t usPitchPeriodOffset = 0;	// offset to reduce filter range to 32bit
 int32_t slPitchOffset; 		// offset value (result of auto-tune)
 int32_t slPitchPeriodeFilt;	// low pass filtered period
 int32_t slPitch;			// pitch value
@@ -206,6 +207,21 @@ int32_t slMinPitchPeriode;	// minimum pitch value during auto-tune
 int32_t slMinVol1Periode = 0;	// minimum volume value during auto-tune
 int32_t slMinVol2Periode = 0;	// minimum volume value during auto-tune
 int iTuned = 0;
+
+// Calibration
+e_calibration eCalibration = CALIB_OFF;
+int bCalib1stFound = 0;
+int iCalibCnt = 0;
+volatile uint16_t usCalibFirst;
+volatile uint16_t usCalibSecond;
+volatile uint16_t usCalibDiff;
+volatile uint16_t usCalibPitchThreshold = 0;
+volatile int usCalibPitchN = 1;
+volatile int usCalibPitchFact1 = 0;
+volatile int usCalibPitchFact2 = 0;
+volatile float fCalibfPitchScale = 0.0f;
+
+
 
 int iWavMask = 0x0FFF;
 int iWavLength = 4096;
@@ -617,6 +633,47 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	usPitchPeriod = usPitchCC - usPitchLastCC;
 	usPitchLastCC = usPitchCC;
 
+	// Find the typical frequency of the pitch oscillator
+	if (eCalibration == CALIB_PITCH)
+	{
+		if (!bCalib1stFound)
+		{
+			bCalib1stFound = 1;
+			usCalibFirst = usPitchPeriod;
+		}
+		else
+		{
+			if (	(usPitchPeriod > (usCalibFirst + usCalibFirst / 2))
+				||	(usPitchPeriod < (usCalibFirst - usCalibFirst / 2)))
+			{
+				bCalib1stFound = 0;
+				if (usPitchPeriod > usCalibFirst)
+				{
+					usCalibSecond = usPitchPeriod;
+				}
+				else
+				{
+					usCalibSecond = usCalibFirst;
+					usCalibFirst = usPitchPeriod;
+				}
+				eCalibration = CALIB_PITCH_FINISHED;
+			}
+
+			// Timeout after 1sec
+			iCalibCnt ++;
+			if (iCalibCnt > 48000)
+			{
+				iCalibCnt = 0;
+				bCalib1stFound = 0;
+				usCalibFirst = 0;
+				usCalibSecond = 0;
+				eCalibration = CALIB_PITCH_FINISHED;
+			}
+
+		}
+	}
+
+
 
 	// cycles: 29
 	// Low pass filter period values
@@ -624,13 +681,24 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	// factor *1024 is necessary, because we want to over sample the input signal
 	if (usPitchPeriod != 0)
 	{
-		//                                   11bit                10bit  10bit
-		slPitchPeriodeFilt += ((int16_t) (usPitchPeriod - 2048) * 1024 * 1024
+		if (usPitchPeriod > usCalibPitchThreshold)
+		{
+			usPitchPeriod *= usCalibPitchFact2;
+		}
+		else
+		{
+			usPitchPeriod *= usCalibPitchFact1;
+		}
+
+		usPitchPeriod-= usPitchPeriodOffset;
+		//                                   11bit      10bit  10bit
+		slPitchPeriodeFilt += ((int16_t)usPitchPeriod * 1024 * 1024
 				- slPitchPeriodeFilt) / 256;
+
 	}
 
 	// cycles:21
-	fPitch = ((float) (slPitchPeriodeFilt - slPitchOffset));//*0.00000001f;
+	fPitch = ((float) (slPitchPeriodeFilt - slPitchOffset)) * fCalibfPitchScale;
 
 
 	if (bBeepActive)
@@ -1367,6 +1435,9 @@ void THEREMIN_1msTask(void)
 			// 1.0sec auto-tune
 			siAutotune = 1000;
 
+			// Start with calibration
+			eCalibration = CALIB_PITCH;
+
 			// Reset LED indicator and pitch and volume values
 			ulLedCircleSpeed = siAutotune;
 			ulLedCirclePos = 0;
@@ -1379,7 +1450,66 @@ void THEREMIN_1msTask(void)
 			slMinVol2Periode = 0x7FFFFFFF;
 		}
 	}
-	else// if (bBeepActive == 0)
+	else if (eCalibration != CALIB_OFF)
+	{
+		if (eCalibration == CALIB_PITCH_FINISHED)
+		{
+			usCalibDiff = usCalibSecond - usCalibFirst;
+			usCalibPitchThreshold = usCalibSecond - usCalibDiff / 2;
+
+			usCalibPitchN = (usCalibSecond + usCalibDiff/2)  / usCalibDiff;
+
+			switch (usCalibPitchN)
+			{
+			// n= 0 or 1
+			// Oscillator: f = 100kHz..384kHz
+			// Period = 0 or 3500..13440
+			// Results in 3500 .. 13440
+			case 1:
+				usCalibPitchFact1 = 0;
+				usCalibPitchFact2 = 1;
+				break;
+			// n= 1 or 2
+			// Oscillator: f = 384kHz..768kHz
+			// Period = 1750..3500 or 3500..7000
+			// Results in 3500 .. 7000
+			case 2:
+				usCalibPitchFact1 = 2;
+				usCalibPitchFact2 = 1;
+				break;
+			// n= 2 or 3
+			// Oscillator: f = 768kHz..1152kHz
+			// Period = 2333..3500 or 3500..10500
+			// Results in 7000 .. 21000
+			case 3:
+				usCalibPitchFact1 = 3;
+				usCalibPitchFact2 = 2;
+				break;
+			default:
+				usCalibPitchFact1 = 0;
+				usCalibPitchFact2 = 0;
+			}
+
+			// Calculate an offset to reduce the result to 11 bit
+			usPitchPeriodOffset = usCalibSecond * usCalibPitchFact2;
+
+			// Scale the pitch frequency after filter to have
+			// an oscillator frequency independent span
+			if (usPitchPeriodOffset > 0)
+			{
+				fCalibfPitchScale = 3500.0f/ (float)usPitchPeriodOffset;
+				// Set the offset to 93.75%
+				usPitchPeriodOffset -= usPitchPeriodOffset / 16;
+			}
+			else
+			{
+				fCalibfPitchScale = 0.0f;
+				usPitchPeriodOffset = 0;
+			}
+			eCalibration = CALIB_OFF;
+		}
+	}
+	else // if (bBeepActive == 0)
 	{
 		// Wait 200ms to start with the detection
 		// until both volume channels are stabilized

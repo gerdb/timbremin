@@ -42,6 +42,14 @@ typedef union
 // The different waveforms
 typedef enum
 {
+	CALIB_OFF = 0,
+	CALIB_PITCH = 1,
+	CALIB_PITCH_FINISHED = 2
+}e_calibration;
+
+// The different waveforms
+typedef enum
+{
 	SINE = 0,
 	CAT = 1,
 	COSPULSE = 2,
