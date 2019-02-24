@@ -57,7 +57,6 @@ int CONSOLE_LineCnt = 0;
 char CONSOLE_LineBufferLast[100];
 int CONSOLE_LineCntLast = 0;
 
-
 // Console mode
 CONSOLE_eMode eDebugMode = CONSOLE_MODE_NONE;
 
@@ -176,6 +175,8 @@ static void CONSOLE_RxCheckBuffer(void) {
 void CONSOLE_1msTask(void)
 {
 	static int consoleTastCnt = 0;
+	uint32_t frq1=0;
+
 	CONSOLE_RxCheckBuffer();
 
 	// Generate 200ms Task for debug information
@@ -186,8 +187,26 @@ void CONSOLE_1msTask(void)
 
 		switch (eDebugMode)
 		{
-		case CONSOLE_MODE_OSCILLATORS:
-			my_printf("%4d %4d %4d\r\n", usPitchPeriod, usVolTim1Period, usVolTim2Period);
+		case CONSOLE_MODE_OSCILLATOR_PITCH:
+			if (usPitchPeriodRawN > 0)
+			{
+				frq1 = (168000*8*ulCalibPitchScale) / usPitchPeriodRawN;
+			}
+			my_printf("%4dkHz %4d\r\n",frq1, usPitchPeriodRaw);
+			break;
+		case CONSOLE_MODE_OSCILLATOR_VOL1:
+			if (usVolTim1PeriodRawN > 0)
+			{
+				frq1 = (168000*8*1) / usVolTim1PeriodRawN;
+			}
+			my_printf("%4dkHz %4d\r\n",frq1, usVolTim1PeriodRaw);
+			break;
+		case CONSOLE_MODE_OSCILLATOR_VOL2:
+			if (usVolTim2PeriodRawN > 0)
+			{
+				frq1 = (168000*8*1) / usVolTim2PeriodRawN;
+			}
+			my_printf("%4dkHz %4d\r\n",frq1, usVolTim2PeriodRaw);
 			break;
 		case CONSOLE_MODE_STOPWATCH:
 			my_printf("%4d\r\n",ulStopwatch);

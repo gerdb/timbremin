@@ -86,9 +86,16 @@ extern int32_t slThereminOut;	// Output sound from theremin into reverb
 
 // global variables for debug output
 extern uint16_t usPitchPeriod;		// period of oscillator
-extern uint16_t usVolTim1Period;		// period of oscillator
-extern uint16_t usVolTim2Period;		// period of oscillator
-extern uint32_t ulStopwatch;
+extern uint16_t usVolTim1Period;	// period of oscillator
+extern uint16_t usVolTim2Period;	// period of oscillator
+extern uint16_t usPitchPeriodRaw;		// period of oscillator
+extern uint16_t usVolTim1PeriodRaw;	// period of oscillator
+extern uint16_t usVolTim2PeriodRaw;	// period of oscillator
+extern uint16_t usPitchPeriodRawN;		// period of oscillator
+extern uint16_t usVolTim1PeriodRawN;	// period of oscillator
+extern uint16_t usVolTim2PeriodRawN;	// period of oscillator
+extern uint32_t ulCalibPitchScale;		// Scaling factor oscillator period
+extern uint32_t ulStopwatch;		// Stopwatch
 
 /* Function prototypes ----------------------------------------------------- */
 void THEREMIN_Init(void);

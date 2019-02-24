@@ -87,6 +87,14 @@ int32_t slVolFilt;				// volume value, filtered
 
 int32_t	slOutCapacitor = 0;
 
+uint16_t usPitchPeriodRaw = 0;		// period of oscillator
+uint16_t usVolTim1PeriodRaw = 0;	// period of oscillator
+uint16_t usVolTim2PeriodRaw = 0;	// period of oscillator
+uint16_t usPitchPeriodRawN = 0;		// period of oscillator
+uint16_t usVolTim1PeriodRawN = 0;	// period of oscillator
+uint16_t usVolTim2PeriodRawN = 0;	// period of oscillator
+
+
 int32_t slVolumeRaw;
 int32_t slVolume;
 int32_t slTimbre;
@@ -212,14 +220,17 @@ int iTuned = 0;
 e_calibration eCalibration = CALIB_OFF;
 int bCalib1stFound = 0;
 int iCalibCnt = 0;
-volatile uint16_t usCalibFirst;
-volatile uint16_t usCalibSecond;
-volatile uint16_t usCalibDiff;
-volatile uint16_t usCalibPitchThreshold = 0;
-volatile int usCalibPitchN = 1;
-volatile int usCalibPitchFact1 = 0;
-volatile int usCalibPitchFact2 = 0;
-volatile float fCalibfPitchScale = 0.0f;
+uint16_t usCalibFirst;
+uint16_t usCalibSecond;
+uint16_t usCalibDiff;
+uint16_t usCalibPitchThreshold1 = 0;
+uint16_t usCalibPitchThreshold2 = 0;
+int iCalibPitchN = 1;
+int iCalibPitchFact1 = 0;
+int iCalibPitchFact2 = 0;
+int iCalibPitchFact3 = 0;
+uint32_t ulCalibPitchScale = 1;
+float fCalibfPitchScale = 0.0f;
 
 
 
@@ -630,7 +641,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 
 	// Get the input capture value and calculate the period time
 	usPitchCC = htim1.Instance->CCR1;
-	usPitchPeriod = usPitchCC - usPitchLastCC;
+	usPitchPeriodRaw = usPitchPeriod = usPitchCC - usPitchLastCC;
 	usPitchLastCC = usPitchCC;
 
 	// Find the typical frequency of the pitch oscillator
@@ -643,8 +654,8 @@ inline void THEREMIN_96kHzDACTask_A(void)
 		}
 		else
 		{
-			if (	(usPitchPeriod > (usCalibFirst + usCalibFirst / 2))
-				||	(usPitchPeriod < (usCalibFirst - usCalibFirst / 2)))
+			if (	(usPitchPeriod > (usCalibFirst + usCalibFirst / 4))
+				||	(usPitchPeriod < (usCalibFirst - usCalibFirst / 4)))
 			{
 				bCalib1stFound = 0;
 				if (usPitchPeriod > usCalibFirst)
@@ -681,15 +692,19 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	// factor *1024 is necessary, because we want to over sample the input signal
 	if (usPitchPeriod != 0)
 	{
-		if (usPitchPeriod > usCalibPitchThreshold)
+		if (usPitchPeriod > usCalibPitchThreshold2)
 		{
-			usPitchPeriod *= usCalibPitchFact2;
+			usPitchPeriod *= iCalibPitchFact3;
+		}
+		else if (usPitchPeriod > usCalibPitchThreshold1)
+		{
+			usPitchPeriod *= iCalibPitchFact2;
 		}
 		else
 		{
-			usPitchPeriod *= usCalibPitchFact1;
+			usPitchPeriod *= iCalibPitchFact1;
 		}
-
+		usPitchPeriodRawN = usPitchPeriod;
 		usPitchPeriod-= usPitchPeriodOffset;
 		//                                   11bit      10bit  10bit
 		slPitchPeriodeFilt += ((int16_t)usPitchPeriod * 1024 * 1024
@@ -1455,43 +1470,50 @@ void THEREMIN_1msTask(void)
 		if (eCalibration == CALIB_PITCH_FINISHED)
 		{
 			usCalibDiff = usCalibSecond - usCalibFirst;
-			usCalibPitchThreshold = usCalibSecond - usCalibDiff / 2;
+			usCalibPitchThreshold1 = usCalibSecond - usCalibDiff / 2;
+			usCalibPitchThreshold2 = usCalibPitchThreshold1 + usCalibDiff;
 
-			usCalibPitchN = (usCalibSecond + usCalibDiff/2)  / usCalibDiff;
+			iCalibPitchN = (usCalibSecond + usCalibDiff/2)  / usCalibDiff;
 
-			switch (usCalibPitchN)
+			switch (iCalibPitchN)
 			{
-			// n= 0 or 1
+			// n= 0 or 1 (rarely 2)
 			// Oscillator: f = 100kHz..384kHz
 			// Period = 0 or 3500..13440
 			// Results in 3500 .. 13440
 			case 1:
-				usCalibPitchFact1 = 0;
-				usCalibPitchFact2 = 1;
+				iCalibPitchFact1 = 0;
+				iCalibPitchFact2 = 2;
+				iCalibPitchFact3 = 1;
+				ulCalibPitchScale = 2;
 				break;
-			// n= 1 or 2
+			// n= 1 or 2 (rarely 3)
 			// Oscillator: f = 384kHz..768kHz
 			// Period = 1750..3500 or 3500..7000
 			// Results in 3500 .. 7000
 			case 2:
-				usCalibPitchFact1 = 2;
-				usCalibPitchFact2 = 1;
+				iCalibPitchFact1 = 6;
+				iCalibPitchFact2 = 3;
+				iCalibPitchFact3 = 2;
+				ulCalibPitchScale = 6;
 				break;
-			// n= 2 or 3
+			// n= 2 or 3 (never more)
 			// Oscillator: f = 768kHz..1152kHz
 			// Period = 2333..3500 or 3500..10500
 			// Results in 7000 .. 21000
 			case 3:
-				usCalibPitchFact1 = 3;
-				usCalibPitchFact2 = 2;
+				iCalibPitchFact1 = 3;
+				iCalibPitchFact2 = 2;
+				iCalibPitchFact3 = 2;
+				ulCalibPitchScale = 6;
 				break;
 			default:
-				usCalibPitchFact1 = 0;
-				usCalibPitchFact2 = 0;
+				iCalibPitchFact1 = 0;
+				iCalibPitchFact2 = 0;
 			}
 
 			// Calculate an offset to reduce the result to 11 bit
-			usPitchPeriodOffset = usCalibSecond * usCalibPitchFact2;
+			usPitchPeriodOffset = usCalibSecond * iCalibPitchFact2;
 
 			// Scale the pitch frequency after filter to have
 			// an oscillator frequency independent span

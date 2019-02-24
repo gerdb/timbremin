@@ -29,8 +29,10 @@
 typedef enum
 {
 	CONSOLE_MODE_NONE,
-	CONSOLE_MODE_OSCILLATORS,
-	CONSOLE_MODE_STOPWATCH
+	CONSOLE_MODE_OSCILLATOR_PITCH,
+	CONSOLE_MODE_OSCILLATOR_VOL1,
+	CONSOLE_MODE_OSCILLATOR_VOL2,
+	CONSOLE_MODE_STOPWATCH,
 }CONSOLE_eMode;
 /* Global variables  ---------------------------------------------------------*/
 extern UART_HandleTypeDef UartHandle;
