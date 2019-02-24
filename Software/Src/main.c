@@ -108,7 +108,6 @@ void MX_USB_HOST_Process(void);
 /* USER CODE BEGIN 0 */
 //extern void initialise_monitor_handles(void);
 int siFlag1ms = 0;
-int siTaskCnt = 0;
 
 /* USER CODE END 0 */
 
@@ -185,13 +184,6 @@ int main(void)
 	    AUDIO_OUT_1msTask();
 	    CONSOLE_1msTask();
 	    EFFECT_1msTask();
-
-		siTaskCnt++;
-		if (siTaskCnt >= 1000)
-		{
-			siTaskCnt = 0;
-		    THEREMIN_1sTask();
-		}
 	}
   }
   /* USER CODE END 3 */

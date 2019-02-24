@@ -1928,57 +1928,5 @@ void THEREMIN_1msTask(void)
 	{
 		DISPLAY_AutotuneDisplay();
 	}
-
-
-
-
 }
-
-/**
- * @brief 1s task used for debugging purpose
- *
- */
-void THEREMIN_1sTask(void)
-{
-
-	if (siAutotune == 0)
-	{
-		/*
-		// Debug values for volume
-		printf("%d %d %d %d %d %d %d %d\n",
-				(int)usVolTim1Period,
-				(int)usVolTim2Period,
-				(int)slVolTim1MeanPeriode,
-				(int)slVolTim2MeanPeriode,
-				(int)slVolFilt,
-				(int)slTimbre,
-				(int) slVol1,
-				(int) slVol2
-				);
-		*/
-
-		// Debug values for pitch
-
-/*
-		printf("%d %d %d %d\n",
-				(int)(fPitchFrq*1000.0f),
-				(int)usPitchPeriod,
-				(int)slPitchPeriodeFilt , (int)slPitchOffset
-				);
-*/
-		/*
-		printf("%d %d %d %d %d\n",
-				(int)usVolTim1Period,
-				(int)usVolTim2Period,
-				(int)slVolTim1MeanPeriode,
-				(int)slVolTim2MeanPeriode,
-				(int)usPitchPeriod
-				);
-		*/
-		//printf("Stopwatch %d\n", ulStopwatch);
-	}
-}
-
-
-
 

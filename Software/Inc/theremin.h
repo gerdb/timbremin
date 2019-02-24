@@ -124,7 +124,6 @@ void THEREMIN_Calc_PitchTable(void);
 void THEREMIN_Calc_DistortionTable(void);
 void THEREMIN_Calc_ImpedanceTable(void);
 void THEREMIN_1msTask(void);
-void THEREMIN_1sTask(void);
 
 
 
