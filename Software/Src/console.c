@@ -192,7 +192,7 @@ void CONSOLE_1msTask(void)
 			{
 				frq1 = (168000*8*ulCalibPitchScale) / usPitchPeriodRawN;
 			}
-			my_printf("%4dkHz %4d\r\n",frq1, usPitchPeriodRaw);
+			my_printf("%4dkHz %4dkHz %4d\r\n", (int)frq1, (int)((float)usPitchPeriodRawN * fCalibfPitchScale), usPitchPeriodRaw);
 			break;
 		case CONSOLE_MODE_OSCILLATOR_VOL1:
 			if (usVolTim1PeriodRawN > 0)

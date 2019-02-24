@@ -42,9 +42,13 @@ typedef union
 // The different waveforms
 typedef enum
 {
-	CALIB_OFF = 0,
-	CALIB_PITCH = 1,
-	CALIB_PITCH_FINISHED = 2
+	CALIB_OFF,
+	CALIB_PITCH,
+	CALIB_PITCH_FINISHED,
+	CALIB_VOL1,
+	CALIB_VOL1_FINISHED,
+	CALIB_VOL2,
+	CALIB_VOL2_FINISHED
 }e_calibration;
 
 // The different waveforms
@@ -95,6 +99,7 @@ extern uint16_t usPitchPeriodRawN;		// period of oscillator
 extern uint16_t usVolTim1PeriodRawN;	// period of oscillator
 extern uint16_t usVolTim2PeriodRawN;	// period of oscillator
 extern uint32_t ulCalibPitchScale;		// Scaling factor oscillator period
+extern float fCalibfPitchScale;			//Scale the pitch frequency after filter
 extern uint32_t ulStopwatch;		// Stopwatch
 
 /* Function prototypes ----------------------------------------------------- */
