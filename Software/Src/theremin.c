@@ -43,14 +43,6 @@ uint16_t usDistortionTable[2048+1];
 uint16_t usImpedanceTable[2048+1];
 
 // Pitch
-uint16_t usPitchCC;			// value of capture compare register
-uint16_t usPitchLastCC; 	// last value (last task)
-uint16_t usPitchPeriod;		// period of oscillator
-uint16_t usPitchPeriodOffset = 0;	// offset to reduce filter range to 32bit
-int32_t slPitchOffset; 		// offset value (result of auto-tune)
-int32_t slPitchPeriodeFilt;	// low pass filtered period
-int32_t slPitch;			// pitch value
-float fPitch;			// pitch value
 float fPitchFrq;		// pitch frequency scaled to 96kHz task
 float fPitchFrq1;		// pitch frequency scaled to 96kHz task
 float fPitchFrq2;		// pitch frequency scaled to 96kHz task
@@ -65,43 +57,16 @@ float fFilterIn = 0.0f;
 
 // Volume
 float fVol = 0.0;			// volume value
-uint16_t usVolTim1CC;			// value of capture compare register
-uint16_t usVolTim2CC;			// value of capture compare register
-uint16_t usVolTim1LastCC;		// last value (last task)
-uint16_t usVolTim2LastCC;		// last value (last task)
-uint16_t usVolTim1Period;		// period of oscillator
-uint16_t usVolTim2Period;		// period of oscillator
-int32_t slVolTim1Offset;		// offset value (result of auto-tune)
-int32_t slVolTim2Offset;		// offset value (result of auto-tune)
-uint16_t usVol1PeriodOffset = 0;	// offset to reduce filter range to 32bit
-uint16_t usVol2PeriodOffset = 0;	// offset to reduce filter range to 32bit
-int slVolTim1PeriodeFilt_cnt;	// low pass filtered period
-int slVolTim2PeriodeFilt_cnt;	// low pass filtered period
 int32_t slVolTimPeriodeFiltDiff;	// low pass filtered period
-int32_t slVolTim1PeriodeFilt;	// low pass filtered period
-int32_t slVolTim2PeriodeFilt;	// low pass filtered period
-int32_t slVolTim1MeanPeriode;	// low pass filtered period
-int32_t slVolTim2MeanPeriode;	// low pass filtered period
-int32_t slVol1;					// volume value
-int32_t slVol2;					// volume value
 int32_t slVolFiltL;				// volume value, filtered (internal filter value)
 int32_t slVolFilt;				// volume value, filtered
-
-int32_t	slOutCapacitor = 0;
-
-uint16_t usPitchPeriodRaw = 0;		// period of oscillator
-uint16_t usVolTim1PeriodRaw = 0;	// period of oscillator
-uint16_t usVolTim2PeriodRaw = 0;	// period of oscillator
-uint16_t usPitchPeriodRawN = 0;		// period of oscillator
-uint16_t usVolTim1PeriodRawN = 0;	// period of oscillator
-uint16_t usVolTim2PeriodRawN = 0;	// period of oscillator
-
-
 int32_t slVolumeRaw;
 int32_t slVolume;
 int32_t slTimbre;
 float fTimbre = 0.0f;
+int32_t	slOutCapacitor = 0;
 
+// Audio oscillators
 float fOscSin = 0.0f;
 float fOscCos = 1.0f;
 float fOscCorr = 1.0f;
@@ -159,50 +124,10 @@ float fVollAddSynth_l3 = 0.0f;
 float fVollAddSynth_l4 = 0.0f;
 float fVollAddSynth_l5 = 0.0f;
 
-/*
-// State variable filters for formants
-float fSVFf_1;
-float fSVFq_1;
-float fSVFf_2;
-float fSVFq_2;
-float fSVFf_3;
-float fSVFq_3;
-float fSVFf_4;
-float fSVFq_4;
-float fSVFf_5;
-float fSVFq_5;
-float fSVFf_6;
-float fSVFq_6;
-float fSVFZ1_1 = 0.0f;
-float fSVFZ2_1 = 0.0f;
-float fSVFZ1_2 = 0.0f;
-float fSVFZ2_2 = 0.0f;
-float fSVFZ1_3 = 0.0f;
-float fSVFZ2_3 = 0.0f;
-float fSVFZ1_4 = 0.0f;
-float fSVFZ2_4 = 0.0f;
-float fSVFZ1_5 = 0.0f;
-float fSVFZ2_5 = 0.0f;
-float fSVFZ1_6 = 0.0f;
-float fSVFZ2_6 = 0.0f;
-float fSVF_out_1 = 0.0f;
-float fSVF_out_2 = 0.0f;
-float fSVF_out_3 = 0.0f;
-float fSVF_out_4 = 0.0f;
-float fSVF_out_5 = 0.0f;
-float fSVF_out_6 = 0.0f;
-*/
 float fVolScale = 1.0f;
 float fVolShift = 0.0f;
 
 int32_t slThereminOut = 0;
-
-int32_t slPitchOld;
-int32_t slVolTim1Old;
-int32_t slVolTim2Old;
-
-
-//int32_t slVol2;				// volume value
 
 uint32_t ulWaveTableIndex = 0;
 
@@ -213,9 +138,6 @@ float fWavStepFilt = 0.0f;
 int siAutotune = 0;			// Auto-tune down counter
 uint32_t ulLedCircleSpeed;	// LED indicator speed
 uint32_t ulLedCirclePos;	// LED indicator position
-int32_t slMinPitchPeriode;	// minimum pitch value during auto-tune
-int32_t slMinVol1Periode = 0;	// minimum volume value during auto-tune
-int32_t slMinVol2Periode = 0;	// minimum volume value during auto-tune
 int iTuned = 0;
 
 // Calibration
@@ -225,32 +147,7 @@ int iCalibCnt = 0;
 uint16_t usCalibFirst;
 uint16_t usCalibSecond;
 uint16_t usCalibDiff;
-uint16_t usCalibPitchThreshold1 = 0;
-uint16_t usCalibVol1Threshold1 = 0;
-uint16_t usCalibVol2Threshold1 = 0;
-uint16_t usCalibPitchThreshold2 = 0;
-uint16_t usCalibVol1Threshold2 = 0;
-uint16_t usCalibVol2Threshold2 = 0;
-int iCalibPitchN = 1;
-int iCalibVol1N = 1;
-int iCalibVol2N = 1;
-int iCalibPitchFact1 = 0;
-int iCalibVol1Fact1 = 0;
-int iCalibVol2Fact1 = 0;
-int iCalibPitchFact2 = 0;
-int iCalibVol1Fact2 = 0;
-int iCalibVol2Fact2 = 0;
-int iCalibPitchFact3 = 0;
-int iCalibVol1Fact3 = 0;
-int iCalibVol2Fact3 = 0;
-uint32_t ulCalibPitchScale = 1;
-uint32_t ulCalibVol1Scale = 1;
-uint32_t ulCalibVol2Scale = 1;
-float fCalibfPitchScale = 0.0f;
-float fCalibfVol1Scale = 0.0f;
-float fCalibfVol2Scale = 0.0f;
-
-
+s_osc aOsc[3];
 
 int iWavMask = 0x0FFF;
 int iWavLength = 4096;
@@ -259,103 +156,9 @@ e_waveform eWaveform = SINE;
 
 e_vol_sel vol_sel = VOLSEL_NONE;
 
-int32_t test1;
-int32_t test2;
-int32_t test3;
 int task = 0;
 
-/*
-float fBQ_out_1 = 0.0f;
-float fBQZ1_1 = 0.0f;
-float fBQZ2_1 = 0.0f;
-float fBQ_out_2 = 0.0f;
-float fBQZ1_2 = 0.0f;
-float fBQZ2_2 = 0.0f;
-float fBQ_out_3 = 0.0f;
-float fBQZ1_3 = 0.0f;
-float fBQZ2_3 = 0.0f;
-float fBQ_out_4 = 0.0f;
-float fBQZ1_4 = 0.0f;
-float fBQZ2_4 = 0.0f;
-float fBQ_out_5 = 0.0f;
-float fBQZ1_5 = 0.0f;
-float fBQZ2_5 = 0.0f;
-*/
 
-
-
-
-
-
-
-// Biquad coefficients for 48kHz sampling frequency, f0= 10kHz and 10th order LP
-// see http://www.earlevel.com/main/2016/09/29/cascading-filters/
-// and http://www.earlevel.com/main/2013/10/13/biquad-calculator-v2/
-// Q-Values: 0.50623256, 0.56116312, 0.70710678, 1.1013446, 3.1962266
-/*
-//Q: 0.50623256
-#define BQ_A0_1 0.1896540888062538f
-#define BQ_A1_1 0.3793081776125076f
-#define BQ_A2_1 0.1896540888062538f
-#define BQ_B1_1 -0.26490745527271625f
-#define BQ_B2_1 0.023523810497731508f
-//Q: 0.56116312
-#define BQ_A0_2 0.19917299441439854f
-#define BQ_A1_2 0.39834598882879707f
-#define BQ_A2_2 0.19917299441439854f
-#define BQ_B1_2 -0.27820339356493434f
-#define BQ_B2_2 0.07489537122252837f
-//Q: 0.70710678
-#define BQ_A0_3 0.22019470012300807f
-#define BQ_A1_3 0.44038940024601614f
-#define BQ_A2_3 0.22019470012300807f
-#define BQ_B1_3 -0.3075663595827598f
-#define BQ_B2_3 0.18834516007479202f
-//Q: 1.1013446
-#define BQ_A0_4 0.2576190655938374f
-#define BQ_A1_4 0.5152381311876748f
-#define BQ_A2_4 0.2576190655938374f
-#define BQ_B1_4 -0.35984044175243773f
-#define BQ_B2_4 0.39031670412778746f
-//Q: 3.1962266
-#define BQ_A0_5 0.32194349801676825f
-#define BQ_A1_5 0.6438869960335365f
-#define BQ_A2_5 0.32194349801676825f
-#define BQ_B1_5 -0.4496883422763653f
-#define BQ_B2_5 0.7374623343434382f
-*/
-/*
-//Q: 0.50623256
-#define BQ_A0_1 0.06452600200988579f
-#define BQ_A1_1 0.12905200401977157f
-#define BQ_A2_1 0.06452600200988579f
-#define BQ_B1_1 -0.9909072675518413f
-#define BQ_B2_1 0.24901127559138433f
-//Q: 0.56116312
-#define BQ_A0_2 0.06698822155330401f
-#define BQ_A1_2 0.13397644310660803f
-#define BQ_A2_2 0.06698822155330401f
-#define BQ_B1_2 -1.0287188654175745f
-#define BQ_B2_2 0.2966717516307906f
-//Q: 0.70710678
-#define BQ_A0_3 0.07223087528927949f
-#define BQ_A1_3 0.14446175057855898f
-#define BQ_A2_3 0.07223087528927949f
-#define BQ_B1_3 -1.109228792058311f
-#define BQ_B2_3 0.39815229321542905f
-//Q: 1.1013446
-#define BQ_A0_4 0.0809508018494106f
-#define BQ_A1_4 0.1619016036988212f
-#define BQ_A2_4 0.0809508018494106f
-#define BQ_B1_4 -1.2431381980622418f
-#define BQ_B2_4 0.5669414054598841f
-//Q: 3.1962266
-#define BQ_A0_5 0.09433928047651055f
-#define BQ_A1_5 0.1886785609530211f
-#define BQ_A2_5 0.09433928047651055f
-#define BQ_B1_5 -1.4487412163776068f
-#define BQ_B2_5 0.8260983382836492f
-*/
 int taskTableCnt = 0;
 void (*taskTable[96]) () = {0};
 
@@ -363,7 +166,7 @@ extern TIM_HandleTypeDef htim1;	// Handle of timer for input capture
 
 uint32_t ulStopwatch = 0;
 
-
+static void THEREMIN_Calibrate(int osc);
 /**
  * @brief Initialize the module
  *
@@ -398,9 +201,9 @@ void THEREMIN_Init(void)
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
 	// Read auto-tune values from virtual EEPRom
-	slPitchOffset = CONFIG_Read_SLong(EEPROM_ADDR_PITCH_AUTOTUNE_H);
-	slVolTim1Offset = CONFIG_Read_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H);
-	slVolTim2Offset = CONFIG_Read_SLong(EEPROM_ADDR_VOLTIM2_AUTOTUNE_H);
+	aOsc[PITCH].slOffset = CONFIG_Read_SLong(EEPROM_ADDR_PITCH_AUTOTUNE_H);
+	aOsc[VOL1].slOffset = CONFIG_Read_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H);
+	aOsc[VOL2].slOffset = CONFIG_Read_SLong(EEPROM_ADDR_VOLTIM2_AUTOTUNE_H);
 
 	// Get the VolumeShift value from the flash configuration
 	fVolShift = ((float) (CONFIG.VolumeShift)) * 0.1f + 11.5f;
@@ -424,28 +227,6 @@ void THEREMIN_Init(void)
 
 }
 
-/**
- * @brief Recalculates the pitch LUT
- *
- */
-/*
-void THEREMIN_InitStateVariableFilters(void)
-{
-	fSVFf_1 = 2.0f * sinf(M_PI_f * 360.0f / 48000.0f);
-	fSVFq_1 = 49.0f/ 360.0f;
-	fSVFf_2 = 2.0f * sinf(M_PI_f * 1700.0f / 48000.0f);
-	fSVFq_2 = 38.0f / 1700.0f;;
-	fSVFf_3 = 2.0f * sinf(M_PI_f * 2313.0f / 48000.0f);
-	fSVFq_3 = 59.0f / 2313.0f;
-	fSVFf_4 = 2.0f * sinf(M_PI_f * 2827.0f / 48000.0f);
-	fSVFq_4 = 74.0f/ 2827.0f;
-	fSVFf_5 = 2.0f * sinf(M_PI_f * 3751.0f / 48000.0f);
-	fSVFq_5 = 135.0f / 3751.0f;
-
-	fSVFf_6 = 2.0f * sinf(M_PI_f * 2000.0f / 48000.0f);
-	fSVFq_6 = 1.0f;
-}
-*/
 
 /**
  * @brief Recalculates the pitch LUT
@@ -521,49 +302,6 @@ void THEREMIN_Calc_DistortionTable(void)
 	}
 	usDistortionTable[2048] = 65535;
 }
-
-/**
- * @brief Recalculates the distortion LUT
- *
- */
-/*
-void THEREMIN_Calc_DistortionTable(void)
-{
-	float f,fmin50,fmax50,fmax, fscale;
-	float fNonLin = ((float)aConfigWorkingSet[CFG_E_DISTORTION].iVal * 0.001f)*6.0f;
-
-	if (aConfigWorkingSet[CFG_E_DISTORTION].iVal != 0)
-	{
-		fmax = expf(fNonLin);
-		fscale = 1.0f/(fmax - 1.0f );
-
-		// take the Vpp value at 50% volume and use it to scale the
-		// sine value
-		fmin50 = 0.5f*(fscale * (expf(-0.5f * fNonLin)-1.0f )+1.0f );
-		fmax50 = 0.5f*(fscale * (expf(+0.5f * fNonLin)-1.0f )+1.0f );
-		//ssNonTimbreVol = 256 * (fmax50-fmin50);
-
-		//fscale = 1.0f/(fmax-fmin);
-		for (int32_t i = 0; i <= 2048; i++)
-		{
-			// Calculate the nonlinear function
-			f = 0.5f*(fscale * (expf((float)(i-1024)*0.000976562f * fNonLin)-1.0f )+1.0f );
-			// Fill the distortion LUT
-			usDistortionTable[i] = f*65535.0f;
-		}
-	}
-	else
-	{
-		//ssNonTimbreVol = 128;
-		for (int32_t i = 0; i < 2048; i++)
-		{
-			// Fill the distortion LUT
-			usDistortionTable[i] = i*32;
-		}
-		usDistortionTable[2048] = 65535;
-}
-}
-*/
 
 /**
  * @brief Recalculates the impedance LUT
@@ -649,9 +387,9 @@ inline void THEREMIN_96kHzDACTask_A(void)
 
 
 	// Get the input capture value and calculate the period time
-	usPitchCC = htim1.Instance->CCR1;
-	usPitchPeriodRaw = usPitchPeriod = usPitchCC - usPitchLastCC;
-	usPitchLastCC = usPitchCC;
+	aOsc[PITCH].usCC = htim1.Instance->CCR1;
+	aOsc[PITCH].usPeriodRaw = aOsc[PITCH].usPeriod = aOsc[PITCH].usCC - aOsc[PITCH].usLastCC;
+	aOsc[PITCH].usLastCC = aOsc[PITCH].usCC;
 
 	// Find the typical frequency of the pitch oscillator
 	if (eCalibration == CALIB_PITCH)
@@ -659,22 +397,22 @@ inline void THEREMIN_96kHzDACTask_A(void)
 		if (!bCalib1stFound)
 		{
 			bCalib1stFound = 1;
-			usCalibFirst = usPitchPeriod;
+			usCalibFirst = aOsc[PITCH].usPeriod;
 		}
 		else
 		{
-			if (	(usPitchPeriod > (usCalibFirst + usCalibFirst / 4))
-				||	(usPitchPeriod < (usCalibFirst - usCalibFirst / 4)))
+			if (	(aOsc[PITCH].usPeriod > (usCalibFirst + usCalibFirst / 4))
+				||	(aOsc[PITCH].usPeriod < (usCalibFirst - usCalibFirst / 4)))
 			{
 				bCalib1stFound = 0;
-				if (usPitchPeriod > usCalibFirst)
+				if (aOsc[PITCH].usPeriod > usCalibFirst)
 				{
-					usCalibSecond = usPitchPeriod;
+					usCalibSecond = aOsc[PITCH].usPeriod;
 				}
 				else
 				{
 					usCalibSecond = usCalibFirst;
-					usCalibFirst = usPitchPeriod;
+					usCalibFirst = aOsc[PITCH].usPeriod;
 				}
 				eCalibration = CALIB_PITCH_FINISHED;
 			}
@@ -693,36 +431,36 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	}
 
 
-
-	// cycles: 29
+	STOPWATCH_START();
+	// cycles:
 	// Low pass filter period values
 	// factor *1024 is necessary, because of the /1024 integer division
 	// factor *1024 is necessary, because we want to over sample the input signal
-	if (usPitchPeriod != 0)
+	if (aOsc[PITCH].usPeriod != 0)
 	{
-		if (usPitchPeriod > usCalibPitchThreshold2)
+		if (aOsc[PITCH].usPeriod > aOsc[PITCH].usCalibThreshold2)
 		{
-			usPitchPeriod *= iCalibPitchFact3;
+			aOsc[PITCH].usPeriod *= aOsc[PITCH].iCalibFact3;
 		}
-		else if (usPitchPeriod > usCalibPitchThreshold1)
+		else if (aOsc[PITCH].usPeriod > aOsc[PITCH].usCalibThreshold1)
 		{
-			usPitchPeriod *= iCalibPitchFact2;
+			aOsc[PITCH].usPeriod *= aOsc[PITCH].iCalibFact2;
 		}
 		else
 		{
-			usPitchPeriod *= iCalibPitchFact1;
+			aOsc[PITCH].usPeriod *= aOsc[PITCH].iCalibFact1;
 		}
-		usPitchPeriodRawN = usPitchPeriod;
-		usPitchPeriod-= usPitchPeriodOffset;
+		aOsc[PITCH].usPeriodRawN = aOsc[PITCH].usPeriod;
+		aOsc[PITCH].usPeriod-= aOsc[PITCH].usPeriodOffset;
 		//                                   11bit      10bit  10bit
-		slPitchPeriodeFilt += ((int16_t)usPitchPeriod * 1024 * 1024
-				- slPitchPeriodeFilt) / 256;
+		aOsc[PITCH].slPeriodeFilt += ((int16_t)aOsc[PITCH].usPeriod * 1024 * 1024
+				- aOsc[PITCH].slPeriodeFilt) / 256;
 
 	}
 
 	// cycles:21
-	fPitch = ((float) (slPitchPeriodeFilt - slPitchOffset)) * fCalibfPitchScale;
-
+	aOsc[PITCH].fValue = ((float) (aOsc[PITCH].slPeriodeFilt - aOsc[PITCH].slOffset)) * aOsc[PITCH].fCalibfScale;
+	STOPWATCH_STOP();
 
 	if (bBeepActive)
 	{
@@ -733,13 +471,13 @@ inline void THEREMIN_96kHzDACTask_A(void)
 
 
 
-	if (fPitch >= 1.0f)
+	if (aOsc[PITCH].fValue >= 1.0f)
 	{
 		// cycles:
 		// fast pow approximation by LUT with interpolation
 		// float bias: 127, so 127 << 23bit mantissa is: 0x3F800000
 		// We use (5 bit of) the exponent and 6 bit of the mantissa
-		u.f = fPitch;
+		u.f = aOsc[PITCH].fValue;
 		tabix = ((u.ui - 0x3F800000) >> 17);
 //		tabsub = (u.ui & 0x0001FFFF) >> 2;
 		tabsubf = (u.ui & 0x0001FFFF) *  0.000007629f; // =2^-18
@@ -752,17 +490,6 @@ inline void THEREMIN_96kHzDACTask_A(void)
 		fPitchFrq = 0.0f;
 	}
 
-
-	//fPitchFrq = 0.1;
-	/*
-	fPitchFrq1 = fPitchFrq * 0.5f;
-
-	fPitchFrq3 = fPitchFrq * 3.0f;
-	fPitchFrq4 = fPitchFrq * 4.0f;
-	fPitchFrq5 = fPitchFrq * 5.0f;
-	//fPitchFrq = 0.1f;
-*/
-	//fPitchFrq2 += (fPitchFrq - fPitchFrq2) * 0.01f;
 
 	// ************* Sine oscillator *************
 	//
@@ -1127,13 +854,6 @@ inline void THEREMIN_96kHzDACTask_B(void)
  */
 inline void THEREMIN_96kHzDACTask_Common(void)
 {
-
-
-
-
-
-
-
 	// Call next Task of task table
 	taskTableCnt++;
 	if (taskTableCnt>=96)
@@ -1180,9 +900,9 @@ void THEREMIN_Task_Select_VOL2(void)
  */
 void THEREMIN_Task_Activate_VOL1(void)
 {
-	usVolTim1LastCC = htim1.Instance->CCR2; // Read capture compare to be prepared
-	slVolTim1PeriodeFilt = 0;	// Reset mean filter counter
-	slVolTim1PeriodeFilt_cnt = 0;	// Reset mean filter counter
+	aOsc[VOL1].usLastCC = htim1.Instance->CCR2; // Read capture compare to be prepared
+	aOsc[VOL1].slPeriodeFilt = 0;	// Reset mean filter counter
+	aOsc[VOL1].slPeriodeFilt_cnt = 0;	// Reset mean filter counter
 }
 
 /**
@@ -1190,9 +910,9 @@ void THEREMIN_Task_Activate_VOL1(void)
  */
 void THEREMIN_Task_Activate_VOL2(void)
 {
-	usVolTim2LastCC = htim1.Instance->CCR3; // Read capture compare to be prepared
-	slVolTim2PeriodeFilt = 0;	// Reset mean filter counter
-	slVolTim2PeriodeFilt_cnt = 0;	// Reset mean filter counter
+	aOsc[VOL2].usLastCC = htim1.Instance->CCR3; // Read capture compare to be prepared
+	aOsc[VOL2].slPeriodeFilt = 0;	// Reset mean filter counter
+	aOsc[VOL2].slPeriodeFilt_cnt = 0;	// Reset mean filter counter
 }
 
 /**
@@ -1201,9 +921,9 @@ void THEREMIN_Task_Activate_VOL2(void)
 void THEREMIN_Task_Capture_VOL1(void)
 {
 	// Get the input capture value and calculate the period time
-	usVolTim1CC = htim1.Instance->CCR2;
-	usVolTim1Period = usVolTim1CC - usVolTim1LastCC;
-	usVolTim1LastCC = usVolTim1CC;
+	aOsc[VOL1].usCC = htim1.Instance->CCR2;
+	aOsc[VOL1].usPeriod = aOsc[VOL1].usCC - aOsc[VOL1].usLastCC;
+	aOsc[VOL1].usLastCC = aOsc[VOL1].usCC;
 
 	// Find the typical frequency of the vol1 oscillator
 	if (eCalibration == CALIB_VOL1)
@@ -1211,22 +931,22 @@ void THEREMIN_Task_Capture_VOL1(void)
 		if (!bCalib1stFound)
 		{
 			bCalib1stFound = 1;
-			usCalibFirst = usVolTim1Period;
+			usCalibFirst = aOsc[VOL1].usPeriod;
 		}
 		else
 		{
-			if (	(usVolTim1Period > (usCalibFirst + usCalibFirst / 4))
-				||	(usVolTim1Period < (usCalibFirst - usCalibFirst / 4)))
+			if (	(aOsc[VOL1].usPeriod > (usCalibFirst + usCalibFirst / 4))
+				||	(aOsc[VOL1].usPeriod < (usCalibFirst - usCalibFirst / 4)))
 			{
 				bCalib1stFound = 0;
-				if (usVolTim1Period > usCalibFirst)
+				if (aOsc[VOL1].usPeriod > usCalibFirst)
 				{
-					usCalibSecond = usVolTim1Period;
+					usCalibSecond = aOsc[VOL1].usPeriod;
 				}
 				else
 				{
 					usCalibSecond = usCalibFirst;
-					usCalibFirst = usVolTim1Period;
+					usCalibFirst = aOsc[VOL1].usPeriod;
 				}
 				eCalibration = CALIB_VOL1_FINISHED;
 			}
@@ -1246,32 +966,32 @@ void THEREMIN_Task_Capture_VOL1(void)
 
 
 	// Low pass filter it with a mean filter
-	if (usVolTim1Period != 0)
+	if (aOsc[VOL1].usPeriod != 0)
 	{
 
 		// Accumulate the period values
-		slVolTimPeriodeFiltDiff = 256 * usVolTim1Period - slVolTim1Offset;
+		slVolTimPeriodeFiltDiff = 256 * aOsc[VOL1].usPeriod - aOsc[VOL1].slOffset;
 
 		// Count the amount of periods
-		slVolTim1PeriodeFilt_cnt ++;
+		aOsc[VOL1].slPeriodeFilt_cnt ++;
 
 		// Was it a triple period?
-		if (usVolTim1Period > 6000)
+		if (aOsc[VOL1].usPeriod > 6000)
 		{
-			slVolTim1PeriodeFilt_cnt +=2;
-			slVolTimPeriodeFiltDiff -= 2*slVolTim1Offset;
+			aOsc[VOL1].slPeriodeFilt_cnt +=2;
+			slVolTimPeriodeFiltDiff -= 2*aOsc[VOL1].slOffset;
 		}
 		// Was it a double period?
-		else if (usVolTim1Period > 4000)
+		else if (aOsc[VOL1].usPeriod > 4000)
 		{
-			slVolTim1PeriodeFilt_cnt ++;
-			slVolTimPeriodeFiltDiff -= slVolTim1Offset;
+			aOsc[VOL1].slPeriodeFilt_cnt ++;
+			slVolTimPeriodeFiltDiff -= aOsc[VOL1].slOffset;
 		}
 
 		// Use only positive values
 		if (slVolTimPeriodeFiltDiff > 0)
 		{
-			slVolTim1PeriodeFilt += slVolTimPeriodeFiltDiff;
+			aOsc[VOL1].slPeriodeFilt += slVolTimPeriodeFiltDiff;
 		}
 	}
 }
@@ -1283,9 +1003,9 @@ void THEREMIN_Task_Capture_VOL1(void)
 void THEREMIN_Task_Capture_VOL2(void)
 {
 	// Get the input capture value and calculate the period time
-	usVolTim2CC = htim1.Instance->CCR3;
-	usVolTim2Period = usVolTim2CC - usVolTim2LastCC;
-	usVolTim2LastCC = usVolTim2CC;
+	aOsc[VOL2].usCC = htim1.Instance->CCR3;
+	aOsc[VOL2].usPeriod = aOsc[VOL2].usCC - aOsc[VOL2].usLastCC;
+	aOsc[VOL2].usLastCC = aOsc[VOL2].usCC;
 
 	// Find the typical frequency of the vol1 oscillator
 	if (eCalibration == CALIB_VOL2)
@@ -1293,22 +1013,22 @@ void THEREMIN_Task_Capture_VOL2(void)
 		if (!bCalib1stFound)
 		{
 			bCalib1stFound = 1;
-			usCalibFirst = usVolTim2Period;
+			usCalibFirst = aOsc[VOL2].usPeriod;
 		}
 		else
 		{
-			if (	(usVolTim2Period > (usCalibFirst + usCalibFirst / 4))
-				||	(usVolTim2Period < (usCalibFirst - usCalibFirst / 4)))
+			if (	(aOsc[VOL2].usPeriod > (usCalibFirst + usCalibFirst / 4))
+				||	(aOsc[VOL2].usPeriod < (usCalibFirst - usCalibFirst / 4)))
 			{
 				bCalib1stFound = 0;
-				if (usVolTim2Period > usCalibFirst)
+				if (aOsc[VOL2].usPeriod > usCalibFirst)
 				{
-					usCalibSecond = usVolTim2Period;
+					usCalibSecond = aOsc[VOL2].usPeriod;
 				}
 				else
 				{
 					usCalibSecond = usCalibFirst;
-					usCalibFirst = usVolTim2Period;
+					usCalibFirst = aOsc[VOL2].usPeriod;
 				}
 				eCalibration = CALIB_VOL2_FINISHED;
 			}
@@ -1327,30 +1047,30 @@ void THEREMIN_Task_Capture_VOL2(void)
 	}
 
 	// Low pass filter it with a mean filter
-	if (usVolTim2Period != 0)
+	if (aOsc[VOL2].usPeriod != 0)
 	{
 		// Accumulate the period values
-		slVolTimPeriodeFiltDiff = 256 * usVolTim2Period - slVolTim2Offset;
+		slVolTimPeriodeFiltDiff = 256 * aOsc[VOL2].usPeriod - aOsc[VOL2].slOffset;
 
 		// Count the amount of periods
-		slVolTim2PeriodeFilt_cnt ++;
+		aOsc[VOL2].slPeriodeFilt_cnt ++;
 		// Was it a triple period?
-		if (usVolTim2Period > 6000)
+		if (aOsc[VOL2].usPeriod > 6000)
 		{
-			slVolTim2PeriodeFilt_cnt +=2;
-			slVolTimPeriodeFiltDiff -= 2*slVolTim2Offset;
+			aOsc[VOL2].slPeriodeFilt_cnt +=2;
+			slVolTimPeriodeFiltDiff -= 2*aOsc[VOL2].slOffset;
 		}
 		// Was it a double period?
-		else if (usVolTim2Period > 4000)
+		else if (aOsc[VOL2].usPeriod > 4000)
 		{
-			slVolTim2PeriodeFilt_cnt ++;
-			slVolTimPeriodeFiltDiff -= slVolTim2Offset;
+			aOsc[VOL2].slPeriodeFilt_cnt ++;
+			slVolTimPeriodeFiltDiff -= aOsc[VOL2].slOffset;
 		}
 
 		// Use only positive values
 		if (slVolTimPeriodeFiltDiff > 0)
 		{
-			slVolTim2PeriodeFilt += slVolTimPeriodeFiltDiff;
+			aOsc[VOL2].slPeriodeFilt += slVolTimPeriodeFiltDiff;
 		}
 	}
 }
@@ -1361,26 +1081,26 @@ void THEREMIN_Task_Capture_VOL2(void)
 void THEREMIN_Task_Calculate_VOL1(void)
 {
 
-	if (slVolTim1PeriodeFilt > 0)
+	if (aOsc[VOL1].slPeriodeFilt > 0)
 	{
-		slVolTim1MeanPeriode = slVolTim1PeriodeFilt / slVolTim1PeriodeFilt_cnt;
-		slVol1 = ((aConfigWorkingSet[CFG_E_VOL1_NUMERATOR].iVal * slVolTim1PeriodeFilt_cnt) /
-				(slVolTim1PeriodeFilt + slVolTim1PeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL1_OFFSET_A].iVal))
+		aOsc[VOL1].slMeanPeriode = aOsc[VOL1].slPeriodeFilt / aOsc[VOL1].slPeriodeFilt_cnt;
+		aOsc[VOL1].slValue = ((aConfigWorkingSet[CFG_E_VOL1_NUMERATOR].iVal * aOsc[VOL1].slPeriodeFilt_cnt) /
+				(aOsc[VOL1].slPeriodeFilt + aOsc[VOL1].slPeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL1_OFFSET_A].iVal))
 				- aConfigWorkingSet[CFG_E_VOL1_OFFSET_B].iVal;
 
 		// Prepare for next filter interval
-		slVolTim1PeriodeFilt_cnt = 0;
-		slVolTim1PeriodeFilt = 0;
+		aOsc[VOL1].slPeriodeFilt_cnt = 0;
+		aOsc[VOL1].slPeriodeFilt = 0;
 	}
 
 	// Limit it
-	if (slVol1 < 0)
+	if (aOsc[VOL1].slValue < 0)
 	{
-		slVol1 = 0;
+		aOsc[VOL1].slValue = 0;
 	}
-	if (slVol1 > 1024)
+	if (aOsc[VOL1].slValue > 1024)
 	{
-		slVol1 = 1024;
+		aOsc[VOL1].slValue = 1024;
 	}
 }
 
@@ -1389,26 +1109,26 @@ void THEREMIN_Task_Calculate_VOL1(void)
  */
 void THEREMIN_Task_Calculate_VOL2(void)
 {
-	if (slVolTim2PeriodeFilt > 0)
+	if (aOsc[VOL2].slPeriodeFilt > 0)
 	{
-		slVolTim2MeanPeriode = slVolTim2PeriodeFilt / slVolTim2PeriodeFilt_cnt;
-		slVol2 = ((aConfigWorkingSet[CFG_E_VOL2_NUMERATOR].iVal * slVolTim2PeriodeFilt_cnt) /
-				(slVolTim2PeriodeFilt + slVolTim2PeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL2_OFFSET_A].iVal))
+		aOsc[VOL2].slMeanPeriode = aOsc[VOL2].slPeriodeFilt / aOsc[VOL2].slPeriodeFilt_cnt;
+		aOsc[VOL2].slValue = ((aConfigWorkingSet[CFG_E_VOL2_NUMERATOR].iVal * aOsc[VOL2].slPeriodeFilt_cnt) /
+				(aOsc[VOL2].slPeriodeFilt + aOsc[VOL2].slPeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL2_OFFSET_A].iVal))
 				- aConfigWorkingSet[CFG_E_VOL2_OFFSET_B].iVal;
 
 		// Prepare for next filter interval
-		slVolTim2PeriodeFilt_cnt = 0;
-		slVolTim2PeriodeFilt = 0;
+		aOsc[VOL2].slPeriodeFilt_cnt = 0;
+		aOsc[VOL2].slPeriodeFilt = 0;
 	}
 
 	// Limit it
-	if (slVol2 < 0)
+	if (aOsc[VOL2].slValue < 0)
 	{
-		slVol2 = 0;
+		aOsc[VOL2].slValue = 0;
 	}
-	if (slVol2 > 1024)
+	if (aOsc[VOL2].slValue > 1024)
 	{
-		slVol2 = 1024;
+		aOsc[VOL2].slValue = 1024;
 	}
 }
 /**
@@ -1417,10 +1137,10 @@ void THEREMIN_Task_Calculate_VOL2(void)
 void THEREMIN_Task_Volume(void)
 {
 
-	if ((slVolTim1MeanPeriode + slVolTim2MeanPeriode) > 0)
+	if ((aOsc[VOL1].slMeanPeriode + aOsc[VOL2].slMeanPeriode) > 0)
 	{
 		slVolumeRaw = ((aConfigWorkingSet[CFG_E_VOL12_NUMERATOR].iVal) /
-				(slVolTim1MeanPeriode + slVolTim2MeanPeriode + aConfigWorkingSet[CFG_E_VOL12_OFFSET_A].iVal))
+				(aOsc[VOL1].slMeanPeriode + aOsc[VOL2].slMeanPeriode + aConfigWorkingSet[CFG_E_VOL12_OFFSET_A].iVal))
 				- aConfigWorkingSet[CFG_E_VOL12_OFFSET_B].iVal;
 	}
 
@@ -1454,7 +1174,7 @@ void THEREMIN_Task_Timbre(void)
 {
 	float f;
 	// Timbre is the difference between VOL1 and VOL2 in the range of 0..128
-	slTimbre = (slVol1 - slVol2) + 128;
+	slTimbre = (aOsc[VOL1].slValue - aOsc[VOL2].slValue) + 128;
 
 	// Limit the timbre value
 	if (slTimbre < 0)
@@ -1488,6 +1208,88 @@ void THEREMIN_Task_Volume_Nonlin(void)
 {
 	slVolume = slVolumeRaw;
 }
+
+/**
+ * Calibrate one oscillator
+ */
+static void THEREMIN_Calibrate(int osc)
+{
+	usCalibDiff = usCalibSecond - usCalibFirst;
+
+	aOsc[osc].iCalibN = (usCalibSecond + usCalibDiff/2)  / usCalibDiff;
+
+	switch (aOsc[osc].iCalibN)
+	{
+	// n= 0 or 1 (rarely 2)
+	// Oscillator: f = 100kHz..384kHz
+	// Period = 0 or 3500..13440
+	// Results in 3500 .. 13440
+	case 1:
+		aOsc[osc].iCalibFact1 = 0;
+		aOsc[osc].iCalibFact2 = 2;
+		aOsc[osc].iCalibFact3 = 1;
+		aOsc[osc].ulCalibScale = 2;
+		// Calculate an offset to reduce the result to 11 bit
+		aOsc[osc].usPeriodOffset = usCalibSecond * aOsc[osc].iCalibFact2;
+		// Calculate the (first) threshold
+		aOsc[osc].usCalibThreshold1 = usCalibFirst + usCalibDiff / 2;
+		break;
+	// n= 1 or 2 (rarely 3)
+	// Oscillator: f = 384kHz..768kHz
+	// Period = 1750..3500 or 3500..7000
+	// Results in 3500 .. 7000
+	case 2:
+		aOsc[osc].iCalibFact1 = 6;
+		aOsc[osc].iCalibFact2 = 3;
+		aOsc[osc].iCalibFact3 = 2;
+		aOsc[osc].ulCalibScale = 6;
+		// Calculate an offset to reduce the result to 11 bit
+		aOsc[osc].usPeriodOffset = usCalibSecond * aOsc[osc].iCalibFact2;
+		// Calculate the (first) threshold
+		aOsc[osc].usCalibThreshold1 = usCalibFirst + usCalibDiff / 2;
+		break;
+	// n= 2 or 3 (rarely 1)
+	// Oscillator: f = 768kHz..1152kHz
+	// Period = 2333..3500 or 3500..10500
+	// Results in 7000 .. 21000
+	case 3:
+		aOsc[osc].iCalibFact1 = 6;
+		aOsc[osc].iCalibFact2 = 3;
+		aOsc[osc].iCalibFact3 = 2;
+		aOsc[osc].ulCalibScale = 6;
+		// Calculate an offset to reduce the result to 11 bit
+		aOsc[osc].usPeriodOffset = usCalibSecond * aOsc[osc].iCalibFact3;
+		// Calculate the (first) threshold
+		aOsc[osc].usCalibThreshold1 = usCalibFirst - usCalibDiff / 2;
+		break;
+	default:
+		aOsc[osc].iCalibFact1 = 0;
+		aOsc[osc].iCalibFact2 = 0;
+		aOsc[osc].iCalibFact3 = 0;
+		aOsc[osc].ulCalibScale = 0;
+		aOsc[osc].usCalibThreshold1 = 0;
+	}
+
+	aOsc[osc].usCalibThreshold2 = aOsc[osc].usCalibThreshold1 + usCalibDiff;
+
+
+
+	// Scale the pitch frequency after filter to have
+	// an oscillator frequency independent span
+	if (aOsc[osc].usPeriodOffset > 0)
+	{
+		aOsc[osc].fCalibfScale = 3500.0f/ (float)aOsc[osc].usPeriodOffset;
+		// Set the offset to 93.75%
+		aOsc[osc].usPeriodOffset -= aOsc[osc].usPeriodOffset / 16;
+	}
+	else
+	{
+		aOsc[osc].fCalibfScale = 0.0f;
+		aOsc[osc].usPeriodOffset = 0;
+	}
+
+}
+
 /**
  * @brief 1ms task
  *
@@ -1540,248 +1342,31 @@ void THEREMIN_1msTask(void)
 			// Reset LED indicator and pitch and volume values
 			ulLedCircleSpeed = siAutotune;
 			ulLedCirclePos = 0;
-			slPitchOffset = 0;
-			slPitchPeriodeFilt = 0x7FFFFFFF;
-			slMinPitchPeriode = 0x7FFFFFFF;
-			slVolTim1Offset = 0;
-			slVolTim2Offset = 0;
-			slMinVol1Periode = 0x7FFFFFFF;
-			slMinVol2Periode = 0x7FFFFFFF;
+			aOsc[PITCH].slOffset = 0;
+			aOsc[PITCH].slPeriodeFilt = 0x7FFFFFFF;
+			aOsc[PITCH].slMinPeriode = 0x7FFFFFFF;
+			aOsc[VOL1].slOffset = 0;
+			aOsc[VOL2].slOffset = 0;
+			aOsc[VOL1].slMinPeriode = 0x7FFFFFFF;
+			aOsc[VOL2].slMinPeriode = 0x7FFFFFFF;
 		}
 	}
 	else if (eCalibration != CALIB_OFF)
 	{
 		if (eCalibration == CALIB_PITCH_FINISHED)
 		{
-			usCalibDiff = usCalibSecond - usCalibFirst;
-
-			iCalibPitchN = (usCalibSecond + usCalibDiff/2)  / usCalibDiff;
-
-			switch (iCalibPitchN)
-			{
-			// n= 0 or 1 (rarely 2)
-			// Oscillator: f = 100kHz..384kHz
-			// Period = 0 or 3500..13440
-			// Results in 3500 .. 13440
-			case 1:
-				iCalibPitchFact1 = 0;
-				iCalibPitchFact2 = 2;
-				iCalibPitchFact3 = 1;
-				ulCalibPitchScale = 2;
-				// Calculate an offset to reduce the result to 11 bit
-				usPitchPeriodOffset = usCalibSecond * iCalibPitchFact2;
-				// Calculate the (first) threshold
-				usCalibPitchThreshold1 = usCalibFirst + usCalibDiff / 2;
-				break;
-			// n= 1 or 2 (rarely 3)
-			// Oscillator: f = 384kHz..768kHz
-			// Period = 1750..3500 or 3500..7000
-			// Results in 3500 .. 7000
-			case 2:
-				iCalibPitchFact1 = 6;
-				iCalibPitchFact2 = 3;
-				iCalibPitchFact3 = 2;
-				ulCalibPitchScale = 6;
-				// Calculate an offset to reduce the result to 11 bit
-				usPitchPeriodOffset = usCalibSecond * iCalibPitchFact2;
-				// Calculate the (first) threshold
-				usCalibPitchThreshold1 = usCalibFirst + usCalibDiff / 2;
-				break;
-			// n= 2 or 3 (rarely 1)
-			// Oscillator: f = 768kHz..1152kHz
-			// Period = 2333..3500 or 3500..10500
-			// Results in 7000 .. 21000
-			case 3:
-				iCalibPitchFact1 = 6;
-				iCalibPitchFact2 = 3;
-				iCalibPitchFact3 = 2;
-				ulCalibPitchScale = 6;
-				// Calculate an offset to reduce the result to 11 bit
-				usPitchPeriodOffset = usCalibSecond * iCalibPitchFact3;
-				// Calculate the (first) threshold
-				usCalibPitchThreshold1 = usCalibFirst - usCalibDiff / 2;
-				break;
-			default:
-				iCalibPitchFact1 = 0;
-				iCalibPitchFact2 = 0;
-				iCalibPitchFact3 = 0;
-				ulCalibPitchScale = 0;
-				usCalibPitchThreshold1 = 0;
-			}
-
-			usCalibPitchThreshold2 = usCalibPitchThreshold1 + usCalibDiff;
-
-
-
-			// Scale the pitch frequency after filter to have
-			// an oscillator frequency independent span
-			if (usPitchPeriodOffset > 0)
-			{
-				fCalibfPitchScale = 3500.0f/ (float)usPitchPeriodOffset;
-				// Set the offset to 93.75%
-				usPitchPeriodOffset -= usPitchPeriodOffset / 16;
-			}
-			else
-			{
-				fCalibfPitchScale = 0.0f;
-				usPitchPeriodOffset = 0;
-			}
+			THEREMIN_Calibrate(PITCH);
 			eCalibration = CALIB_VOL1;
 		}
 		else if (eCalibration == CALIB_VOL1_FINISHED)
 		{
-			usCalibDiff = usCalibSecond - usCalibFirst;
-
-			iCalibVol1N = (usCalibSecond + usCalibDiff/2)  / usCalibDiff;
-
-			switch (iCalibVol1N)
-			{
-			// n= 0 or 1 (rarely 2)
-			// Oscillator: f = 100kHz..384kHz
-			// Period = 0 or 3500..13440
-			// Results in 3500 .. 13440
-			case 1:
-				iCalibVol1Fact1 = 0;
-				iCalibVol1Fact2 = 2;
-				iCalibVol1Fact3 = 1;
-				ulCalibVol1Scale = 2;
-				// Calculate an offset to reduce the result to 11 bit
-				usVol1PeriodOffset = usCalibSecond * iCalibVol1Fact2;
-				// Calculate the (first) threshold
-				usCalibVol1Threshold1 = usCalibFirst + usCalibDiff / 2;
-				break;
-			// n= 1 or 2 (rarely 3)
-			// Oscillator: f = 384kHz..768kHz
-			// Period = 1750..3500 or 3500..7000
-			// Results in 3500 .. 7000
-			case 2:
-				iCalibVol1Fact1 = 6;
-				iCalibVol1Fact2 = 3;
-				iCalibVol1Fact3 = 2;
-				ulCalibVol1Scale = 6;
-				// Calculate an offset to reduce the result to 11 bit
-				usVol1PeriodOffset = usCalibSecond * iCalibVol1Fact2;
-				// Calculate the (first) threshold
-				usCalibVol1Threshold1 = usCalibFirst + usCalibDiff / 2;
-				break;
-			// n= 2 or 3 (rarely 1)
-			// Oscillator: f = 768kHz..1152kHz
-			// Period = 2333..3500 or 3500..10500
-			// Results in 7000 .. 21000
-			case 3:
-				iCalibVol1Fact1 = 6;
-				iCalibVol1Fact2 = 3;
-				iCalibVol1Fact3 = 2;
-				ulCalibVol1Scale = 6;
-				// Calculate an offset to reduce the result to 11 bit
-				usVol1PeriodOffset = usCalibSecond * iCalibVol1Fact3;
-				// Calculate the (first) threshold
-				usCalibVol1Threshold1 = usCalibFirst - usCalibDiff / 2;
-				break;
-			default:
-				iCalibVol1Fact1 = 0;
-				iCalibVol1Fact2 = 0;
-				iCalibVol1Fact3 = 0;
-				ulCalibVol1Scale = 0;
-				usCalibVol1Threshold1 = 0;
-			}
-
-			usCalibVol1Threshold2 = usCalibVol1Threshold1 + usCalibDiff;
-
-
-
-			// Scale the vol1 frequency after filter to have
-			// an oscillator frequency independent span
-			if (usVol1PeriodOffset > 0)
-			{
-				fCalibfVol1Scale = 3500.0f/ (float)usVol1PeriodOffset;
-				// Set the offset to 93.75%
-				usVol1PeriodOffset -= usVol1PeriodOffset / 16;
-			}
-			else
-			{
-				fCalibfVol1Scale = 0.0f;
-				usVol1PeriodOffset = 0;
-			}
+			THEREMIN_Calibrate(VOL1);
 			eCalibration = CALIB_VOL2;
 		}
 		else if (eCalibration == CALIB_VOL2_FINISHED)
 		{
-			usCalibDiff = usCalibSecond - usCalibFirst;
-
-			iCalibVol2N = (usCalibSecond + usCalibDiff/2)  / usCalibDiff;
-
-			switch (iCalibVol2N)
-			{
-			// n= 0 or 1 (rarely 2)
-			// Oscillator: f = 100kHz..384kHz
-			// Period = 0 or 3500..13440
-			// Results in 3500 .. 13440
-			case 1:
-				iCalibVol2Fact1 = 0;
-				iCalibVol2Fact2 = 2;
-				iCalibVol2Fact3 = 1;
-				ulCalibVol2Scale = 2;
-				// Calculate an offset to reduce the result to 11 bit
-				usVol2PeriodOffset = usCalibSecond * iCalibVol2Fact2;
-				// Calculate the (first) threshold
-				usCalibVol2Threshold1 = usCalibFirst + usCalibDiff / 2;
-				break;
-			// n= 1 or 2 (rarely 3)
-			// Oscillator: f = 384kHz..768kHz
-			// Period = 1750..3500 or 3500..7000
-			// Results in 3500 .. 7000
-			case 2:
-				iCalibVol2Fact1 = 6;
-				iCalibVol2Fact2 = 3;
-				iCalibVol2Fact3 = 2;
-				ulCalibVol2Scale = 6;
-				// Calculate an offset to reduce the result to 11 bit
-				usVol2PeriodOffset = usCalibSecond * iCalibVol2Fact2;
-				// Calculate the (first) threshold
-				usCalibVol2Threshold1 = usCalibFirst + usCalibDiff / 2;
-				break;
-			// n= 2 or 3 (rarely 1)
-			// Oscillator: f = 768kHz..1152kHz
-			// Period = 2333..3500 or 3500..10500
-			// Results in 7000 .. 21000
-			case 3:
-				iCalibVol2Fact1 = 6;
-				iCalibVol2Fact2 = 3;
-				iCalibVol2Fact3 = 2;
-				ulCalibVol2Scale = 6;
-				// Calculate an offset to reduce the result to 11 bit
-				usVol2PeriodOffset = usCalibSecond * iCalibVol2Fact3;
-				// Calculate the (first) threshold
-				usCalibVol2Threshold1 = usCalibFirst - usCalibDiff / 2;
-				break;
-			default:
-				iCalibVol2Fact1 = 0;
-				iCalibVol2Fact2 = 0;
-				iCalibVol2Fact3 = 0;
-				ulCalibVol2Scale = 0;
-				usCalibVol2Threshold1 = 0;
-			}
-
-			usCalibVol2Threshold2 = usCalibVol2Threshold1 + usCalibDiff;
-
-
-
-			// Scale the vol2 frequency after filter to have
-			// an oscillator frequency independent span
-			if (usVol2PeriodOffset > 0)
-			{
-				fCalibfVol2Scale = 3500.0f/ (float)usVol2PeriodOffset;
-				// Set the offset to 93.75%
-				usVol2PeriodOffset -= usVol2PeriodOffset / 16;
-			}
-			else
-			{
-				fCalibfVol2Scale = 0.0f;
-				usVol2PeriodOffset = 0;
-			}
+			THEREMIN_Calibrate(VOL2);
 			eCalibration = CALIB_OFF;
-
 		}
 	}
 	else // if (bBeepActive == 0)
@@ -1791,18 +1376,18 @@ void THEREMIN_1msTask(void)
 		if (siAutotune < (1000-200))
 		{
 			// Find lowest pitch period
-			if (slPitchPeriodeFilt < slMinPitchPeriode)
+			if (aOsc[PITCH].slPeriodeFilt < aOsc[PITCH].slMinPeriode)
 			{
-				slMinPitchPeriode = slPitchPeriodeFilt;
+				aOsc[PITCH].slMinPeriode = aOsc[PITCH].slPeriodeFilt;
 			}
 			// Find lowest volume period
-			if (slVolTim1MeanPeriode < slMinVol1Periode)
+			if (aOsc[VOL1].slMeanPeriode < aOsc[VOL1].slMinPeriode)
 			{
-				slMinVol1Periode = slVolTim1MeanPeriode;
+				aOsc[VOL1].slMinPeriode = aOsc[VOL1].slMeanPeriode;
 			}
-			if (slVolTim2MeanPeriode < slMinVol2Periode)
+			if (aOsc[VOL2].slMeanPeriode < aOsc[VOL2].slMinPeriode)
 			{
-				slMinVol2Periode = slVolTim2MeanPeriode;
+				aOsc[VOL2].slMinPeriode = aOsc[VOL2].slMeanPeriode;
 			}
 		}
 		siAutotune--;
@@ -1825,9 +1410,9 @@ void THEREMIN_1msTask(void)
 
 			DISPLAY_Dark();
 			// Use minimum values for offset of pitch and volume
-			slPitchOffset = slMinPitchPeriode;
-			slVolTim1Offset = slMinVol1Periode;	// + 16384 * 128;
-			slVolTim2Offset = slMinVol2Periode;	// + 16384 * 128;
+			aOsc[PITCH].slOffset = aOsc[PITCH].slMinPeriode;
+			aOsc[VOL1].slOffset = aOsc[VOL1].slMinPeriode;	// + 16384 * 128;
+			aOsc[VOL2].slOffset = aOsc[VOL2].slMinPeriode;	// + 16384 * 128;
 
 		//	CONFIG_Write_SLong(EEPROM_ADDR_PITCH_AUTOTUNE_H, slPitchOffset);
 		//	CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H, slVolTim1Offset);
@@ -1899,26 +1484,7 @@ void THEREMIN_1msTask(void)
 	{
 		THEREMIN_Calc_PitchTable();
 	}
-/*
-	// volume scale pot
-	if (POTS_HasChanged(POT_VOL_SCALE))
-	{
-		// from 2^0.25 ... 2^4.0
-		// 2^((POT-2048)/1024)
-		fVolScale = powf(2,
-				((float) (POTS_GetScaledValue(POT_VOL_SCALE) - 2048))
-						* 0.000976562f );// 1/1024
-		THEREMIN_Calc_VolumeTable(VOLSEL_1);
-		THEREMIN_Calc_VolumeTable(VOLSEL_2);
-	}
 
-	// waveform pot
-	if (POTS_HasChanged(POT_WAVEFORM))
-	{
-		eWaveform = POTS_GetScaledValue(POT_WAVEFORM);
-		THEREMIN_Calc_WavTable();
-	}
-*/
 	if (siAutotune == 0)
 	{
 		// fPitchFrq * 48kHz / 2PI)

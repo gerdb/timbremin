@@ -188,25 +188,25 @@ void CONSOLE_1msTask(void)
 		switch (eDebugMode)
 		{
 		case CONSOLE_MODE_OSCILLATOR_PITCH:
-			if (usPitchPeriodRawN > 0)
+			if (aOsc[PITCH].usPeriodRawN > 0)
 			{
-				frq1 = (168000*8*ulCalibPitchScale) / usPitchPeriodRawN;
+				frq1 = (168000*8*aOsc[PITCH].ulCalibScale) / aOsc[PITCH].usPeriodRawN;
 			}
-			my_printf("%4dkHz %4dkHz %4d\r\n", (int)frq1, (int)((float)usPitchPeriodRawN * fCalibfPitchScale), usPitchPeriodRaw);
+			my_printf("%4dkHz %4dkHz %4d\r\n", (int)frq1, (int)((float)aOsc[PITCH].usPeriodRawN * aOsc[PITCH].fCalibfScale), aOsc[PITCH].usPeriodRaw);
 			break;
 		case CONSOLE_MODE_OSCILLATOR_VOL1:
-			if (usVolTim1PeriodRawN > 0)
+			if (aOsc[VOL1].usPeriodRawN > 0)
 			{
-				frq1 = (168000*8*1) / usVolTim1PeriodRawN;
+				frq1 = (168000*8*1) / aOsc[VOL1].usPeriodRawN;
 			}
-			my_printf("%4dkHz %4d\r\n",frq1, usVolTim1PeriodRaw);
+			my_printf("%4dkHz %4d\r\n",frq1, aOsc[VOL1].usPeriodRaw);
 			break;
 		case CONSOLE_MODE_OSCILLATOR_VOL2:
-			if (usVolTim2PeriodRawN > 0)
+			if (aOsc[VOL2].usPeriodRawN > 0)
 			{
-				frq1 = (168000*8*1) / usVolTim2PeriodRawN;
+				frq1 = (168000*8*1) / aOsc[VOL2].usPeriodRawN;
 			}
-			my_printf("%4dkHz %4d\r\n",frq1, usVolTim2PeriodRaw);
+			my_printf("%4dkHz %4d\r\n",frq1, aOsc[VOL2].usPeriodRaw);
 			break;
 		case CONSOLE_MODE_STOPWATCH:
 			my_printf("%4d\r\n",ulStopwatch);

@@ -29,6 +29,9 @@
 #define STOPWATCH_START() DWT->CYCCNT = 0;
 #define STOPWATCH_STOP() ulStopwatch = DWT->CYCCNT;
 
+#define PITCH	0
+#define VOL1	1
+#define VOL2	2
 
 /* Types  ------------------------------------------------------------------ */
 // Union to convert between float and int
@@ -72,6 +75,32 @@ typedef enum
 	VOLSEL_2 = 2
 }e_vol_sel;
 
+// Structure with oscillator calibration data
+typedef struct
+{
+	uint16_t usCC;			// value of capture compare register
+	uint16_t usLastCC; 	// last value (last task)
+	uint16_t usPeriod;		// period of oscillator
+	uint16_t usPeriodOffset;	// offset to reduce filter range to 32bit
+	int32_t slOffset; 		// offset value (result of auto-tune)
+	int32_t slPeriodeFilt;	// low pass filtered period
+	int32_t slValue;			//  value
+	float fValue;			//  value
+	uint16_t usCalibThreshold1;
+	uint16_t usCalibThreshold2;
+	int iCalibN;
+	int iCalibFact1;
+	int iCalibFact2;
+	int iCalibFact3;
+	uint32_t ulCalibScale;
+	float fCalibfScale;
+	uint16_t usPeriodRaw;
+	uint16_t usPeriodRawN;
+	int slPeriodeFilt_cnt;	// low pass filtered period
+	int32_t slMinPeriode;	// minimum value during auto-tune
+	int32_t slMeanPeriode;	// low pass filtered period
+}s_osc;
+
 #define TESTPORT_ON()  GPIOD->BSRR = 0x00002000
 #define TESTPORT_OFF() GPIOD->BSRR = 0x20000000
 
@@ -80,26 +109,10 @@ typedef enum
 /* Global variables  ------------------------------------------------------- */
 extern int16_t ssWaveTable[4 * 1024];
 extern e_waveform eWaveform;
-extern int32_t slVol1;
-extern int32_t slVol2;
-extern int32_t slPitchOffset; 		// offset value (result of auto-tune)
-extern int32_t slPitchPeriodeFilt;	// low pass filtered period
-extern int32_t slVolTim1MeanPeriode;	// low pass filtered period
-extern int32_t slVolTim2MeanPeriode;	// low pass filtered period
 extern int32_t slThereminOut;	// Output sound from theremin into reverb
 
 // global variables for debug output
-extern uint16_t usPitchPeriod;		// period of oscillator
-extern uint16_t usVolTim1Period;	// period of oscillator
-extern uint16_t usVolTim2Period;	// period of oscillator
-extern uint16_t usPitchPeriodRaw;		// period of oscillator
-extern uint16_t usVolTim1PeriodRaw;	// period of oscillator
-extern uint16_t usVolTim2PeriodRaw;	// period of oscillator
-extern uint16_t usPitchPeriodRawN;		// period of oscillator
-extern uint16_t usVolTim1PeriodRawN;	// period of oscillator
-extern uint16_t usVolTim2PeriodRawN;	// period of oscillator
-extern uint32_t ulCalibPitchScale;		// Scaling factor oscillator period
-extern float fCalibfPitchScale;			//Scale the pitch frequency after filter
+extern s_osc aOsc[3];
 extern uint32_t ulStopwatch;		// Stopwatch
 
 /* Function prototypes ----------------------------------------------------- */

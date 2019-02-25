@@ -79,7 +79,7 @@ void PITCH_CalibrationTask(void)
 		if (iPitchVal_step >= 0)
 		{
 			aCalibrationEntries[iPitchVal_step].cm = iPitchVal_step * 2;
-			aCalibrationEntries[iPitchVal_step].pitch = slPitchPeriodeFilt - slPitchOffset;
+			aCalibrationEntries[iPitchVal_step].pitch = aOsc[PITCH].slPeriodeFilt - aOsc[PITCH].slOffset;
 		}
 		iPitchVal_step--;
 
