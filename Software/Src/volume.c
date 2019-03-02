@@ -79,8 +79,8 @@ void VOLUME_CalibrationTask(void)
 		if (iVolVal_step >= 0)
 		{
 			aCalibrationEntries[iVolVal_step].cm = iVolVal_step;
-			aCalibrationEntries[iVolVal_step].vol1 = aOsc[VOL1].slMeanPeriode;
-			aCalibrationEntries[iVolVal_step].vol2 = aOsc[VOL2].slMeanPeriode;
+			aCalibrationEntries[iVolVal_step].vol1 = aOsc[VOLUME].slMeanPeriode;
+			aCalibrationEntries[iVolVal_step].vol2 = aOsc[TIMBRE].slMeanPeriode;
 		}
 		iVolVal_step--;
 

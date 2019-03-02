@@ -423,7 +423,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     PE11     ------> TIM1_CH2
     PE13     ------> TIM1_CH3 
     */
-    GPIO_InitStruct.Pin = PITCH_OSC_Pin|VOL_OSC_A_Pin|VOL_OSC_B_Pin;
+    GPIO_InitStruct.Pin = PITCH_OSC_Pin|VOLUME_OSC_Pin|TIMBRE_OSC_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -453,7 +453,7 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
     PE11     ------> TIM1_CH2
     PE13     ------> TIM1_CH3 
     */
-    HAL_GPIO_DeInit(GPIOE, PITCH_OSC_Pin|VOL_OSC_A_Pin|VOL_OSC_B_Pin);
+    HAL_GPIO_DeInit(GPIOE, PITCH_OSC_Pin|VOLUME_OSC_Pin|TIMBRE_OSC_Pin);
 
   /* USER CODE BEGIN TIM1_MspDeInit 1 */
 

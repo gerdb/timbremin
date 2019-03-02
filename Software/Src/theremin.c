@@ -152,9 +152,7 @@ s_osc aOsc[3];
 int iWavMask = 0x0FFF;
 int iWavLength = 4096;
 int bUseNonLinTab = 0;
-e_waveform eWaveform = SINE;
 
-e_vol_sel vol_sel = VOLSEL_NONE;
 
 int task = 0;
 
@@ -176,24 +174,24 @@ void THEREMIN_Init(void)
 	int i;
 
 	// Fill the task table
-	taskTable[0] = THEREMIN_Task_Select_VOL1;
+	taskTable[0] = THEREMIN_Task_Select_Volume;
 	taskTable[2] = THEREMIN_Task_Volume;
 	taskTable[6] = THEREMIN_Task_Timbre;
 	taskTable[8] = THEREMIN_Task_Volume_Nonlin;
-	taskTable[16] = THEREMIN_Task_Activate_VOL1;
+	taskTable[16] = THEREMIN_Task_Activate_Volume;
 	for (i = 18; i< 46; i+=2)
 	{
-		taskTable[i] = THEREMIN_Task_Capture_VOL1;
+		taskTable[i] = THEREMIN_Task_Capture_Volume;
 	}
-	taskTable[46] = THEREMIN_Task_Calculate_VOL1;
+	taskTable[46] = THEREMIN_Task_Calculate_Volume;
 
-	taskTable[48] = THEREMIN_Task_Select_VOL2;
-	taskTable[64] = THEREMIN_Task_Activate_VOL2;
+	taskTable[48] = THEREMIN_Task_Select_Timbre;
+	taskTable[64] = THEREMIN_Task_Activate_Timbre;
 	for (i = 66; i< 94; i+=2)
 	{
-		taskTable[i] = THEREMIN_Task_Capture_VOL2;
+		taskTable[i] = THEREMIN_Task_Capture_Timbre;
 	}
-	taskTable[94] = THEREMIN_Task_Calculate_VOL2;
+	taskTable[94] = THEREMIN_Task_Calculate_Timbre;
 
 
 	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
@@ -202,8 +200,8 @@ void THEREMIN_Init(void)
 
 	// Read auto-tune values from virtual EEPRom
 	aOsc[PITCH].slOffset = CONFIG_Read_SLong(EEPROM_ADDR_PITCH_AUTOTUNE_H);
-	aOsc[VOL1].slOffset = CONFIG_Read_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H);
-	aOsc[VOL2].slOffset = CONFIG_Read_SLong(EEPROM_ADDR_VOLTIM2_AUTOTUNE_H);
+	aOsc[VOLUME].slOffset = CONFIG_Read_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H);
+	aOsc[TIMBRE].slOffset = CONFIG_Read_SLong(EEPROM_ADDR_VOLTIM2_AUTOTUNE_H);
 
 	// Get the VolumeShift value from the flash configuration
 	fVolShift = ((float) (CONFIG.VolumeShift)) * 0.1f + 11.5f;
@@ -214,8 +212,8 @@ void THEREMIN_Init(void)
 	THEREMIN_Calc_DistortionTable();
 	THEREMIN_Calc_ImpedanceTable();
 
-	HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(SEL_VOLUME_OSC_GPIO_Port, SEL_VOLUME_OSC_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(SEL_TIMBRE_OSC_GPIO_Port, SEL_TIMBRE_OSC_Pin, GPIO_PIN_RESET);
 
 
 	// Beep for "switched on"
@@ -431,7 +429,6 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	}
 
 
-	STOPWATCH_START();
 	// cycles:
 	// Low pass filter period values
 	// factor *1024 is necessary, because of the /1024 integer division
@@ -460,7 +457,6 @@ inline void THEREMIN_96kHzDACTask_A(void)
 
 	// cycles:21
 	aOsc[PITCH].fValue = ((float) (aOsc[PITCH].slPeriodeFilt - aOsc[PITCH].slOffset)) * aOsc[PITCH].fCalibfScale;
-	STOPWATCH_STOP();
 
 	if (bBeepActive)
 	{
@@ -470,6 +466,8 @@ inline void THEREMIN_96kHzDACTask_A(void)
 
 
 
+	STOPWATCH_START();
+	STOPWATCH_STOP();
 
 	if (aOsc[PITCH].fValue >= 1.0f)
 	{
@@ -563,7 +561,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 //	    fOscOut =   fVollAddSynth_3 * fSVF1z1 * 0.05f
 //				 + (1.0f-fVollAddSynth_3) * fSVF2z1 * 0.09f;
 	    fOscOut =   fVollAddSynth_3 * (fSVF1z1 * 0.05f * 0.5f + fSVF2z1 * 0.09f * 0.5f)
-	        		 + (1.0f-fVollAddSynth_3) * (fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw);
+	        		 + (1.0f-fVollAddSynth_3) * fTimbre * (fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw);
 
 
 	    //fOscLP1 += (fOscOut - fOscLP1) * fPitchFrq;
@@ -779,6 +777,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	}
 */
 
+
 	slThereminOut = fOscOut * 32.0f * (float)slVolFilt;
 
 	/*if (ssResult < 0)
@@ -874,81 +873,79 @@ inline void THEREMIN_96kHzDACTask_Common(void)
  */
 
 /**
- * Switch on volume oscillator 1
+ * Switch on volume oscillator
  */
-void THEREMIN_Task_Select_VOL1(void)
+void THEREMIN_Task_Select_Volume(void)
 {
 	// Select oscillator of VOL1
-	vol_sel = VOLSEL_1;
-	HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(SEL_VOLUME_OSC_GPIO_Port, SEL_VOLUME_OSC_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(SEL_TIMBRE_OSC_GPIO_Port, SEL_TIMBRE_OSC_Pin, GPIO_PIN_RESET);
 }
 
 /**
- * Switch on volume oscillator 2
+ * Switch on timbre oscillator
  */
-void THEREMIN_Task_Select_VOL2(void)
+void THEREMIN_Task_Select_Timbre(void)
 {
 	// Select oscillator of VOL2
-	vol_sel = VOLSEL_2;
-	HAL_GPIO_WritePin(SEL_VOL_OSC_A_GPIO_Port, SEL_VOL_OSC_A_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(SEL_VOL_OSC_B_GPIO_Port, SEL_VOL_OSC_B_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(SEL_VOLUME_OSC_GPIO_Port, SEL_VOLUME_OSC_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(SEL_TIMBRE_OSC_GPIO_Port, SEL_TIMBRE_OSC_Pin, GPIO_PIN_SET);
 }
 
 /**
  * Oscillator is stable. Use now the frequency signal
  */
-void THEREMIN_Task_Activate_VOL1(void)
+void THEREMIN_Task_Activate_Volume(void)
 {
-	aOsc[VOL1].usLastCC = htim1.Instance->CCR2; // Read capture compare to be prepared
-	aOsc[VOL1].slPeriodeFilt = 0;	// Reset mean filter counter
-	aOsc[VOL1].slPeriodeFilt_cnt = 0;	// Reset mean filter counter
+	aOsc[VOLUME].usLastCC = htim1.Instance->CCR2; // Read capture compare to be prepared
+	aOsc[VOLUME].slPeriodeFilt = 0;	// Reset mean filter counter
+	aOsc[VOLUME].slPeriodeFilt_cnt = 0;	// Reset mean filter counter
 }
 
 /**
  * Oscillator is stable. Use now the frequency signal
  */
-void THEREMIN_Task_Activate_VOL2(void)
+void THEREMIN_Task_Activate_Timbre(void)
 {
-	aOsc[VOL2].usLastCC = htim1.Instance->CCR3; // Read capture compare to be prepared
-	aOsc[VOL2].slPeriodeFilt = 0;	// Reset mean filter counter
-	aOsc[VOL2].slPeriodeFilt_cnt = 0;	// Reset mean filter counter
+	aOsc[TIMBRE].usLastCC = htim1.Instance->CCR3; // Read capture compare to be prepared
+	aOsc[TIMBRE].slPeriodeFilt = 0;	// Reset mean filter counter
+	aOsc[TIMBRE].slPeriodeFilt_cnt = 0;	// Reset mean filter counter
 }
 
 /**
  * Capture and filter the VOL1 value
  */
-void THEREMIN_Task_Capture_VOL1(void)
+void THEREMIN_Task_Capture_Volume(void)
 {
 	// Get the input capture value and calculate the period time
-	aOsc[VOL1].usCC = htim1.Instance->CCR2;
-	aOsc[VOL1].usPeriod = aOsc[VOL1].usCC - aOsc[VOL1].usLastCC;
-	aOsc[VOL1].usLastCC = aOsc[VOL1].usCC;
+	aOsc[VOLUME].usCC = htim1.Instance->CCR2;
+	aOsc[VOLUME].usPeriod = aOsc[VOLUME].usCC - aOsc[VOLUME].usLastCC;
+	aOsc[VOLUME].usLastCC = aOsc[VOLUME].usCC;
 
 	// Find the typical frequency of the vol1 oscillator
-	if (eCalibration == CALIB_VOL1)
+	if (eCalibration == CALIB_VOLUME)
 	{
 		if (!bCalib1stFound)
 		{
 			bCalib1stFound = 1;
-			usCalibFirst = aOsc[VOL1].usPeriod;
+			usCalibFirst = aOsc[VOLUME].usPeriod;
 		}
 		else
 		{
-			if (	(aOsc[VOL1].usPeriod > (usCalibFirst + usCalibFirst / 4))
-				||	(aOsc[VOL1].usPeriod < (usCalibFirst - usCalibFirst / 4)))
+			if (	(aOsc[VOLUME].usPeriod > (usCalibFirst + usCalibFirst / 4))
+				||	(aOsc[VOLUME].usPeriod < (usCalibFirst - usCalibFirst / 4)))
 			{
 				bCalib1stFound = 0;
-				if (aOsc[VOL1].usPeriod > usCalibFirst)
+				if (aOsc[VOLUME].usPeriod > usCalibFirst)
 				{
-					usCalibSecond = aOsc[VOL1].usPeriod;
+					usCalibSecond = aOsc[VOLUME].usPeriod;
 				}
 				else
 				{
 					usCalibSecond = usCalibFirst;
-					usCalibFirst = aOsc[VOL1].usPeriod;
+					usCalibFirst = aOsc[VOLUME].usPeriod;
 				}
-				eCalibration = CALIB_VOL1_FINISHED;
+				eCalibration = CALIB_VOLUME_FINISHED;
 			}
 
 			// Timeout after 1sec
@@ -959,78 +956,78 @@ void THEREMIN_Task_Capture_VOL1(void)
 				bCalib1stFound = 0;
 				usCalibFirst = 0;
 				usCalibSecond = 0;
-				eCalibration = CALIB_VOL1_FINISHED;
+				eCalibration = CALIB_VOLUME_FINISHED;
 			}
 		}
 	}
 
 
 	// Low pass filter it with a mean filter
-	if (aOsc[VOL1].usPeriod != 0)
+	if (aOsc[VOLUME].usPeriod != 0)
 	{
 
 		// Accumulate the period values
-		slVolTimPeriodeFiltDiff = 256 * aOsc[VOL1].usPeriod - aOsc[VOL1].slOffset;
+		slVolTimPeriodeFiltDiff = 256 * aOsc[VOLUME].usPeriod - aOsc[VOLUME].slOffset;
 
 		// Count the amount of periods
-		aOsc[VOL1].slPeriodeFilt_cnt ++;
+		aOsc[VOLUME].slPeriodeFilt_cnt ++;
 
 		// Was it a triple period?
-		if (aOsc[VOL1].usPeriod > 6000)
+		if (aOsc[VOLUME].usPeriod > 6000)
 		{
-			aOsc[VOL1].slPeriodeFilt_cnt +=2;
-			slVolTimPeriodeFiltDiff -= 2*aOsc[VOL1].slOffset;
+			aOsc[VOLUME].slPeriodeFilt_cnt +=2;
+			slVolTimPeriodeFiltDiff -= 2*aOsc[VOLUME].slOffset;
 		}
 		// Was it a double period?
-		else if (aOsc[VOL1].usPeriod > 4000)
+		else if (aOsc[VOLUME].usPeriod > 4000)
 		{
-			aOsc[VOL1].slPeriodeFilt_cnt ++;
-			slVolTimPeriodeFiltDiff -= aOsc[VOL1].slOffset;
+			aOsc[VOLUME].slPeriodeFilt_cnt ++;
+			slVolTimPeriodeFiltDiff -= aOsc[VOLUME].slOffset;
 		}
 
 		// Use only positive values
 		if (slVolTimPeriodeFiltDiff > 0)
 		{
-			aOsc[VOL1].slPeriodeFilt += slVolTimPeriodeFiltDiff;
+			aOsc[VOLUME].slPeriodeFilt += slVolTimPeriodeFiltDiff;
 		}
 	}
 }
 
 
 /**
- * Capture and filter the VOL2 value
+ * Capture and filter the timbre value
  */
-void THEREMIN_Task_Capture_VOL2(void)
+void THEREMIN_Task_Capture_Timbre(void)
 {
 	// Get the input capture value and calculate the period time
-	aOsc[VOL2].usCC = htim1.Instance->CCR3;
-	aOsc[VOL2].usPeriod = aOsc[VOL2].usCC - aOsc[VOL2].usLastCC;
-	aOsc[VOL2].usLastCC = aOsc[VOL2].usCC;
+	aOsc[TIMBRE].usCC = htim1.Instance->CCR3;
+	aOsc[TIMBRE].usPeriod = aOsc[TIMBRE].usCC - aOsc[TIMBRE].usLastCC;
+	aOsc[TIMBRE].usLastCC = aOsc[TIMBRE].usCC;
 
 	// Find the typical frequency of the vol1 oscillator
-	if (eCalibration == CALIB_VOL2)
+	if (eCalibration == CALIB_TIMBRE)
 	{
 		if (!bCalib1stFound)
 		{
 			bCalib1stFound = 1;
-			usCalibFirst = aOsc[VOL2].usPeriod;
+			usCalibFirst = aOsc[TIMBRE].usPeriod;
 		}
 		else
 		{
-			if (	(aOsc[VOL2].usPeriod > (usCalibFirst + usCalibFirst / 4))
-				||	(aOsc[VOL2].usPeriod < (usCalibFirst - usCalibFirst / 4)))
+			if (	(aOsc[TIMBRE].usPeriod > (usCalibFirst + usCalibFirst / 4))
+				||	(aOsc[TIMBRE].usPeriod < (usCalibFirst - usCalibFirst / 4)))
 			{
 				bCalib1stFound = 0;
-				if (aOsc[VOL2].usPeriod > usCalibFirst)
+				if (aOsc[TIMBRE].usPeriod > usCalibFirst)
 				{
-					usCalibSecond = aOsc[VOL2].usPeriod;
+					usCalibSecond = aOsc[TIMBRE].usPeriod;
 				}
 				else
 				{
 					usCalibSecond = usCalibFirst;
-					usCalibFirst = aOsc[VOL2].usPeriod;
+					usCalibFirst = aOsc[TIMBRE].usPeriod;
 				}
-				eCalibration = CALIB_VOL2_FINISHED;
+				eCalibration = CALIB_TIMBRE_FINISHED;
 			}
 
 			// Timeout after 1sec
@@ -1041,94 +1038,94 @@ void THEREMIN_Task_Capture_VOL2(void)
 				bCalib1stFound = 0;
 				usCalibFirst = 0;
 				usCalibSecond = 0;
-				eCalibration = CALIB_VOL2_FINISHED;
+				eCalibration = CALIB_TIMBRE_FINISHED;
 			}
 		}
 	}
 
 	// Low pass filter it with a mean filter
-	if (aOsc[VOL2].usPeriod != 0)
+	if (aOsc[TIMBRE].usPeriod != 0)
 	{
 		// Accumulate the period values
-		slVolTimPeriodeFiltDiff = 256 * aOsc[VOL2].usPeriod - aOsc[VOL2].slOffset;
+		slVolTimPeriodeFiltDiff = 256 * aOsc[TIMBRE].usPeriod - aOsc[TIMBRE].slOffset;
 
 		// Count the amount of periods
-		aOsc[VOL2].slPeriodeFilt_cnt ++;
+		aOsc[TIMBRE].slPeriodeFilt_cnt ++;
 		// Was it a triple period?
-		if (aOsc[VOL2].usPeriod > 6000)
+		if (aOsc[TIMBRE].usPeriod > 6000)
 		{
-			aOsc[VOL2].slPeriodeFilt_cnt +=2;
-			slVolTimPeriodeFiltDiff -= 2*aOsc[VOL2].slOffset;
+			aOsc[TIMBRE].slPeriodeFilt_cnt +=2;
+			slVolTimPeriodeFiltDiff -= 2*aOsc[TIMBRE].slOffset;
 		}
 		// Was it a double period?
-		else if (aOsc[VOL2].usPeriod > 4000)
+		else if (aOsc[TIMBRE].usPeriod > 4000)
 		{
-			aOsc[VOL2].slPeriodeFilt_cnt ++;
-			slVolTimPeriodeFiltDiff -= aOsc[VOL2].slOffset;
+			aOsc[TIMBRE].slPeriodeFilt_cnt ++;
+			slVolTimPeriodeFiltDiff -= aOsc[TIMBRE].slOffset;
 		}
 
 		// Use only positive values
 		if (slVolTimPeriodeFiltDiff > 0)
 		{
-			aOsc[VOL2].slPeriodeFilt += slVolTimPeriodeFiltDiff;
+			aOsc[TIMBRE].slPeriodeFilt += slVolTimPeriodeFiltDiff;
 		}
 	}
 }
 
 /**
- * Calculate the mean value of VOL1
+ * Calculate the mean value of Volume
  */
-void THEREMIN_Task_Calculate_VOL1(void)
+void THEREMIN_Task_Calculate_Volume(void)
 {
 
-	if (aOsc[VOL1].slPeriodeFilt > 0)
+	if (aOsc[VOLUME].slPeriodeFilt > 0)
 	{
-		aOsc[VOL1].slMeanPeriode = aOsc[VOL1].slPeriodeFilt / aOsc[VOL1].slPeriodeFilt_cnt;
-		aOsc[VOL1].slValue = ((aConfigWorkingSet[CFG_E_VOL1_NUMERATOR].iVal * aOsc[VOL1].slPeriodeFilt_cnt) /
-				(aOsc[VOL1].slPeriodeFilt + aOsc[VOL1].slPeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL1_OFFSET_A].iVal))
+		aOsc[VOLUME].slMeanPeriode = aOsc[VOLUME].slPeriodeFilt / aOsc[VOLUME].slPeriodeFilt_cnt;
+		aOsc[VOLUME].slValue = ((aConfigWorkingSet[CFG_E_VOL1_NUMERATOR].iVal * aOsc[VOLUME].slPeriodeFilt_cnt) /
+				(aOsc[VOLUME].slPeriodeFilt + aOsc[VOLUME].slPeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL1_OFFSET_A].iVal))
 				- aConfigWorkingSet[CFG_E_VOL1_OFFSET_B].iVal;
 
 		// Prepare for next filter interval
-		aOsc[VOL1].slPeriodeFilt_cnt = 0;
-		aOsc[VOL1].slPeriodeFilt = 0;
+		aOsc[VOLUME].slPeriodeFilt_cnt = 0;
+		aOsc[VOLUME].slPeriodeFilt = 0;
 	}
 
 	// Limit it
-	if (aOsc[VOL1].slValue < 0)
+	if (aOsc[VOLUME].slValue < 0)
 	{
-		aOsc[VOL1].slValue = 0;
+		aOsc[VOLUME].slValue = 0;
 	}
-	if (aOsc[VOL1].slValue > 1024)
+	if (aOsc[VOLUME].slValue > 1024)
 	{
-		aOsc[VOL1].slValue = 1024;
+		aOsc[VOLUME].slValue = 1024;
 	}
 }
 
 /**
- * Calculate the mean value of VOL2
+ * Calculate the mean value of timbre
  */
-void THEREMIN_Task_Calculate_VOL2(void)
+void THEREMIN_Task_Calculate_Timbre(void)
 {
-	if (aOsc[VOL2].slPeriodeFilt > 0)
+	if (aOsc[TIMBRE].slPeriodeFilt > 0)
 	{
-		aOsc[VOL2].slMeanPeriode = aOsc[VOL2].slPeriodeFilt / aOsc[VOL2].slPeriodeFilt_cnt;
-		aOsc[VOL2].slValue = ((aConfigWorkingSet[CFG_E_VOL2_NUMERATOR].iVal * aOsc[VOL2].slPeriodeFilt_cnt) /
-				(aOsc[VOL2].slPeriodeFilt + aOsc[VOL2].slPeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL2_OFFSET_A].iVal))
+		aOsc[TIMBRE].slMeanPeriode = aOsc[TIMBRE].slPeriodeFilt / aOsc[TIMBRE].slPeriodeFilt_cnt;
+		aOsc[TIMBRE].slValue = ((aConfigWorkingSet[CFG_E_VOL2_NUMERATOR].iVal * aOsc[TIMBRE].slPeriodeFilt_cnt) /
+				(aOsc[TIMBRE].slPeriodeFilt + aOsc[TIMBRE].slPeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL2_OFFSET_A].iVal))
 				- aConfigWorkingSet[CFG_E_VOL2_OFFSET_B].iVal;
 
 		// Prepare for next filter interval
-		aOsc[VOL2].slPeriodeFilt_cnt = 0;
-		aOsc[VOL2].slPeriodeFilt = 0;
+		aOsc[TIMBRE].slPeriodeFilt_cnt = 0;
+		aOsc[TIMBRE].slPeriodeFilt = 0;
 	}
 
 	// Limit it
-	if (aOsc[VOL2].slValue < 0)
+	if (aOsc[TIMBRE].slValue < 0)
 	{
-		aOsc[VOL2].slValue = 0;
+		aOsc[TIMBRE].slValue = 0;
 	}
-	if (aOsc[VOL2].slValue > 1024)
+	if (aOsc[TIMBRE].slValue > 1024)
 	{
-		aOsc[VOL2].slValue = 1024;
+		aOsc[TIMBRE].slValue = 1024;
 	}
 }
 /**
@@ -1137,12 +1134,15 @@ void THEREMIN_Task_Calculate_VOL2(void)
 void THEREMIN_Task_Volume(void)
 {
 
-	if ((aOsc[VOL1].slMeanPeriode + aOsc[VOL2].slMeanPeriode) > 0)
-	{
-		slVolumeRaw = ((aConfigWorkingSet[CFG_E_VOL12_NUMERATOR].iVal) /
-				(aOsc[VOL1].slMeanPeriode + aOsc[VOL2].slMeanPeriode + aConfigWorkingSet[CFG_E_VOL12_OFFSET_A].iVal))
-				- aConfigWorkingSet[CFG_E_VOL12_OFFSET_B].iVal;
-	}
+//	if ((aOsc[VOLUME].slMeanPeriode + aOsc[TIMBRE].slMeanPeriode) > 0)
+//	{
+//		slVolumeRaw = ((aConfigWorkingSet[CFG_E_VOL12_NUMERATOR].iVal) /
+//				(aOsc[VOLUME].slMeanPeriode + aOsc[TIMBRE].slMeanPeriode + aConfigWorkingSet[CFG_E_VOL12_OFFSET_A].iVal))
+//				- aConfigWorkingSet[CFG_E_VOL12_OFFSET_B].iVal;
+//	}
+
+
+	slVolumeRaw = 1023 - (aOsc[VOLUME].slMeanPeriode / 8);
 
 	// Limit the volume value
 	if (slVolumeRaw < 0)
@@ -1155,7 +1155,7 @@ void THEREMIN_Task_Volume(void)
 	}
 
 	// change the direction
-	if (aConfigWorkingSet[CFG_E_LOUDER_DOWN].iVal == 1)
+	if (aConfigWorkingSet[CFG_E_LOUDER_DOWN].iVal != 0)
 	{
 		slVolumeRaw = 1023 - slVolumeRaw;
 	}
@@ -1168,13 +1168,12 @@ void THEREMIN_Task_Volume(void)
 }
 
 /**
- * Calculate the timbre value from VOL1 and VOL2
+ * Calculate the timbre value
  */
 void THEREMIN_Task_Timbre(void)
 {
 	float f;
-	// Timbre is the difference between VOL1 and VOL2 in the range of 0..128
-	slTimbre = (aOsc[VOL1].slValue - aOsc[VOL2].slValue) + 128;
+	slTimbre = ((aOsc[TIMBRE].slMeanPeriode - 1000 )/ 16);
 
 	// Limit the timbre value
 	if (slTimbre < 0)
@@ -1197,7 +1196,6 @@ void THEREMIN_Task_Timbre(void)
 	fVollAddSynth_4 = f;
 	f = ((float)aConfigWorkingSet[CFG_E_ADDSYNTH_5].iVal * 0.001f);
 	fVollAddSynth_5 = f;
-
 					;
 }
 
@@ -1345,10 +1343,12 @@ void THEREMIN_1msTask(void)
 			aOsc[PITCH].slOffset = 0;
 			aOsc[PITCH].slPeriodeFilt = 0x7FFFFFFF;
 			aOsc[PITCH].slMinPeriode = 0x7FFFFFFF;
-			aOsc[VOL1].slOffset = 0;
-			aOsc[VOL2].slOffset = 0;
-			aOsc[VOL1].slMinPeriode = 0x7FFFFFFF;
-			aOsc[VOL2].slMinPeriode = 0x7FFFFFFF;
+			aOsc[VOLUME].slOffset = 0;
+			aOsc[TIMBRE].slOffset = 0;
+			aOsc[VOLUME].slMinPeriode = 0x7FFFFFFF;
+			aOsc[TIMBRE].slMinPeriode = 0x7FFFFFFF;
+			aOsc[VOLUME].slMeanPeriode = 0x7FFFFFFF;
+			aOsc[TIMBRE].slMeanPeriode = 0x7FFFFFFF;
 		}
 	}
 	else if (eCalibration != CALIB_OFF)
@@ -1356,16 +1356,16 @@ void THEREMIN_1msTask(void)
 		if (eCalibration == CALIB_PITCH_FINISHED)
 		{
 			THEREMIN_Calibrate(PITCH);
-			eCalibration = CALIB_VOL1;
+			eCalibration = CALIB_VOLUME;
 		}
-		else if (eCalibration == CALIB_VOL1_FINISHED)
+		else if (eCalibration == CALIB_VOLUME_FINISHED)
 		{
-			THEREMIN_Calibrate(VOL1);
-			eCalibration = CALIB_VOL2;
+			THEREMIN_Calibrate(VOLUME);
+			eCalibration = CALIB_TIMBRE;
 		}
-		else if (eCalibration == CALIB_VOL2_FINISHED)
+		else if (eCalibration == CALIB_TIMBRE_FINISHED)
 		{
-			THEREMIN_Calibrate(VOL2);
+			THEREMIN_Calibrate(TIMBRE);
 			eCalibration = CALIB_OFF;
 		}
 	}
@@ -1381,13 +1381,13 @@ void THEREMIN_1msTask(void)
 				aOsc[PITCH].slMinPeriode = aOsc[PITCH].slPeriodeFilt;
 			}
 			// Find lowest volume period
-			if (aOsc[VOL1].slMeanPeriode < aOsc[VOL1].slMinPeriode)
+			if (aOsc[VOLUME].slMeanPeriode < aOsc[VOLUME].slMinPeriode)
 			{
-				aOsc[VOL1].slMinPeriode = aOsc[VOL1].slMeanPeriode;
+				aOsc[VOLUME].slMinPeriode = aOsc[VOLUME].slMeanPeriode;
 			}
-			if (aOsc[VOL2].slMeanPeriode < aOsc[VOL2].slMinPeriode)
+			if (aOsc[TIMBRE].slMeanPeriode < aOsc[TIMBRE].slMinPeriode)
 			{
-				aOsc[VOL2].slMinPeriode = aOsc[VOL2].slMeanPeriode;
+				aOsc[TIMBRE].slMinPeriode = aOsc[TIMBRE].slMeanPeriode;
 			}
 		}
 		siAutotune--;
@@ -1411,8 +1411,8 @@ void THEREMIN_1msTask(void)
 			DISPLAY_Dark();
 			// Use minimum values for offset of pitch and volume
 			aOsc[PITCH].slOffset = aOsc[PITCH].slMinPeriode;
-			aOsc[VOL1].slOffset = aOsc[VOL1].slMinPeriode;	// + 16384 * 128;
-			aOsc[VOL2].slOffset = aOsc[VOL2].slMinPeriode;	// + 16384 * 128;
+			aOsc[VOLUME].slOffset = aOsc[VOLUME].slMinPeriode;	// + 16384 * 128;
+			aOsc[TIMBRE].slOffset = aOsc[TIMBRE].slMinPeriode;	// + 16384 * 128;
 
 		//	CONFIG_Write_SLong(EEPROM_ADDR_PITCH_AUTOTUNE_H, slPitchOffset);
 		//	CONFIG_Write_SLong(EEPROM_ADDR_VOLTIM1_AUTOTUNE_H, slVolTim1Offset);

@@ -138,7 +138,7 @@ void CONFIG_FillWithDefault(void)
 		aConfigValues[i][CFG_E_PITCH_SCALE] = 500;
 		aConfigValues[i][CFG_E_VOLUME_SHIFT] = 500;
 		aConfigValues[i][CFG_E_VOLUME_SCALE] = 500;
-		aConfigValues[i][CFG_E_LOUDER_DOWN] = 1;
+		aConfigValues[i][CFG_E_LOUDER_DOWN] = 0;
 		aConfigValues[i][CFG_E_STARTUP_AUTOTUNE] = 1;
 		aConfigValues[i][CFG_E_DISTORTION] = 0;
 		aConfigValues[i][CFG_E_IMPEDANCE] = 1000;

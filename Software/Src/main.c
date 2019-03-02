@@ -571,7 +571,7 @@ static void MX_GPIO_Init(void)
                           |LD5_Pin|LD6_Pin|Audio_RST_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, SEL_VOL_OSC_A_Pin|SEL_VOL_OSC_B_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, SEL_VOLUME_OSC_Pin|SEL_TIMBRE_OSC_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : CS_I2C_SPI_Pin PITCH_LED_8_Pin PITCH_LED_9_Pin PITCH_LED_0_Pin 
                            PITCH_LED_1_Pin PITCH_LED_2_Pin */
@@ -582,8 +582,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : OTG_FS_PowerSwitchOn_Pin SEL_VOL_OSC_A_Pin SEL_VOL_OSC_B_Pin */
-  GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin|SEL_VOL_OSC_A_Pin|SEL_VOL_OSC_B_Pin;
+  /*Configure GPIO pins : OTG_FS_PowerSwitchOn_Pin SEL_VOLUME_OSC_Pin SEL_TIMBRE_OSC_Pin */
+  GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin|SEL_VOLUME_OSC_Pin|SEL_TIMBRE_OSC_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

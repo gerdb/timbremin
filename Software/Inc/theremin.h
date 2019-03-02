@@ -30,8 +30,8 @@
 #define STOPWATCH_STOP() ulStopwatch = DWT->CYCCNT;
 
 #define PITCH	0
-#define VOL1	1
-#define VOL2	2
+#define VOLUME	1
+#define TIMBRE	2
 
 /* Types  ------------------------------------------------------------------ */
 // Union to convert between float and int
@@ -48,32 +48,12 @@ typedef enum
 	CALIB_OFF,
 	CALIB_PITCH,
 	CALIB_PITCH_FINISHED,
-	CALIB_VOL1,
-	CALIB_VOL1_FINISHED,
-	CALIB_VOL2,
-	CALIB_VOL2_FINISHED
+	CALIB_VOLUME,
+	CALIB_VOLUME_FINISHED,
+	CALIB_TIMBRE,
+	CALIB_TIMBRE_FINISHED
 }e_calibration;
 
-// The different waveforms
-typedef enum
-{
-	SINE = 0,
-	CAT = 1,
-	COSPULSE = 2,
-	HARMON = 3,
-	COMPRESSED = 4,
-	GLOTTAL = 5,
-	THEREMIN = 6,
-	USBSTICK = 7
-}e_waveform;
-
-// The different volume antennas
-typedef enum
-{
-	VOLSEL_NONE = 0,
-	VOLSEL_1 = 1,
-	VOLSEL_2 = 2
-}e_vol_sel;
 
 // Structure with oscillator calibration data
 typedef struct
@@ -108,7 +88,6 @@ typedef struct
 
 /* Global variables  ------------------------------------------------------- */
 extern int16_t ssWaveTable[4 * 1024];
-extern e_waveform eWaveform;
 extern int32_t slThereminOut;	// Output sound from theremin into reverb
 
 // global variables for debug output
@@ -121,14 +100,14 @@ void THEREMIN_96kHzDACTask_A(void);
 void THEREMIN_96kHzDACTask_B(void);
 void THEREMIN_96kHzDACTask_Common(void);
 
-void THEREMIN_Task_Select_VOL1(void);
-void THEREMIN_Task_Select_VOL2(void);
-void THEREMIN_Task_Activate_VOL1(void);
-void THEREMIN_Task_Activate_VOL2(void);
-void THEREMIN_Task_Capture_VOL1(void);
-void THEREMIN_Task_Capture_VOL2(void);
-void THEREMIN_Task_Calculate_VOL1(void);
-void THEREMIN_Task_Calculate_VOL2(void);
+void THEREMIN_Task_Select_Volume(void);
+void THEREMIN_Task_Select_Timbre(void);
+void THEREMIN_Task_Activate_Volume(void);
+void THEREMIN_Task_Activate_Timbre(void);
+void THEREMIN_Task_Capture_Volume(void);
+void THEREMIN_Task_Capture_Timbre(void);
+void THEREMIN_Task_Calculate_Volume(void);
+void THEREMIN_Task_Calculate_Timbre(void);
 void THEREMIN_Task_Volume(void);
 void THEREMIN_Task_Timbre(void);
 void THEREMIN_Task_Volume_Nonlin(void);
