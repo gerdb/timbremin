@@ -54,6 +54,12 @@ typedef enum
 	CALIB_TIMBRE_FINISHED
 }e_calibration;
 
+// for auto activate theremin
+typedef enum
+{
+	ACTIVE_OFF,
+	ACTIVE_ON
+}e_autoactivate;
 
 // Structure with oscillator calibration data
 typedef struct

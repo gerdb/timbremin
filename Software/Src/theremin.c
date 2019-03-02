@@ -55,6 +55,7 @@ float fPitchScale = 1.0f;
 float fPitchShift = 1.0f;
 float fFilterIn = 0.0f;
 
+
 // Volume
 float fVol = 0.0;			// volume value
 int32_t slVolTimPeriodeFiltDiff;	// low pass filtered period
@@ -131,6 +132,7 @@ int32_t slThereminOut = 0;
 
 uint32_t ulWaveTableIndex = 0;
 
+e_autoactivate eActive = ACTIVE_OFF;
 
 float fWavStepFilt = 0.0f;
 
@@ -1081,24 +1083,24 @@ void THEREMIN_Task_Calculate_Volume(void)
 	if (aOsc[VOLUME].slPeriodeFilt > 0)
 	{
 		aOsc[VOLUME].slMeanPeriode = aOsc[VOLUME].slPeriodeFilt / aOsc[VOLUME].slPeriodeFilt_cnt;
-		aOsc[VOLUME].slValue = ((aConfigWorkingSet[CFG_E_VOL1_NUMERATOR].iVal * aOsc[VOLUME].slPeriodeFilt_cnt) /
-				(aOsc[VOLUME].slPeriodeFilt + aOsc[VOLUME].slPeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL1_OFFSET_A].iVal))
-				- aConfigWorkingSet[CFG_E_VOL1_OFFSET_B].iVal;
+//		aOsc[VOLUME].slValue = ((aConfigWorkingSet[CFG_E_VOL1_NUMERATOR].iVal * aOsc[VOLUME].slPeriodeFilt_cnt) /
+//				(aOsc[VOLUME].slPeriodeFilt + aOsc[VOLUME].slPeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL1_OFFSET_A].iVal))
+//				- aConfigWorkingSet[CFG_E_VOL1_OFFSET_B].iVal;
 
 		// Prepare for next filter interval
 		aOsc[VOLUME].slPeriodeFilt_cnt = 0;
 		aOsc[VOLUME].slPeriodeFilt = 0;
 	}
 
-	// Limit it
-	if (aOsc[VOLUME].slValue < 0)
-	{
-		aOsc[VOLUME].slValue = 0;
-	}
-	if (aOsc[VOLUME].slValue > 1024)
-	{
-		aOsc[VOLUME].slValue = 1024;
-	}
+//	// Limit it
+//	if (aOsc[VOLUME].slValue < 0)
+//	{
+//		aOsc[VOLUME].slValue = 0;
+//	}
+//	if (aOsc[VOLUME].slValue > 1024)
+//	{
+//		aOsc[VOLUME].slValue = 1024;
+//	}
 }
 
 /**
@@ -1109,24 +1111,24 @@ void THEREMIN_Task_Calculate_Timbre(void)
 	if (aOsc[TIMBRE].slPeriodeFilt > 0)
 	{
 		aOsc[TIMBRE].slMeanPeriode = aOsc[TIMBRE].slPeriodeFilt / aOsc[TIMBRE].slPeriodeFilt_cnt;
-		aOsc[TIMBRE].slValue = ((aConfigWorkingSet[CFG_E_VOL2_NUMERATOR].iVal * aOsc[TIMBRE].slPeriodeFilt_cnt) /
-				(aOsc[TIMBRE].slPeriodeFilt + aOsc[TIMBRE].slPeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL2_OFFSET_A].iVal))
-				- aConfigWorkingSet[CFG_E_VOL2_OFFSET_B].iVal;
+//		aOsc[TIMBRE].slValue = ((aConfigWorkingSet[CFG_E_VOL2_NUMERATOR].iVal * aOsc[TIMBRE].slPeriodeFilt_cnt) /
+//				(aOsc[TIMBRE].slPeriodeFilt + aOsc[TIMBRE].slPeriodeFilt_cnt * aConfigWorkingSet[CFG_E_VOL2_OFFSET_A].iVal))
+//				- aConfigWorkingSet[CFG_E_VOL2_OFFSET_B].iVal;
 
 		// Prepare for next filter interval
 		aOsc[TIMBRE].slPeriodeFilt_cnt = 0;
 		aOsc[TIMBRE].slPeriodeFilt = 0;
 	}
 
-	// Limit it
-	if (aOsc[TIMBRE].slValue < 0)
-	{
-		aOsc[TIMBRE].slValue = 0;
-	}
-	if (aOsc[TIMBRE].slValue > 1024)
-	{
-		aOsc[TIMBRE].slValue = 1024;
-	}
+//	// Limit it
+//	if (aOsc[TIMBRE].slValue < 0)
+//	{
+//		aOsc[TIMBRE].slValue = 0;
+//	}
+//	if (aOsc[TIMBRE].slValue > 1024)
+//	{
+//		aOsc[TIMBRE].slValue = 1024;
+//	}
 }
 /**
  * Calculate the mean volume from VOL1 and VOL2
@@ -1204,7 +1206,14 @@ void THEREMIN_Task_Timbre(void)
  */
 void THEREMIN_Task_Volume_Nonlin(void)
 {
-	slVolume = slVolumeRaw;
+	if (eActive == ACTIVE_ON)
+	{
+		slVolume = slVolumeRaw;
+	}
+	else
+	{
+		slVolume = 0;
+	}
 }
 
 /**
@@ -1436,8 +1445,24 @@ void THEREMIN_1msTask(void)
 			fOscSin = 0.0f;
 			fOscCos = 1.0f;
 			iTuned = 1;
+			eActive = ACTIVE_OFF;
 		}
 	}
+
+	if (eActive == ACTIVE_OFF)
+	{
+		if (aOsc[PITCH].fValue > 1000000.0f && slVolumeRaw == 0)
+		{
+			eActive = ACTIVE_ON;
+		}
+	} else if (eActive == ACTIVE_ON)
+	{
+		if (aOsc[PITCH].fValue < 1000000.0f && slVolumeRaw == 0)
+		{
+			eActive = ACTIVE_OFF;
+		}
+	}
+
 
 	if (iVolCal_active)
 	{

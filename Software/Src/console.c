@@ -134,14 +134,17 @@ static void CONSOLE_RxCheckBuffer(void) {
 				CONSOLE_LineCntLast = i+1;
 			}
 
-			// Decode the line and outpu the result
+			// Decode the line and output the result
 			CONSOLE_LineBuffer[CONSOLE_LineCnt] = '\0';
 			CONSOLE_PutByte(&UartHandle, ' ');
 
 			// Stop Debug Mode on enter
 			eDebugMode = CONSOLE_MODE_NONE;
 
-			my_printf(CONFIG_DecodeLine(CONSOLE_LineBuffer));
+			if (CONSOLE_LineCnt > 0)
+			{
+				my_printf(CONFIG_DecodeLine(CONSOLE_LineBuffer));
+			}
 
 			// Next line of the console
 			CONSOLE_PutByte(&UartHandle, '\r');
