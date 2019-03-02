@@ -329,8 +329,17 @@ inline void EFFECT_48kHzTask(void)
 		}
 		// Output it to the headphone (right channel)
 		ssDACValueR = slVal;
-		// and also to the speaker (left channel)
-		ssDACValueL = slVal; //fLFO * 30000;
+		if (eActive == ACTIVE_PREHEAR || eActive == ACTIVE_PREHEAR_LOUD)
+		{
+			// Mute speaker (left channel) during prehear
+			ssDACValueL = 0;
+		}
+		else
+		{
+			// and also to the speaker (left channel)
+			ssDACValueL = slVal; //fLFO * 30000;
+		}
+
 	}
 
 }

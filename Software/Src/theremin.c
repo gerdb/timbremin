@@ -1206,13 +1206,17 @@ void THEREMIN_Task_Timbre(void)
  */
 void THEREMIN_Task_Volume_Nonlin(void)
 {
-	if (eActive == ACTIVE_ON)
+	if (eActive == ACTIVE_OFF )
 	{
-		slVolume = slVolumeRaw;
+		slVolume = 0;
+	}
+	else if (eActive == ACTIVE_PREHEAR)
+	{
+		slVolume = 100;
 	}
 	else
 	{
-		slVolume = 0;
+		slVolume = slVolumeRaw;
 	}
 }
 
@@ -1451,15 +1455,43 @@ void THEREMIN_1msTask(void)
 
 	if (eActive == ACTIVE_OFF)
 	{
-		if (aOsc[PITCH].fValue > 1000000.0f && slVolumeRaw == 0)
+		// Activate it at zero volume and very low pitch frequency
+		// 0.005f / 2*PI * 48kHz = 38Hz
+		if (fPitchFrq > 0.005f  && slVolumeRaw == 0)
+		{
+			eActive = ACTIVE_READY;
+		}
+	}
+	else if (eActive == ACTIVE_READY)
+	{
+		if (fPitchFrq > 0.49f && slVolumeRaw == 0)
+		{
+			eActive = ACTIVE_PREHEAR;
+		}
+		if (fPitchFrq > 0.005f && slVolumeRaw > 0)
 		{
 			eActive = ACTIVE_ON;
 		}
-	} else if (eActive == ACTIVE_ON)
+	}
+	else if (eActive == ACTIVE_ON)
 	{
-		if (aOsc[PITCH].fValue < 1000000.0f && slVolumeRaw == 0)
+		if (fPitchFrq < 0.005f && slVolumeRaw == 0)
 		{
 			eActive = ACTIVE_OFF;
+		}
+	}
+	else if (eActive == ACTIVE_PREHEAR)
+	{
+		if (fPitchFrq > 0.005f && slVolumeRaw > 100)
+		{
+			eActive = ACTIVE_PREHEAR_LOUD;
+		}
+	}
+	else if (eActive == ACTIVE_PREHEAR_LOUD)
+	{
+		if (fPitchFrq > 0.005f && slVolumeRaw == 0)
+		{
+			eActive = ACTIVE_ON;
 		}
 	}
 

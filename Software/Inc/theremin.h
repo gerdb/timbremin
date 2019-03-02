@@ -58,7 +58,10 @@ typedef enum
 typedef enum
 {
 	ACTIVE_OFF,
-	ACTIVE_ON
+	ACTIVE_READY,
+	ACTIVE_ON,
+	ACTIVE_PREHEAR,
+	ACTIVE_PREHEAR_LOUD
 }e_autoactivate;
 
 // Structure with oscillator calibration data
@@ -99,7 +102,7 @@ extern int32_t slThereminOut;	// Output sound from theremin into reverb
 // global variables for debug output
 extern s_osc aOsc[3];
 extern uint32_t ulStopwatch;		// Stopwatch
-
+extern e_autoactivate eActive;
 /* Function prototypes ----------------------------------------------------- */
 void THEREMIN_Init(void);
 void THEREMIN_96kHzDACTask_A(void);
