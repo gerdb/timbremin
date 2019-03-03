@@ -32,19 +32,19 @@ typedef struct
 }VOLUME_VolCalibrationType;
 
 
-// for auto activate theremin
+// for auto-mute and auto-prehear
 typedef enum
 {
-	ACTIVE_OFF,
-	ACTIVE_READY,
-	ACTIVE_ON,
-	ACTIVE_PREHEAR,
-	ACTIVE_PREHEAR_LOUD
-}e_autoactivate;
+	AUTOMUTE_MUTE,
+	AUTOMUTE_READY,
+	AUTOMUTE_LOUD,
+	AUTOPREHEAR,
+	AUTOPREHEAR_LOUD
+}e_automute_autoprehear;
 
 
 /* Global variables  ------------------------------------------------------- */
-extern e_autoactivate eActive;
+extern e_automute_autoprehear eAutomuteAutoprehear;
 /* Function prototypes ----------------------------------------------------- */
 void VOLUME_Init(void);
 void VOLUME_1msTask(void);

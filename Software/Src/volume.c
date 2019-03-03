@@ -37,7 +37,7 @@ VOLUME_VolCalibrationType aCalibrationEntries[20+1]; // Array containing calibra
 int iVolCal_delay;	// Delay timer between each cm steps
 int iVolVal_step;		// cm step
 int iVolCal_active = 0;  // Flag if calibration is active
-e_autoactivate eActive = ACTIVE_OFF;
+e_automute_autoprehear eAutomuteAutoprehear = AUTOMUTE_MUTE;
 
 /**
  * @brief Initialize the module
@@ -71,51 +71,51 @@ void VOLUME_AutoMute_AutoPrehear(void)
 {
 	if (aConfigWorkingSet[CFG_E_AUTOMUTE].iVal)
 	{
-		if (eActive == ACTIVE_OFF)
+		if (eAutomuteAutoprehear == AUTOMUTE_MUTE)
 		{
 			// Activate it at zero volume and very low pitch frequency
 			// 0.005f / 2*PI * 48kHz = 38Hz
 			if (fPitchFrq > 0.005f  && slVolumeRaw == 0)
 			{
-				eActive = ACTIVE_READY;
+				eAutomuteAutoprehear = AUTOMUTE_READY;
 			}
 		}
-		else if (eActive == ACTIVE_READY)
+		else if (eAutomuteAutoprehear == AUTOMUTE_READY)
 		{
 			if (fPitchFrq > 0.49f && slVolumeRaw == 0 && aConfigWorkingSet[CFG_E_AUTOPREHEAR].iVal)
 			{
-				eActive = ACTIVE_PREHEAR;
+				eAutomuteAutoprehear = AUTOPREHEAR;
 			}
 			if (fPitchFrq > 0.005f && slVolumeRaw > 0)
 			{
-				eActive = ACTIVE_ON;
+				eAutomuteAutoprehear = AUTOMUTE_LOUD;
 			}
 		}
-		else if (eActive == ACTIVE_ON)
+		else if (eAutomuteAutoprehear == AUTOMUTE_LOUD)
 		{
 			if (fPitchFrq < 0.005f && slVolumeRaw == 0)
 			{
-				eActive = ACTIVE_OFF;
+				eAutomuteAutoprehear = AUTOMUTE_MUTE;
 			}
 		}
-		else if (eActive == ACTIVE_PREHEAR)
+		else if (eAutomuteAutoprehear == AUTOPREHEAR)
 		{
 			if (fPitchFrq > 0.005f && slVolumeRaw > 100)
 			{
-				eActive = ACTIVE_PREHEAR_LOUD;
+				eAutomuteAutoprehear = AUTOPREHEAR_LOUD;
 			}
 		}
-		else if (eActive == ACTIVE_PREHEAR_LOUD)
+		else if (eAutomuteAutoprehear == AUTOPREHEAR_LOUD)
 		{
 			if (fPitchFrq > 0.005f && slVolumeRaw == 0)
 			{
-				eActive = ACTIVE_ON;
+				eAutomuteAutoprehear = AUTOMUTE_LOUD;
 			}
 		}
 	}
 	else
 	{
-		eActive = ACTIVE_ON;
+		eAutomuteAutoprehear = AUTOMUTE_LOUD;
 	}
 }
 

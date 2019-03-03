@@ -1209,11 +1209,11 @@ void THEREMIN_Task_Timbre(void)
  */
 void THEREMIN_Task_Volume_Nonlin(void)
 {
-	if (eActive == ACTIVE_OFF )
+	if (eAutomuteAutoprehear == AUTOMUTE_MUTE )
 	{
 		slVolume = 0;
 	}
-	else if (eActive == ACTIVE_PREHEAR)
+	else if (eAutomuteAutoprehear == AUTOPREHEAR_LOUD)
 	{
 		slVolume = 100;
 	}
@@ -1455,7 +1455,7 @@ void THEREMIN_1msTask(void)
 			fOscSin = 0.0f;
 			fOscCos = 1.0f;
 			iTuned = 1;
-			eActive = ACTIVE_OFF;
+			eAutomuteAutoprehear = AUTOMUTE_MUTE;
 		}
 	}
 
