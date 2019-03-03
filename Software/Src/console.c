@@ -204,18 +204,10 @@ void CONSOLE_1msTask(void)
 			my_printf("%4dkHz %4dkHz %4d\r\n", (int)frq1, (int)((float)aOsc[PITCH].usPeriodRawN * aOsc[PITCH].fCalibfScale), aOsc[PITCH].usPeriodRaw);
 			break;
 		case CONSOLE_MODE_OSCILLATOR_VOLUME:
-			if (aOsc[VOLUME].usPeriodRawN > 0)
-			{
-				frq1 = (168000*8*1) / aOsc[VOLUME].usPeriodRawN;
-			}
-			my_printf("%4dkHz %4d\r\n",frq1, aOsc[VOLUME].usPeriodRaw);
+			my_printf("%4d %4d\r\n",aOsc[VOLUME].slMeanPeriode , aOsc[VOLUME].usPeriodRaw);
 			break;
 		case CONSOLE_MODE_OSCILLATOR_TIMBRE:
-			if (aOsc[TIMBRE].usPeriodRawN > 0)
-			{
-				frq1 = (168000*8*1) / aOsc[TIMBRE].usPeriodRawN;
-			}
-			my_printf("%4dkHz %4d\r\n",frq1, aOsc[TIMBRE].usPeriodRaw);
+			my_printf("%4d %4d\r\n",aOsc[TIMBRE].slMeanPeriode , aOsc[TIMBRE].usPeriodRaw);
 			break;
 		case CONSOLE_MODE_3OSCILLATORS:
 			my_printf("%4d %4d %4d\r\n",(int)(aOsc[PITCH].fValue),

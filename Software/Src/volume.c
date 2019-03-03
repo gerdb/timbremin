@@ -79,7 +79,7 @@ static void VOLUME_CalcLinearizationConstants(void)
 		iVolNumerator = 1024.0f * (200000.0f/(float)(aConfigWorkingSet[CFG_E_VOLUME_RANGE].iVal+1)
 				+ iVolLinFactor);
 
-		iVolOffset = iVolNumerator / (4000000 / aConfigWorkingSet[CFG_E_VOLUME_LOWER].iVal + iVolLinFactor);
+		iVolOffset = iVolNumerator / (2000000 / aConfigWorkingSet[CFG_E_VOLUME_LOWER].iVal + iVolLinFactor);
 
 
 		iLast_VOLUME_LOWER = aConfigWorkingSet[CFG_E_VOLUME_LOWER].iVal;

@@ -79,6 +79,7 @@ typedef struct
 	int slPeriodeFilt_cnt;	// low pass filtered period
 	int32_t slMinPeriode;	// minimum value during auto-tune
 	int32_t slMeanPeriode;	// low pass filtered period
+	int touched;
 }s_osc;
 
 #define TESTPORT_ON()  GPIOD->BSRR = 0x00002000

@@ -157,8 +157,8 @@ void CONFIG_FillWithDefault(void)
 		aConfigValues[i][CFG_E_AUTOMUTE] = 1;
 		aConfigValues[i][CFG_E_AUTOPREHEAR] = 1;
 		aConfigValues[i][CFG_E_VOLUME_LOWER] = 200;
-		aConfigValues[i][CFG_E_VOLUME_RANGE] = 500;
-		aConfigValues[i][CFG_E_VOLUME_LINEAR] = 500;
+		aConfigValues[i][CFG_E_VOLUME_RANGE] = 150;
+		aConfigValues[i][CFG_E_VOLUME_LINEAR] = 250;
 
 	}
 }

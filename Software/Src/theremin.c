@@ -132,8 +132,6 @@ int32_t slThereminOut = 0;
 
 uint32_t ulWaveTableIndex = 0;
 
-
-
 float fWavStepFilt = 0.0f;
 
 // Auto-tune
@@ -923,7 +921,7 @@ void THEREMIN_Task_Capture_Volume(void)
 {
 	// Get the input capture value and calculate the period time
 	aOsc[VOLUME].usCC = htim1.Instance->CCR2;
-	aOsc[VOLUME].usPeriod = aOsc[VOLUME].usCC - aOsc[VOLUME].usLastCC;
+	aOsc[VOLUME].usPeriodRaw = aOsc[VOLUME].usPeriod = aOsc[VOLUME].usCC - aOsc[VOLUME].usLastCC;
 	aOsc[VOLUME].usLastCC = aOsc[VOLUME].usCC;
 
 	// Find the typical frequency of the vol1 oscillator
@@ -970,23 +968,36 @@ void THEREMIN_Task_Capture_Volume(void)
 	if (aOsc[VOLUME].usPeriod != 0)
 	{
 
-		// Accumulate the period values
-		slVolTimPeriodeFiltDiff = 256 * aOsc[VOLUME].usPeriod - aOsc[VOLUME].slOffset;
 
-		// Count the amount of periods
-		aOsc[VOLUME].slPeriodeFilt_cnt ++;
 
-		// Was it a triple period?
-		if (aOsc[VOLUME].usPeriod > 6000)
+		//TODO: Thresholds
+		// Was it a .... period?
+		if (aOsc[VOLUME].usPeriod > 8081)
 		{
-			aOsc[VOLUME].slPeriodeFilt_cnt +=2;
-			slVolTimPeriodeFiltDiff -= 2*aOsc[VOLUME].slOffset;
+			aOsc[VOLUME].touched = 1;
+		} else
+		// Was it a triple period?
+		if (aOsc[VOLUME].usPeriod > 5772)
+		{
+			// Count the amount of periods
+			aOsc[VOLUME].slPeriodeFilt_cnt +=3;
+			// Accumulate the period values
+			slVolTimPeriodeFiltDiff = 256 * aOsc[VOLUME].usPeriod - 3*aOsc[VOLUME].slOffset;
 		}
 		// Was it a double period?
-		else if (aOsc[VOLUME].usPeriod > 4000)
+		else if (aOsc[VOLUME].usPeriod > 3463)
 		{
-			aOsc[VOLUME].slPeriodeFilt_cnt ++;
-			slVolTimPeriodeFiltDiff -= aOsc[VOLUME].slOffset;
+			// Count the amount of periods
+			aOsc[VOLUME].slPeriodeFilt_cnt +=2;
+			// Accumulate the period values
+			slVolTimPeriodeFiltDiff = 256 * aOsc[VOLUME].usPeriod - 2*aOsc[VOLUME].slOffset;
+		}
+		else
+		{
+			// Count the amount of periods
+			aOsc[VOLUME].slPeriodeFilt_cnt +=1;
+			// Accumulate the period values
+			slVolTimPeriodeFiltDiff = 256 * aOsc[VOLUME].usPeriod - aOsc[VOLUME].slOffset;
 		}
 
 		// Use only positive values
@@ -1137,8 +1148,16 @@ void THEREMIN_Task_Calculate_Timbre(void)
  */
 void THEREMIN_Task_Volume(void)
 {
-	// Linearization
-	slVolumeRaw = iVolNumerator / (aOsc[VOLUME].slMeanPeriode + iVolLinFactor) - iVolOffset;
+	if (aOsc[VOLUME].touched)
+	{
+		slVolumeRaw = 0;
+		aOsc[VOLUME].touched = 0;
+	}
+	else
+	{
+		// Linearization
+		slVolumeRaw = iVolNumerator / (aOsc[VOLUME].slMeanPeriode + iVolLinFactor) - iVolOffset;
+	}
 
 	// Limit the volume value
 	if (slVolumeRaw < 0)
@@ -1182,7 +1201,7 @@ void THEREMIN_Task_Timbre(void)
 	}
 
 	// Scale it from 0..256 to 0.0f .. 1.0f
-	fTimbre = (float)slTimbre * 0.00390625f;
+	fTimbre = 1.0f;//(float)slTimbre * 0.00390625f;
 
 	f = ((float)aConfigWorkingSet[CFG_E_ADDSYNTH_2].iVal * 0.001f);
 	fVollAddSynth_2 = f;
@@ -1200,11 +1219,12 @@ void THEREMIN_Task_Timbre(void)
  */
 void THEREMIN_Task_Volume_Nonlin(void)
 {
+
 	if (eAutomuteAutoprehear == AUTOMUTE_MUTE )
 	{
 		slVolume = 0;
 	}
-	else if (eAutomuteAutoprehear == AUTOPREHEAR_LOUD)
+	else if (eAutomuteAutoprehear == AUTOPREHEAR)
 	{
 		slVolume = 100;
 	}
