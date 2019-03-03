@@ -168,7 +168,6 @@ uint32_t ulStopwatch = 0;
 
 /* local functions  ------------------------------------------------------- */
 static void THEREMIN_Calibrate(int osc);
-static void THEREMIN_AutoMute_AutoPrehear(void);
 
 /**
  * @brief Initialize the module
@@ -1138,16 +1137,8 @@ void THEREMIN_Task_Calculate_Timbre(void)
  */
 void THEREMIN_Task_Volume(void)
 {
-
-//	if ((aOsc[VOLUME].slMeanPeriode + aOsc[TIMBRE].slMeanPeriode) > 0)
-//	{
-//		slVolumeRaw = ((aConfigWorkingSet[CFG_E_VOL12_NUMERATOR].iVal) /
-//				(aOsc[VOLUME].slMeanPeriode + aOsc[TIMBRE].slMeanPeriode + aConfigWorkingSet[CFG_E_VOL12_OFFSET_A].iVal))
-//				- aConfigWorkingSet[CFG_E_VOL12_OFFSET_B].iVal;
-//	}
-
-
-	slVolumeRaw = 1023 - (aOsc[VOLUME].slMeanPeriode / 8);
+	// Linearization
+	slVolumeRaw = iVolNumerator / (aOsc[VOLUME].slMeanPeriode + iVolLinFactor) - iVolOffset;
 
 	// Limit the volume value
 	if (slVolumeRaw < 0)

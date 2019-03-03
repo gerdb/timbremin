@@ -39,6 +39,17 @@ int iVolVal_step;		// cm step
 int iVolCal_active = 0;  // Flag if calibration is active
 e_automute_autoprehear eAutomuteAutoprehear = AUTOMUTE_MUTE;
 
+int32_t iVolNumerator = 1;
+int32_t iVolLinFactor = 1;
+int32_t iVolOffset = 0;
+
+int iLast_VOLUME_LOWER = -1;
+int iLast_VOLUME_RANGE = -1;
+int iLast_VOLUME_LINEAR = -1;
+
+/* local function ------------------------------------------------------- */
+static void VOLUME_AutoMute_AutoPrehear(void);
+
 /**
  * @brief Initialize the module
  *
@@ -48,26 +59,41 @@ void VOLUME_Init(void)
 
 }
 
+
 /**
- * @brief 1ms Task
+ * @brief Calculate the constants for volume linearization
  *
  */
-void VOLUME_1msTask(void)
+static void VOLUME_CalcLinearizationConstants(void)
 {
-	// Process auto-mute and auto-prehear functionality
-	VOLUME_AutoMute_AutoPrehear();
-
-	if (iVolCal_active)
+	// Has one value changed? If no, do not calculate the values
+	if (		iLast_VOLUME_LOWER  != aConfigWorkingSet[CFG_E_VOLUME_LOWER].iVal
+			||	iLast_VOLUME_RANGE  != aConfigWorkingSet[CFG_E_VOLUME_RANGE].iVal
+			||	iLast_VOLUME_LINEAR != aConfigWorkingSet[CFG_E_VOLUME_LINEAR].iVal
+		)
 	{
-		VOLUME_CalibrationTask();
+		// The +1 prevents from division by 0 later in theremin.c where these variables are used
+		iVolLinFactor =  8*aConfigWorkingSet[CFG_E_VOLUME_LINEAR].iVal + 1;
+
+		// The +1 prevents from division by 0
+		iVolNumerator = 1024.0f * (200000.0f/(float)(aConfigWorkingSet[CFG_E_VOLUME_RANGE].iVal+1)
+				+ iVolLinFactor);
+
+		iVolOffset = iVolNumerator / (4000000 / aConfigWorkingSet[CFG_E_VOLUME_LOWER].iVal + iVolLinFactor);
+
+
+		iLast_VOLUME_LOWER = aConfigWorkingSet[CFG_E_VOLUME_LOWER].iVal;
+		iLast_VOLUME_RANGE = aConfigWorkingSet[CFG_E_VOLUME_RANGE].iVal;
+		iLast_VOLUME_LINEAR = aConfigWorkingSet[CFG_E_VOLUME_LINEAR].iVal;
 	}
+
 }
 
 /**
  * @brief Auto-mute and auto-prehear functionality
  *
  */
-void VOLUME_AutoMute_AutoPrehear(void)
+static void VOLUME_AutoMute_AutoPrehear(void)
 {
 	if (aConfigWorkingSet[CFG_E_AUTOMUTE].iVal)
 	{
@@ -117,6 +143,24 @@ void VOLUME_AutoMute_AutoPrehear(void)
 	{
 		eAutomuteAutoprehear = AUTOMUTE_LOUD;
 	}
+}
+
+/**
+ * @brief 1ms Task
+ *
+ */
+void VOLUME_1msTask(void)
+{
+	// Process auto-mute and auto-prehear functionality
+	VOLUME_AutoMute_AutoPrehear();
+
+	if (iVolCal_active)
+	{
+		VOLUME_CalibrationTask();
+	}
+
+	VOLUME_CalcLinearizationConstants();
+
 }
 
 

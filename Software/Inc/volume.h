@@ -45,11 +45,14 @@ typedef enum
 
 /* Global variables  ------------------------------------------------------- */
 extern e_automute_autoprehear eAutomuteAutoprehear;
+extern int32_t iVolNumerator;
+extern int32_t iVolLinFactor;
+extern int32_t iVolOffset;
+
 /* Function prototypes ----------------------------------------------------- */
 void VOLUME_Init(void);
 void VOLUME_1msTask(void);
 void VOLUME_CalibrationStart(void);
 void VOLUME_CalibrationTask(void);
-void VOLUME_AutoMute_AutoPrehear(void);
 
 #endif /* VOLUME_H_ */

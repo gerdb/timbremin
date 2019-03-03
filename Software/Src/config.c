@@ -156,6 +156,10 @@ void CONFIG_FillWithDefault(void)
 		aConfigValues[i][CFG_E_REVERB_INTENSITY] = 0;
 		aConfigValues[i][CFG_E_AUTOMUTE] = 1;
 		aConfigValues[i][CFG_E_AUTOPREHEAR] = 1;
+		aConfigValues[i][CFG_E_VOLUME_LOWER] = 200;
+		aConfigValues[i][CFG_E_VOLUME_RANGE] = 500;
+		aConfigValues[i][CFG_E_VOLUME_LINEAR] = 500;
+
 	}
 }
 /**
@@ -307,6 +311,9 @@ CONFIG_eConfigEntry CONFIG_NameToEnum(char* name)
 	if (strcmp(name, "REVERB_INTENSITY") == 0) return CFG_E_REVERB_INTENSITY;
 	if (strcmp(name, "AUTOMUTE") == 0) return CFG_E_AUTOMUTE;
 	if (strcmp(name, "AUTOPREHEAR") == 0) return CFG_E_AUTOPREHEAR;
+	if (strcmp(name, "VOLUME_LOWER") == 0) return CFG_E_VOLUME_LOWER;
+	if (strcmp(name, "VOLUME_RANGE") == 0) return CFG_E_VOLUME_RANGE;
+	if (strcmp(name, "VOLUME_LINEAR") == 0) return CFG_E_VOLUME_LINEAR;
 
 	return CFG_E_NONE;
 }
@@ -352,6 +359,9 @@ char* CONFIG_EnumToName(CONFIG_eConfigEntry enumName)
 	if (enumName == CFG_E_REVERB_INTENSITY) return "REVERB_INTENSITY";
 	if (enumName == CFG_E_AUTOMUTE) return "AUTOMUTE";
 	if (enumName == CFG_E_AUTOPREHEAR) return "AUTOPREHEAR";
+	if (enumName == CFG_E_VOLUME_LOWER) return "VOLUME_LOWER";
+	if (enumName == CFG_E_VOLUME_RANGE) return "VOLUME_RANGE";
+	if (enumName == CFG_E_VOLUME_LINEAR) return "VOLUME_LINEAR";
 
 
 	return "unknown parameter";
