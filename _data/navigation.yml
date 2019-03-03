@@ -24,3 +24,5 @@ docs:
     children:
       - title: "Auto mute"
         url: /auto_mute/
+      - title: "Auto prehear"
+        url: /auto_prehear/
