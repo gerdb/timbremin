@@ -16,5 +16,11 @@ docs:
         url: /housing/
       - title: "Firmware"
         url: /firmware/  
+  - title: Demonstration
+    children:
       - title: "Sound samples"
         url: /soundsamples/         
+  - title: How to use
+    children:
+      - title: "Auto mute"
+        url: /auto_mute/
