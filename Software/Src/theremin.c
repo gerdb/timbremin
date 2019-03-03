@@ -132,7 +132,7 @@ int32_t slThereminOut = 0;
 
 uint32_t ulWaveTableIndex = 0;
 
-e_autoactivate eActive = ACTIVE_OFF;
+
 
 float fWavStepFilt = 0.0f;
 
@@ -166,7 +166,10 @@ extern TIM_HandleTypeDef htim1;	// Handle of timer for input capture
 
 uint32_t ulStopwatch = 0;
 
+/* local functions  ------------------------------------------------------- */
 static void THEREMIN_Calibrate(int osc);
+static void THEREMIN_AutoMute_AutoPrehear(void);
+
 /**
  * @brief Initialize the module
  *
@@ -1301,6 +1304,9 @@ static void THEREMIN_Calibrate(int osc)
 
 }
 
+
+
+
 /**
  * @brief 1ms task
  *
@@ -1453,58 +1459,7 @@ void THEREMIN_1msTask(void)
 		}
 	}
 
-	if (eActive == ACTIVE_OFF)
-	{
-		// Activate it at zero volume and very low pitch frequency
-		// 0.005f / 2*PI * 48kHz = 38Hz
-		if (fPitchFrq > 0.005f  && slVolumeRaw == 0)
-		{
-			eActive = ACTIVE_READY;
-		}
-	}
-	else if (eActive == ACTIVE_READY)
-	{
-		if (fPitchFrq > 0.49f && slVolumeRaw == 0)
-		{
-			eActive = ACTIVE_PREHEAR;
-		}
-		if (fPitchFrq > 0.005f && slVolumeRaw > 0)
-		{
-			eActive = ACTIVE_ON;
-		}
-	}
-	else if (eActive == ACTIVE_ON)
-	{
-		if (fPitchFrq < 0.005f && slVolumeRaw == 0)
-		{
-			eActive = ACTIVE_OFF;
-		}
-	}
-	else if (eActive == ACTIVE_PREHEAR)
-	{
-		if (fPitchFrq > 0.005f && slVolumeRaw > 100)
-		{
-			eActive = ACTIVE_PREHEAR_LOUD;
-		}
-	}
-	else if (eActive == ACTIVE_PREHEAR_LOUD)
-	{
-		if (fPitchFrq > 0.005f && slVolumeRaw == 0)
-		{
-			eActive = ACTIVE_ON;
-		}
-	}
 
-
-	if (iVolCal_active)
-	{
-		VOLUME_CalibrationTask();
-	}
-
-	if (iPitchCal_active)
-	{
-		PITCH_CalibrationTask();
-	}
 
 	// pitch scale configuration
 	if (aConfigWorkingSet[CFG_E_PITCH_SCALE].bHasChanged)

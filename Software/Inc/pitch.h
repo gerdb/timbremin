@@ -32,9 +32,10 @@ typedef struct
 }PITCH_PitchCalibrationType;
 
 /* Global variables  ------------------------------------------------------- */
-extern int iPitchCal_active;  // Flag if calibration is active
+
 /* Function prototypes ----------------------------------------------------- */
 void PITCH_Init(void);
+void PITCH_1msTask(void);
 void PITCH_CalibrationStart(void);
 void PITCH_CalibrationTask(void);
 

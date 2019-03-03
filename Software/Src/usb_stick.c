@@ -100,12 +100,11 @@ void USB_STICK_WriteVolCalFile(char* filename, VOLUME_VolCalibrationType aCalibr
 		if (f_open(&USBHFile, filename, FA_WRITE) == FR_OK)
 		{
 			f_printf(&USBHFile,"Result volume antenna calibration:\n");
-			f_printf(&USBHFile,"VOL1;VOL2;cm\n");
+			f_printf(&USBHFile,"VOLUME;cm\n");
 			for (int i=0; i<= 20; i++)
 			{
-				f_printf(&USBHFile,"%d;%d;%d\n",
-						aCalibrationEntries[i].vol1,
-						aCalibrationEntries[i].vol2,
+				f_printf(&USBHFile,"%d;%d\n",
+						aCalibrationEntries[i].value,
 						aCalibrationEntries[i].cm);
 			}
 	        f_close(&USBHFile);

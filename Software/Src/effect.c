@@ -31,6 +31,7 @@
 #include "theremin.h"
 #include "effect.h"
 #include "config.h"
+#include "volume.h"
 
 /* local variables  ------------------------------------------------------- */
 

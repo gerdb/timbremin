@@ -47,6 +47,18 @@ void PITCH_Init(void)
 }
 
 /**
+ * @brief 1ms Task
+ *
+ */
+void PITCH_1msTask(void)
+{
+	if (iPitchCal_active)
+	{
+		PITCH_CalibrationTask();
+	}
+}
+
+/**
  * @brief Starts a new calibration sequence
  *
  */

@@ -28,6 +28,7 @@
 #include "audio_out.h"
 #include "volume.h"
 #include "usb_stick.h"
+#include "config.h"
 
 /* global variables  ------------------------------------------------------- */
 VOLUME_VolCalibrationType aCalibrationEntries[20+1]; // Array containing calibration values for each cm
@@ -36,6 +37,7 @@ VOLUME_VolCalibrationType aCalibrationEntries[20+1]; // Array containing calibra
 int iVolCal_delay;	// Delay timer between each cm steps
 int iVolVal_step;		// cm step
 int iVolCal_active = 0;  // Flag if calibration is active
+e_autoactivate eActive = ACTIVE_OFF;
 
 /**
  * @brief Initialize the module
@@ -45,6 +47,78 @@ void VOLUME_Init(void)
 {
 
 }
+
+/**
+ * @brief 1ms Task
+ *
+ */
+void VOLUME_1msTask(void)
+{
+	// Process auto-mute and auto-prehear functionality
+	VOLUME_AutoMute_AutoPrehear();
+
+	if (iVolCal_active)
+	{
+		VOLUME_CalibrationTask();
+	}
+}
+
+/**
+ * @brief Auto-mute and auto-prehear functionality
+ *
+ */
+void VOLUME_AutoMute_AutoPrehear(void)
+{
+	if (aConfigWorkingSet[CFG_E_AUTOMUTE].iVal)
+	{
+		if (eActive == ACTIVE_OFF)
+		{
+			// Activate it at zero volume and very low pitch frequency
+			// 0.005f / 2*PI * 48kHz = 38Hz
+			if (fPitchFrq > 0.005f  && slVolumeRaw == 0)
+			{
+				eActive = ACTIVE_READY;
+			}
+		}
+		else if (eActive == ACTIVE_READY)
+		{
+			if (fPitchFrq > 0.49f && slVolumeRaw == 0 && aConfigWorkingSet[CFG_E_AUTOPREHEAR].iVal)
+			{
+				eActive = ACTIVE_PREHEAR;
+			}
+			if (fPitchFrq > 0.005f && slVolumeRaw > 0)
+			{
+				eActive = ACTIVE_ON;
+			}
+		}
+		else if (eActive == ACTIVE_ON)
+		{
+			if (fPitchFrq < 0.005f && slVolumeRaw == 0)
+			{
+				eActive = ACTIVE_OFF;
+			}
+		}
+		else if (eActive == ACTIVE_PREHEAR)
+		{
+			if (fPitchFrq > 0.005f && slVolumeRaw > 100)
+			{
+				eActive = ACTIVE_PREHEAR_LOUD;
+			}
+		}
+		else if (eActive == ACTIVE_PREHEAR_LOUD)
+		{
+			if (fPitchFrq > 0.005f && slVolumeRaw == 0)
+			{
+				eActive = ACTIVE_ON;
+			}
+		}
+	}
+	else
+	{
+		eActive = ACTIVE_ON;
+	}
+}
+
 
 /**
  * @brief Starts a new calibration sequence
@@ -79,8 +153,7 @@ void VOLUME_CalibrationTask(void)
 		if (iVolVal_step >= 0)
 		{
 			aCalibrationEntries[iVolVal_step].cm = iVolVal_step;
-			aCalibrationEntries[iVolVal_step].vol1 = aOsc[VOLUME].slMeanPeriode;
-			aCalibrationEntries[iVolVal_step].vol2 = aOsc[TIMBRE].slMeanPeriode;
+			aCalibrationEntries[iVolVal_step].value = aOsc[VOLUME].slMeanPeriode;
 		}
 		iVolVal_step--;
 

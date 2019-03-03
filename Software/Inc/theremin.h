@@ -54,15 +54,6 @@ typedef enum
 	CALIB_TIMBRE_FINISHED
 }e_calibration;
 
-// for auto activate theremin
-typedef enum
-{
-	ACTIVE_OFF,
-	ACTIVE_READY,
-	ACTIVE_ON,
-	ACTIVE_PREHEAR,
-	ACTIVE_PREHEAR_LOUD
-}e_autoactivate;
 
 // Structure with oscillator calibration data
 typedef struct
@@ -98,11 +89,12 @@ typedef struct
 /* Global variables  ------------------------------------------------------- */
 extern int16_t ssWaveTable[4 * 1024];
 extern int32_t slThereminOut;	// Output sound from theremin into reverb
+extern int32_t slVolumeRaw;
+extern float fPitchFrq;
 
 // global variables for debug output
 extern s_osc aOsc[3];
 extern uint32_t ulStopwatch;		// Stopwatch
-extern e_autoactivate eActive;
 /* Function prototypes ----------------------------------------------------- */
 void THEREMIN_Init(void);
 void THEREMIN_96kHzDACTask_A(void);

@@ -154,6 +154,8 @@ void CONFIG_FillWithDefault(void)
 		aConfigValues[i][CFG_E_REVERB_ROOMSIZE] = 500;
 		aConfigValues[i][CFG_E_REVERB_DAMPING] = 500;
 		aConfigValues[i][CFG_E_REVERB_INTENSITY] = 0;
+		aConfigValues[i][CFG_E_AUTOMUTE] = 1;
+		aConfigValues[i][CFG_E_AUTOPREHEAR] = 1;
 	}
 }
 /**
@@ -303,6 +305,8 @@ CONFIG_eConfigEntry CONFIG_NameToEnum(char* name)
 	if (strcmp(name, "REVERB_ROOMSIZE") == 0) return CFG_E_REVERB_ROOMSIZE;
 	if (strcmp(name, "REVERB_DAMPING") == 0) return CFG_E_REVERB_DAMPING;
 	if (strcmp(name, "REVERB_INTENSITY") == 0) return CFG_E_REVERB_INTENSITY;
+	if (strcmp(name, "AUTOMUTE") == 0) return CFG_E_AUTOMUTE;
+	if (strcmp(name, "AUTOPREHEAR") == 0) return CFG_E_AUTOPREHEAR;
 
 	return CFG_E_NONE;
 }
@@ -346,6 +350,9 @@ char* CONFIG_EnumToName(CONFIG_eConfigEntry enumName)
 	if (enumName == CFG_E_REVERB_ROOMSIZE) return "REVERB_ROOMSIZE";
 	if (enumName == CFG_E_REVERB_DAMPING) return "REVERB_DAMPING";
 	if (enumName == CFG_E_REVERB_INTENSITY) return "REVERB_INTENSITY";
+	if (enumName == CFG_E_AUTOMUTE) return "AUTOMUTE";
+	if (enumName == CFG_E_AUTOPREHEAR) return "AUTOPREHEAR";
+
 
 	return "unknown parameter";
 }

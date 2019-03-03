@@ -27,17 +27,29 @@
 /* Types  ------------------------------------------------------- */
 typedef struct
 {
-	int32_t vol1;
-	int32_t vol2;
+	int32_t value;
 	int cm;
 }VOLUME_VolCalibrationType;
 
+
+// for auto activate theremin
+typedef enum
+{
+	ACTIVE_OFF,
+	ACTIVE_READY,
+	ACTIVE_ON,
+	ACTIVE_PREHEAR,
+	ACTIVE_PREHEAR_LOUD
+}e_autoactivate;
+
+
 /* Global variables  ------------------------------------------------------- */
-extern int iVolCal_active;  // Flag if calibration is active
+extern e_autoactivate eActive;
 /* Function prototypes ----------------------------------------------------- */
 void VOLUME_Init(void);
+void VOLUME_1msTask(void);
 void VOLUME_CalibrationStart(void);
 void VOLUME_CalibrationTask(void);
-
+void VOLUME_AutoMute_AutoPrehear(void);
 
 #endif /* VOLUME_H_ */

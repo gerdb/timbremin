@@ -60,6 +60,7 @@
 #include "config.h"
 #include "beep.h"
 #include "volume.h"
+#include "pitch.h"
 #include "effect.h"
 #include "printf.h"
 #include "console.h"
@@ -180,6 +181,8 @@ int main(void)
 	{
 		siFlag1ms = 0;
 	    THEREMIN_1msTask();
+	    VOLUME_1msTask();
+	    PITCH_1msTask();
 	    POTS_1msTask();
 	    AUDIO_OUT_1msTask();
 	    CONSOLE_1msTask();
