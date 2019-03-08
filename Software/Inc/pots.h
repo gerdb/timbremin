@@ -28,7 +28,7 @@
 #include "config.h"
 #define ADC_CHANNELS 9
 #define POT_STAB_THERESHOLD 40
-#define POT_STAB_TIME 10
+#define POT_STAB_TIME 100
 #define AMOUNT_POTS ADC_CHANNELS
 
 
@@ -47,7 +47,6 @@ typedef struct
   uint16_t	usStabilized;
   int   	iStabilizeCnt;
   int		bChanged;
-  int   	iMaxValue;
   int   	iScaledValue;
   int   	iScaledValueOld;
   CONFIG_eConfigEntry eConfigEntry;

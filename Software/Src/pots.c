@@ -70,7 +70,6 @@ void POTS_Init(void)
 		strPots[i].usStabilized = 0;
 		strPots[i].iStabilizeCnt = 0;
 		strPots[i].bChanged = 1;
-		strPots[i].iMaxValue = 1000;
 		strPots[i].iScaledValue = 0;
 		strPots[i].iScaledValueOld = 0;
 		strPots[i].eConfigEntry = CFG_E_NONE;
@@ -82,6 +81,21 @@ void POTS_Init(void)
 	CONFIG_Assign_All_Pots();
 }
 
+static void POTS_Scale(int i)
+{
+	// Scale the pot value
+	int iVal = (strPots[i].usStabilized * 1100) / 4096 - 50;
+	if (iVal<0)
+	{
+		iVal = 0;
+	}
+	if (iVal>1000)
+	{
+		iVal = 1000;
+	}
+
+	strPots[i].iScaledValue = iVal;
+}
 
 /**
  * @brief 1ms Task
@@ -118,8 +132,9 @@ void POTS_1msTask(void)
 				strPots[i].usStabilized = strPots[i].usRawVal;
 			}
 
-			// Scale the pot value
-			strPots[i].iScaledValue = (strPots[i].usStabilized * strPots[i].iMaxValue) / 4096;
+
+			POTS_Scale(i);
+
 			// Has the scaled value changed?
 			if ((strPots[i].iScaledValue != strPots[i].iScaledValueOld) && strPots[i].iStabilizeCnt != 0)
 			{
@@ -163,8 +178,7 @@ void POTS_Assign(int pot, CONFIG_eConfigEntry configurationEntry)
 	if (pot >= 0 && pot <ADC_CHANNELS)
 	{
 		strPots[pot].eConfigEntry = configurationEntry;
-		strPots[pot].iMaxValue = aConfigWorkingSet[configurationEntry].iMaxVal;
-		strPots[pot].iScaledValue = (strPots[pot].usStabilized * strPots[pot].iMaxValue) / 4096;
+		POTS_Scale(pot);
 		strPots[pot].bChanged = 1;
 	}
 }

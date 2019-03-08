@@ -44,7 +44,6 @@
 typedef struct
 {
 	int32_t iVal;
-	int32_t	iMaxVal;
 	int32_t	iFactor;
 	int bHasChanged;
 	int bIsGlobal;

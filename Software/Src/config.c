@@ -75,7 +75,6 @@ void CONFIG_Init(void)
 	for (int i=0;i<CFG_E_ENTRIES; i++)
 	{
 		aConfigWorkingSet[i].bHasChanged = 1;
-		aConfigWorkingSet[i].iMaxVal = 1000;
 		aConfigWorkingSet[i].iVal = 0;
 		aConfigWorkingSet[i].iFactor = 1;
 		aConfigWorkingSet[i].bIsGlobal = 0;
