@@ -23,6 +23,7 @@
 
 #include "../Drivers/BSP/STM32F4-Discovery/stm32f4_discovery.h"
 #include "stm32f4xx_hal.h"
+#include "project.h"
 #include "audio_out.h"
 #include "theremin.h"
 #include "display.h"
@@ -76,12 +77,17 @@ float fOscCorr = 1.0f;
 float fFrqCorr = 0.0f;
 float fFrq = 0.0f;
 float fOscOut = 0.0f;
+float fOscOutMin = 0.0f;
+float fOscOutMax = 0.0f;
+float fOscOutOffset = 0.0f;
+float fOscOutScale = 0.0f;
+float fOscOutOffsetFilt = 0.0f;
+float fOscOutScaleFilt = 0.0f;
+
+float fOscMix = 0.0f;
 float fOscPhase = 0.0f;
-float fOscRectanglePhase = 3.141592654f;
 float fOscSaw = 0.0f;
-float fOscRect = 0.0f;
 float fBlep = 0.0f;
-float fOscRectSaw = 0.0f;
 
 float fOscHp1 = 0.0f;
 float fOscLP1 = 0.0f;
@@ -517,6 +523,7 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	}
 
 
+
 	// ************* Sine oscillator *************
 	//
 	// Sine oscillator, phase in synch with sawtooth
@@ -534,458 +541,74 @@ inline void THEREMIN_96kHzDACTask_A(void)
 	fOscSin3 = 2.0f * fOscSin2 * fOscCos - fOscSin;
 	fOscSin4 = 2.0f * fOscSin3 * fOscCos - fOscSin2;
 
+	STOPWATCH_START();
 
-	/*
-	fOscSin2 += fFrq * fOscCos2;
-	fOscCos2 -= fFrq * fOscSin2;
-	fOscSin2 += fFrq * fOscCos2;
-	fOscCos2 -= fFrq * fOscSin2;
-	fOscSin2 += fFrq * fOscCos2;
-	fOscCos2 -= fFrq * fOscSin2;
-	fOscSin2 += fFrq * fOscCos2;
-	fOscCos2 -= fFrq * fOscSin2;
-	fOscCorr2 = 1.0f +((1.0f - (fOscSin2 * fOscSin2 + fOscCos2 * fOscCos2))*0.01f);
-	fOscCos2 *= fOscCorr2;
-	fOscSin2 *= fOscCorr2;
-	*/
-	// TIME
+	fBlep = THEREMIN_PolyBLEP(fOscPhase  * 0.159154943f, fPitchFrq * 0.159154943f);
+	// ************* PolyBLEP Sawtooth oscillator *************
+	//
+	// See http://metafunction.co.uk/all-about-digital-oscillators-part-2-blits-bleps/
+	// See http://www.martin-finke.de/blog/articles/audio-plugins-018-polyblep-oscillator/
+	fOscSaw = fOscPhase * -0.318309886f + 1.0f;
+	fOscSaw += fBlep;
+    STOPWATCH_STOP();
 
-	if (1)
+
+	// Phase increment for rectangle and sawtooth oscillator
+	fOscPhase += fPitchFrq;
+    if (fOscPhase >= 6.283185307f)
+    {
+    	fOscPhase -= 6.283185307f;
+    	fFrqCorr = -(fOscSin - fOscPhase) * 0.159154943f * 0.1f * fPitchFrq;
+
+        fOscOutOffset = (fOscOutMax + fOscOutMin) / 2;
+        if (fOscOutMax > fOscOutMin + 0.1f)
+        {
+            fOscOutScale = 30.0f / (fOscOutMax - fOscOutMin);
+        }
+        fOscOutMin = 0.0f;
+        fOscOutMax = 0.0f;
+    }
+
+
+    fOscMix = fAddSynth_1 * fOscSin
+    		+ fAddSynth_2 * fOscSin2
+    		+ fAddSynth_3 * fOscSin3
+    		+ fAddSynth_4 * fOscSin4
+    		+ fAddSynth_5 * fOscSin5
+			+ fRichness * fOscSaw ;
+
+
+    fFrq1 = ((1.0f * 10.0f) + 0.5f) * fPitchFrq; //0.2f;//fPitchFrq;
+    fFrq2 = ((fAddSynth_4 * 4.0f)) * fPitchFrq;
+	if (fFrq1 > 1.0f)
 	{
-		STOPWATCH_START();
-
-		fBlep = THEREMIN_PolyBLEP(fOscPhase  * 0.159154943f, fPitchFrq * 0.159154943f);
-		// ************* PolyBLEP Sawtooth oscillator *************
-		//
-		// See http://metafunction.co.uk/all-about-digital-oscillators-part-2-blits-bleps/
-		// See http://www.martin-finke.de/blog/articles/audio-plugins-018-polyblep-oscillator/
-		fOscSaw = fOscPhase * -0.318309886f + 1.0f;
-		fOscSaw += fBlep;
-	    STOPWATCH_STOP();
-
-
-
-		// Increase the fundamental
-		// TIME: 24
-	    /*
-	    fSVF1LP = fSVF1z2 + fPitchFrq * fSVF1z1;
-	    fSVF1z2 = fSVF1LP;
-	    fSVF1HP = fOscSaw - fBlep - 0.03125f * fSVF1z1 - fSVF1LP;
-	    fSVF1z1 = fSVF1z1 + fPitchFrq * fSVF1HP;
-
-	    fSVF2LP = fSVF2z2 + fPitchFrq * fSVF2z1 * 2.0f;
-	    fSVF2z2 = fSVF2LP;
-	    fSVF2HP = fOscSaw  - fBlep - 0.03125f * fSVF2z1 - fSVF2LP;
-	    fSVF2z1 = fSVF2z1 + fPitchFrq * fSVF2HP  * 2.0f;
-	    */
-		// TIME
-	    //fOscSaw -= 3.141592654f;
-
-	    //fOscSaw = 2.5f*(fOscSaw * fOscSaw* fOscSaw - fOscSaw);// * 0.318309886f;// * 0.318309886f- fOscSaw;
-
-	    //fOscRectanglePhase = fAddSynth_5 * 6.2f;
-	    fOscRectanglePhase = (fPitchFrq + 0.02f) * 8.0f;
-	    //fOscRectanglePhase = 0.2f * 6.2f;
-		// ************* PolyBLEP rectangle oscillator *************
-		//
-		// See http://metafunction.co.uk/all-about-digital-oscillators-part-2-blits-bleps/
-		// See http://www.martin-finke.de/blog/articles/audio-plugins-018-polyblep-oscillator/
-	    if (fOscPhase < fOscRectanglePhase)
-	    {
-	    	fOscRect = 1.0f;
-	    }
-	    else
-	    {
-	    	fOscRect = -1.0f;
-	    }
-	    fOscRect += fBlep;
-	    fOscRect -= THEREMIN_PolyBLEP((fOscPhase - fOscRectanglePhase /*- 6.283185307f*/)  * 0.159154943f , fPitchFrq * 0.159154943f);
-
-
-	    //poly_blep(fmod(t + 0.5, 1.0)); // Layer output of Poly BLEP on top (flop)
-
-
-		// Phase increment for rectangle and sawtooth oscillator
-		fOscPhase += fPitchFrq;
-	    if (fOscPhase >= 6.283185307f)
-	    {
-	    	fOscPhase -= 6.283185307f;
-	    	fFrqCorr = -(fOscSin - fOscPhase) * 0.159154943f * 0.1f * fPitchFrq;
-	    }
-
-	    //fOscRectSaw = fAddSynth_2 * fOscRect + (1.0f-fAddSynth_2) * fOscSaw;
-
-/*
-	    fFrq1 = 4.0*fPitchFrq;
-		if (fFrq1 > 1.0f)
-		{
-			fFrq1 = 1.0f;
-		}
-
-	    fSVF1LP = fSVF1z2 + fFrq1 * fSVF1z1;
-	    fSVF1z2 = fSVF1LP;
-	    fSVF1HP = fOscRectSaw - 1.41f * fSVF1z1 - fSVF1LP;
-	    fSVF1z1 = fSVF1z1 + fFrq1 * fSVF1HP;
-
-	    fSVF2LP = fSVF2z2 + fFrq1 * fSVF2z1;
-	    fSVF2z2 = fSVF2LP;
-	    fSVF2HP = fSVF1HP - 1.41f * fSVF2z1 - fSVF2LP;
-	    fSVF2z1 = fSVF2z1 + fFrq1 * fSVF2HP;
-*/
-//	    fOscOut =   fVollAddSynth_3 * fSVF1LP * 0.4f
-//				 + (1.0f-fVollAddSynth_3) * (fVollAddSynth_2 * fOscRect + (1.0f-fVollAddSynth_2) * fOscSaw);
-//	    fOscOut =   fVollAddSynth_3 * fSVF1z1 * 0.05f
-//				 + (1.0f-fVollAddSynth_3) * fSVF2z1 * 0.09f;
-//	    fOscOut =   fAddSynth_3 * 0.25f *(fOscSin +fOscSin2 +fOscSin3 + fOscSin4 ) //(fSVF1z1 * 0.05f * 0.5f + fSVF2z1 * 0.09f * 0.5f)
-//	        		 + (1.0f-fAddSynth_3) * fTimbre * fOscRectSaw ;
-
-	    fOscOut = fAddSynth_1 * fOscSin
-	    		+ fAddSynth_2 * fOscSin2
-	    		+ fAddSynth_3 * fOscSin3
-	    		+ fAddSynth_4 * fOscSin4
-	    		+ fAddSynth_5 * fOscSin5
-				+ fRichness * fOscSaw ;
-
-	    /*
-	    fFrq1 = ((1.0f * 10.0f) + 0.5f) * fPitchFrq; //0.2f;//fPitchFrq;
-	    fFrq2 = ((fAddSynth_4 * 4.0f)) * fPitchFrq;
-		if (fFrq1 > 1.0f)
-		{
-			fFrq1 = 1.0f;
-		}
-		if (fFrq2 > 1.0f)
-		{
-			fFrq2 = 1.0f;
-		}
-	    fSVF3LP = fSVF3z2 + 0.3f * fSVF3z1 ;
-	    fSVF3z2 = fSVF3LP;
-	    fSVF3HP = fOscOut - 1.0f * fSVF3z1 - fSVF3LP;
-	    fSVF3z1 = fSVF3z1 + 0.3f * fSVF3HP;
-
-	    fSVF4LP = fSVF4z2 + fFrq2 * fSVF4z1 ;
-	    fSVF4z2 = fSVF4LP;
-	    fSVF4HP = fSVF3LP - 1.0f * fSVF4z1 - fSVF4LP;
-	    fSVF4z1 = fSVF4z1 + fFrq2 * fSVF4HP;
-
-	    fSVF5LP = fSVF5z2 + fFrq1 * fSVF5z1 ;
-	    fSVF5z2 = fSVF5LP;
-	    fSVF5HP = fSVF4HP - 0.3f * fSVF5z1 - fSVF5LP;
-	    fSVF5z1 = fSVF5z1 + fFrq1 * fSVF5HP;
-	    */
-
-	    //fOscLP1 += (fOscOut - fOscLP1) * fPitchFrq;
-	    //fFrq1 = (fVollAddSynth_5 * 4.0f) * fPitchFrq;
-	   /* fFrq2 = (fAddSynth_4 * 0.5f ) + 0.002f;
-	    if (fFrq1 > 1.0f)
-	    {
-	    	fFrq1 = 1.0f;
-	    }
-	    if (fFrq2 > 1.0f)
-	    {
-	    	fFrq2 = 1.0f;
-	    }*/
-	    /*f = 1.0f;
-	    fOscLP1 += (fOscOut - fOscLP1) * f; //fPitchFrq;
-	    fOscLP2 += (fOscLP1 - fOscLP2) * f; //fPitchFrq;
-	    fOscLP3 += (fOscLP2 - fOscLP3) * f; //fPitchFrq;
-	    //fOscLP2 = fOscLP1;
-
-	    fOscLP3 += (fOscOut - fOscLP3) * (0.5f); //fPitchFrq;
-	    fOscLP4 += (fOscLP3 - fOscLP4) * (0.25f); //fPitchFrq;
-*/
-	    /*
-	    fSVF3LP = fSVF3z2 + fFrq1 * fSVF3z1 ;
-	    fSVF3z2 = fSVF3LP;
-	    fSVF3HP = fOscOut - 1.0f * fSVF3z1 - fSVF3LP;
-	    fSVF3z1 = fSVF3z1 + fFrq1 * fSVF3HP;
-
-	    fSVF4LP = fSVF4z2 + fFrq1 * fSVF4z1 ;
-	    fSVF4z2 = fSVF4LP;
-	    fSVF4HP = fSVF3HP - 1.0f * fSVF4z1 - fSVF4LP;
-	    fSVF4z1 = fSVF4z1 + fFrq1 * fSVF4HP;
-*/
-	    /*
-	    fSVF3LP = fSVF3z2 + fFrq1 * fSVF3z1 ;
-	    fSVF3z2 = fSVF3LP;
-	    fSVF3HP = fOscLP4 - fFrq2 * fSVF3z1 - fSVF3LP;
-	    fSVF3z1 = fSVF3z1 + fFrq1 * fSVF3HP;
-
-
-	    fSVF4LP = fSVF4z2 + fFrq1 * fSVF4z1 ;
-	    fSVF4z2 = fSVF4LP;
-	    fSVF4HP = fSVF3HP - 0.5f * fSVF4z1 - fSVF4LP;
-	    fSVF4z1 = fSVF4z1 + fFrq1 * fSVF4HP;
-
-	    fSVF5LP = fSVF5z2 + fFrq2 * fSVF5z1 ;
-	    fSVF5z2 = fSVF5LP;
-	    fSVF5HP = fSVF4HP - 0.5f * fSVF5z1 - fSVF5LP;
-	    fSVF5z1 = fSVF5z1 + fFrq2 * fSVF5HP;
-
-	    fSVF6LP = fSVF6z2 + fFrq2 * fSVF6z1 ;
-	    fSVF6z2 = fSVF6LP;
-	    fSVF6HP = fSVF5LP - 0.5f * fSVF6z1 - fSVF6LP;
-	    fSVF6z1 = fSVF6z1 + fFrq2 * fSVF6HP;
-
-
-	    fOscFilt5 = fSVF3z1 * 0.2f; //fSVF4z1 *0.5f + fSVF3BR * 0.5f;
-	    */
-	    fOscFilt5 = fOscOut;
+		fFrq1 = 1.0f;
 	}
-	else
-	{
-		fOscFilt5 = fOscSin;
-	}
-
-    fOscHp1 += (fOscFilt5 - fOscHp1) * 0.00390625f; // 30Hz HighPass
-    //fOscOut = fOscFilt5-fOscHp1;
-
-
-    //fOscOut = fSVF1LP * 1.0f;  //fOscOut = fOscSin;
-/*
-	fOscOut = 0.0f;
-	if (fOscSin > 0.0f)
-	{
-		if (fOscCos < fVollAddSynth_3 && fOscCos > -fVollAddSynth_3)
-		{
-			if (fOscCos >= 0.0f)
-			{
-				fOscOut = fVollAddSynth_3 - fOscCos;
-			}
-			else
-			{
-				fOscOut = fVollAddSynth_3 + fOscCos;
-			}
-		}
-	}
-
-	float fOscDamp = 0.025f / fPitchFrq ;
-	if (fOscDamp > 1.0f)
-	{
-		fOscDamp = 1.0f;
-	}
-
-	fOscOut *= fVollAddSynth_2 * fOscDamp;
-	fOscOut += fOscSin * (1.0f - fVollAddSynth_2);
-*/
-
-	/*
-
-	fOscSin2 += fPitchFrq2 * fOscCos2;
-	fOscCos2 -= fPitchFrq2 * fOscSin2;
-	fOscSin2 += fPitchFrq2 * fOscCos2;
-	fOscCos2 -= fPitchFrq2 * fOscSin2;
-	fOscSin2 += fPitchFrq2 * fOscCos2;
-	fOscCos2 -= fPitchFrq2 * fOscSin2;
-	fOscSin2 += fPitchFrq2 * fOscCos2;
-	fOscCos2 -= fPitchFrq2 * fOscSin2;
-	fOscCorr2 = 1.0f +((1.0f - (fOscSin2 * fOscSin2 + fOscCos2 * fOscCos2))*0.01f);
-	fOscCos2 *= fOscCorr2;
-	fOscSin2 *= fOscCorr2;
-
-	fOscSin3 += fPitchFrq * fOscCos3;
-	fOscCos3 -= fPitchFrq * fOscSin3;
-	fOscSin3 += fPitchFrq * fOscCos3;
-	fOscCos3 -= fPitchFrq * fOscSin3;
-	fOscSin3 += fPitchFrq * fOscCos3;
-	fOscCos3 -= fPitchFrq * fOscSin3;
-	fOscSin3 += fPitchFrq * fOscCos3;
-	fOscCos3 -= fPitchFrq * fOscSin3;
-	fOscSin3 += fPitchFrq * fOscCos3;
-	fOscCos3 -= fPitchFrq * fOscSin3;
-	fOscSin3 += fPitchFrq * fOscCos3;
-	fOscCos3 -= fPitchFrq * fOscSin3;
-	fOscCorr3 = 1.0f +((1.0f - (fOscSin3 * fOscSin3 + fOscCos3 * fOscCos3))*0.01f);
-	fOscCos3 *= fOscCorr3;
-	fOscSin3 *= fOscCorr3;
-
-
-	fOscSin4 += fPitchFrq * fOscCos4;
-	fOscCos4 -= fPitchFrq * fOscSin4;
-	fOscSin4 += fPitchFrq * fOscCos4;
-	fOscCos4 -= fPitchFrq * fOscSin4;
-	fOscSin4 += fPitchFrq * fOscCos4;
-	fOscCos4 -= fPitchFrq * fOscSin4;
-	fOscSin4 += fPitchFrq * fOscCos4;
-	fOscCos4 -= fPitchFrq * fOscSin4;
-	fOscSin4 += fPitchFrq * fOscCos4;
-	fOscCos4 -= fPitchFrq * fOscSin4;
-	fOscSin4 += fPitchFrq * fOscCos4;
-	fOscCos4 -= fPitchFrq * fOscSin4;
-	fOscSin4 += fPitchFrq * fOscCos4;
-	fOscCos4 -= fPitchFrq * fOscSin4;
-	fOscSin4 += fPitchFrq * fOscCos4;
-	fOscCos4 -= fPitchFrq * fOscSin4;
-	fOscCorr4 = 1.0f +((1.0f - (fOscSin4 * fOscSin4 + fOscCos4 * fOscCos4))*0.01f);
-	fOscCos4 *= fOscCorr4;
-	fOscSin4 *= fOscCorr4;
-
-	fOscSin5 += fPitchFrq * fOscCos5;
-	fOscCos5 -= fPitchFrq * fOscSin5;
-	fOscSin5 += fPitchFrq * fOscCos5;
-	fOscCos5 -= fPitchFrq * fOscSin5;
-	fOscSin5 += fPitchFrq * fOscCos5;
-	fOscCos5 -= fPitchFrq * fOscSin5;
-	fOscSin5 += fPitchFrq * fOscCos5;
-	fOscCos5 -= fPitchFrq * fOscSin5;
-	fOscSin5 += fPitchFrq * fOscCos5;
-	fOscCos5 -= fPitchFrq * fOscSin5;
-	fOscSin5 += fPitchFrq * fOscCos5;
-	fOscCos5 -= fPitchFrq * fOscSin5;
-	fOscSin5 += fPitchFrq * fOscCos5;
-	fOscCos5 -= fPitchFrq * fOscSin5;
-	fOscSin5 += fPitchFrq * fOscCos5;
-	fOscCos5 -= fPitchFrq * fOscSin5;
-	fOscSin5 += fPitchFrq * fOscCos5;
-	fOscCos5 -= fPitchFrq * fOscSin5;
-	fOscSin5 += fPitchFrq * fOscCos5;
-	fOscCos5 -= fPitchFrq * fOscSin5;
-	fOscCorr5 = 1.0f +((1.0f - (fOscSin5 * fOscSin5 + fOscCos5 * fOscCos5))*0.01f);
-	fOscCos5 *= fOscCorr5;
-	fOscSin5 *= fOscCorr5;
-*/
-	/*
-	if (fOscSin > 1.0f)
-	{
-		fOscSin = 1.0f;
-	}
-	if (fOscSin < -1.0f)
-	{
-		fOscSin = -1.0f;
-	}*/
-/*
-	fOscSin5 = (fOscSin + 0.5f) *4.0f;
-	if (fOscSin5 > 0.6f)
-	{
-		fOscSin5 = 0.6f;
-	}
-	if (fOscSin5 < -0.6f)
-	{
-		fOscSin5 = -0.6f;
-	}
-*/
-	//ssResult = (fOscSin  * 30.0f /*+ fOscSin2 * 10.0f - fOscSin3 * 5.0f*/) * (float)slVolFilt;
-/*
-	slResult = ((fOscSin + 0.8f) * 8.0* 30.0f) * (float)slVolFilt;
-	if (slResult>20000)
-	{
-		ssResult = 20000;
-	}
-	else if (slResult<-20000)
-	{
-		ssResult = -20000;
-	}
-	else
-	{
-		ssResult = slResult;
-
-	}
-*/
-	/*
-	ssResult = (fOscSin * 30000.0f);
-	if (ssResult > (slVolFilt * 32) )
-	{
-		ssResult = (slVolFilt * 32) ;
-	}
-	if (ssResult < ( - slVolFilt * 32) )
-	{
-		ssResult = ( - slVolFilt * 32) ;
-	}
-*/
-	/*
-	f = (float)slVolFilt;
-	f = f * f * 0.000976562f;
-	fVollAddSynth_l2 = fVollAddSynth_2 * f;
-	fVollAddSynth_l3 = fVollAddSynth_3 * f;
-	fVollAddSynth_l4 = fVollAddSynth_4 * f;
-	fVollAddSynth_l5 = fVollAddSynth_5 * f;
-	*/
-	/*
-	fVollAddSynth_l2 = fVollAddSynth_2 * (f-300.0f);
-	fVollAddSynth_l3 = fVollAddSynth_3 * (f-300.0f);
-	fVollAddSynth_l4 = fVollAddSynth_4 * (f-300.0f);
-	fVollAddSynth_l5 = fVollAddSynth_5 * (f-300.0f);
-	if (fVollAddSynth_l2<0.0f ) fVollAddSynth_l2 = 0.0f;
-	if (fVollAddSynth_l3<0.0f ) fVollAddSynth_l3 = 0.0f;
-	if (fVollAddSynth_l4<0.0f ) fVollAddSynth_l4 = 0.0f;
-	if (fVollAddSynth_l5<0.0f ) fVollAddSynth_l5 = 0.0f;*/
-
-/*
-	if (ssResult < 0)
-	{
-		ssResult *= -1;
-	}*/
-
-	/*ssResult =
-			 - fOscSin2 * fVollAddSynth_l2 * 12.0f +
-			fOscSin3 * fVollAddSynth_l3 * 20.0f +
-			fOscSin4 * fVollAddSynth_l4 * 20.0f +
-			fOscSin5 * fVollAddSynth_l5 * 20.0f +
-
-			fOscSin * 20.0f * (float)slVolFilt;*/
-/*
-	if (fOscOut < (fAddSynth_4 * 2.0f- 1.0f))
-	{
-		fOscOut = (fVollAddSynth_4 * 2.0f- 1.0f);
-	}
-*/
-
-
-	slThereminOut = fOscOut * 32.0f * (float)slVolFilt;
-
-	/*if (ssResult < 0)
-	{
-		ssResult *= -1;
-	}*/
-
-/*
-	fFiltLP1 += (fResult1 - fFiltLP1) * 0.1f; // fPitchFrq1 * 2.0f;
-	fFiltLP2 += (fFiltLP1 - fFiltLP2) * 0.1f; // fPitchFrq1 * 2.0f;
-	ssResult = fFiltLP2;
-*/
-	//ssResult += (fOscSin2 * 15.0f - fOscSin3 * 15.0f) * (float)slVolFilt;
-	//ssResult2 = 0;
-
-	//result = fabs(fOscSin) * (float)slVolFilt;
-/*
-	else if (result > 32767.0)
-	{
-		usDACValueR = 32767;
-	}
-	else if (result < -32768.0)
-	{
-		usDACValueR = -32768;
-	}
-	else
-	{
-		usDACValueR = (int16_t)result;
-	}
-*/
-/*
-	tabix = (ssResult+32768) / 32;
-	tabsub = ssResult & 0x001F;
-	p1 = usDistortionTable[tabix];
-	p2 = usDistortionTable[tabix + 1];
-	usDistorted = (p1 + (((p2 - p1) * tabsub) / 32));
-
-	//i1 = (slTimbre * (usDistorted-32768) + (256-slTimbre) * ssResult ) / 256 ;
-	//i1 -=( ssResult * 3 )/ 4;
-
-	//i1 = (slTimbre * ssResult2 + 256 * ssResult ) / 256 ;
-
-	p1 = usImpedanceTable[tabix];
-	p2 = usImpedanceTable[tabix + 1];
-	usImpedance = (p1 + (((p2 - p1) * tabsub) / 32));
-	slOutCapacitor += ((ssResult-slOutCapacitor) * usImpedance) / 65536;
-
-//	slThereminOut = (slTimbre * (usDistorted-32768) + (256-slTimbre) * ssResult ) / 256 ;
-	slThereminOut = (slTimbre * slOutCapacitor + (256-slTimbre) * ssResult ) / 256 ;
-*/
+    fSVF3LP = fSVF3z2 + 0.3f * fSVF3z1 ;
+    fSVF3z2 = fSVF3LP;
+    fSVF3HP = fOscOut - 1.0f * fSVF3z1 - fSVF3LP;
+    fSVF3z1 = fSVF3z1 + 0.3f * fSVF3HP;
 
 
 
+    fOscHp1 += (fOscMix - fOscHp1) * 0.00390625f; // 30Hz HighPass
+    fOscOut = fOscMix-fOscHp1;
 
-	//STOPWATCH_STOP();
+    if (fOscOut < fOscOutMin)
+    {
+    	fOscOutMin = fOscOut;
+    }
+    if (fOscOut > fOscOutMax)
+    {
+    	fOscOutMax = fOscOut;
+    }
 
+    fOscOutOffsetFilt += (fOscOutOffset - fOscOutOffsetFilt) * 0.001f;
+    fOscOutScaleFilt += (fOscOutScale - fOscOutScaleFilt) * 0.001f;
+
+
+
+	slThereminOut = (fOscOut - fOscOutOffsetFilt) * fOscOutScaleFilt  * (float)slVolFilt;
 }
 
 /**
