@@ -25,6 +25,10 @@
 #define EFFECT_H_
 
 
+/* DEFINES  ------------------------------------------------------- */
+#define CHORUS_BUFFER_SIZE 8192
+#define CHORUS_BUFFER_MASK (CHORUS_BUFFER_SIZE-1)
+
 /* Global variables  ------------------------------------------------------- */
 extern RNG_HandleTypeDef hrng;
 

@@ -577,22 +577,15 @@ inline void THEREMIN_96kHzDACTask_A(void)
     		+ fAddSynth_5 * fOscSin5
 			+ fRichness * fOscSaw ;
 
-
-    fFrq1 = ((1.0f * 10.0f) + 0.5f) * fPitchFrq; //0.2f;//fPitchFrq;
-    fFrq2 = ((fAddSynth_4 * 4.0f)) * fPitchFrq;
+    fFrq1 = 5.0f * fPitchFrq;
 	if (fFrq1 > 1.0f)
 	{
 		fFrq1 = 1.0f;
 	}
-    fSVF3LP = fSVF3z2 + 0.3f * fSVF3z1 ;
-    fSVF3z2 = fSVF3LP;
-    fSVF3HP = fOscOut - 1.0f * fSVF3z1 - fSVF3LP;
-    fSVF3z1 = fSVF3z1 + 0.3f * fSVF3HP;
+    fOscLP1 += (fOscMix - fOscLP1) * fFrq1;
 
-
-
-    fOscHp1 += (fOscMix - fOscHp1) * 0.00390625f; // 30Hz HighPass
-    fOscOut = fOscMix-fOscHp1;
+    fOscHp1 += (fOscLP1 - fOscHp1) * 0.00390625f; // 30Hz HighPass
+    fOscOut = fOscLP1-fOscHp1;
 
     if (fOscOut < fOscOutMin)
     {
@@ -606,9 +599,10 @@ inline void THEREMIN_96kHzDACTask_A(void)
     fOscOutOffsetFilt += (fOscOutOffset - fOscOutOffsetFilt) * 0.001f;
     fOscOutScaleFilt += (fOscOutScale - fOscOutScaleFilt) * 0.001f;
 
+    fFrq2 = 0.1f;
+    fOscLP2 += (((fOscOut - fOscOutOffsetFilt) * fOscOutScaleFilt) - fOscLP2) * fFrq2;
 
-
-	slThereminOut = (fOscOut - fOscOutOffsetFilt) * fOscOutScaleFilt  * (float)slVolFilt;
+	slThereminOut =   fOscLP2 * (float)slVolFilt;
 }
 
 /**

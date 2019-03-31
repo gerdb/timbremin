@@ -36,7 +36,8 @@
 /* local variables  ------------------------------------------------------- */
 
 // Chorus effect
-int32_t slChorusDelay[8192];
+
+int32_t slChorusDelay[CHORUS_BUFFER_SIZE];
 int iChorusDelW = 0;
 int iChorusDelR1 = 0;
 int iChorusDelR2 = 0;
@@ -208,9 +209,9 @@ inline void EFFECT_48kHzTask(void)
 
 	// Write index of delay ring buffer
 	iChorusDelW++;
-	iChorusDelW &= 0x00000FFF;
+	iChorusDelW &= CHORUS_BUFFER_MASK;
 	// Read index of delay ring buffer for first, fix delay
-	iChorusDelR1 = (iChorusDelW - iChorusDelLength1) & 0x00001FFF;
+	iChorusDelR1 = (iChorusDelW - iChorusDelLength1) & CHORUS_BUFFER_MASK;
 	// Read the fix delayed signal
 
 	slChorusIn = slThereminOut - (slChorusDelay[iChorusDelR1] * slChorusFB) / 1024;
@@ -218,8 +219,8 @@ inline void EFFECT_48kHzTask(void)
 
 
 	// Read index of delay ring buffer for second, modulated delay
-	iChorusDelR2  = (iChorusDelW - (iChorusDelLength2 / 256) - 0) & 0x00000FFF;
-	iChorusDelR2n = (iChorusDelW - (iChorusDelLength2 / 256) - 1) & 0x00000FFF;
+	iChorusDelR2  = (iChorusDelW - (iChorusDelLength2 / 256) - 0) & CHORUS_BUFFER_MASK;
+	iChorusDelR2n = (iChorusDelW - (iChorusDelLength2 / 256) - 1) & CHORUS_BUFFER_MASK;
 	// Read the delayed entry and interpolate between 2 points for less aliasing distortion
 	slChorusDelayed2 = (
 					   slChorusDelay[iChorusDelR2]  * (255 - (iChorusDelLength2 & 0x00FF))
